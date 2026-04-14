@@ -1,30 +1,39 @@
+# Composer
 /vendor/
-node_modules/
-npm-debug.log
-yarn-error.log
+composer.lock
 
-# Laravel 4 specific
-bootstrap/compiled.php
-app/storage/
-
-# Laravel 5 & Lumen specific
-public/storage
-public/hot
-
-# Laravel 5 & Lumen specific with changed public path
-public_html/storage
-public_html/hot
-
-storage/*.key
-.env
-Homestead.yaml
-Homestead.json
-/.vagrant
+# PHPUnit / Pest
 .phpunit.result.cache
+.phpunit.cache
+coverage/
+.coverage/
 
-/public/build
-/storage/pail
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# Laravel specific
+.env
 .env.backup
 .env.production
-.phpactor.json
-auth.json
+
+# Package specific
+lang/.backup/
+lang/.translations-meta.json
+lang/.locked-translations.json
+
+# Build artifacts
+build/
+dist/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+laravel-ai-translator-PRD.md
