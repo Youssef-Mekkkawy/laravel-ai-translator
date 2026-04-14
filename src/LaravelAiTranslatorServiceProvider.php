@@ -13,7 +13,7 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
     {
         // Merge package config with app config
         $this->mergeConfigFrom(
-            __DIR__ . '/config/ai-translator.php',
+            __DIR__.'/config/ai-translator.php',
             'ai-translator'
         );
     }
@@ -25,7 +25,7 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
     {
         // Publish configuration file
         $this->publishes([
-            __DIR__ . '/config/ai-translator.php' => config_path('ai-translator.php'),
+            __DIR__.'/config/ai-translator.php' => config_path('ai-translator.php'),
         ], 'ai-translator-config');
 
         // Register commands
