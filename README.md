@@ -1,0 +1,2 @@
+# laravel-ai-translator
+
