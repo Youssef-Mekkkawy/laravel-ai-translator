@@ -1,6 +1,6 @@
 <?php
 
-namespace YoussefMekkkawy\LaravelAiTranslator\Commands;
+namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
 
 use Illuminate\Console\Command;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;

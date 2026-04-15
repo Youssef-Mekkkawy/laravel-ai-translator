@@ -3,7 +3,8 @@
 namespace YoussefMekkkawy\LaravelAiTranslator;
 
 use Illuminate\Support\ServiceProvider;
-use YoussefMekkkawy\LaravelAiTranslator\Commands\ScanTranslationsCommand;
+use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\ScanTranslationsCommand;
+use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\TranslateCommand;
 
 class LaravelAiTranslatorServiceProvider extends ServiceProvider
 {
@@ -14,8 +15,8 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
     {
         // Merge package config with app config
         $this->mergeConfigFrom(
-            __DIR__.'/config/ai-translator.php',
-            'ai-translator'
+            __DIR__.'/config/laravel-ai-translator.php',
+            'laravel-ai-translator'
         );
     }
 
@@ -26,13 +27,14 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
     {
         // Publish configuration file
         $this->publishes([
-            __DIR__.'/config/ai-translator.php' => config_path('ai-translator.php'),
-        ], 'ai-translator-config');
+            __DIR__.'/config/laravel-ai-translator.php' => config_path('laravel-ai-translator.php'),
+        ], 'laravel-ai-translator-config');
 
         // Register commands
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ScanTranslationsCommand::class,
+                TranslateCommand::class,
             ]);
         }
     }
