@@ -3,6 +3,7 @@
 namespace YoussefMekkkawy\LaravelAiTranslator;
 
 use Illuminate\Support\ServiceProvider;
+use YoussefMekkkawy\LaravelAiTranslator\Commands\ScanTranslationsCommand;
 
 class LaravelAiTranslatorServiceProvider extends ServiceProvider
 {
@@ -31,7 +32,7 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
         // Register commands
         if ($this->app->runningInConsole()) {
             $this->commands([
-                // Commands will be registered here as we build them
+                ScanTranslationsCommand::class,
             ]);
         }
     }
