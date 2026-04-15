@@ -9,28 +9,51 @@ use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\KeyExtractor;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\TranslatorManager;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Writers\LanguageFileWriter;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Backup\BackupService;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\HashGenerator;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\ChangeTracker;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\MetadataManager;
 
 class TranslateCommand extends Command
 {
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
     protected $signature = 'lang:translate
                             {--force : Re-translate all keys, even if they exist}
                             {--dry-run : Preview what would be translated without making changes}
                             {--lang= : Translate to specific language only}
                             {--no-backup : Skip creating backups (not recommended)}';
 
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
     protected $description = 'Automatically translate all translation keys to configured languages';
 
+    /**
+     * Translation service instance
+     */
     protected TranslationService $translationService;
 
+    /**
+     * Execute the console command.
+     */
     public function handle(): int
     {
         $this->displayHeader();
+
+        // Initialize services
         $this->initializeServices();
 
+        // Get options
         $force = $this->option('force');
         $dryRun = $this->option('dry-run');
         $specificLang = $this->option('lang');
 
+        // Step 1: Show cost estimation
         $this->info("\n📊 Analyzing translation requirements...\n");
         
         try {
@@ -42,6 +65,7 @@ class TranslateCommand extends Command
                 return self::SUCCESS;
             }
 
+            // Ask for confirmation
             if (!$this->confirm("\n⚡ Start translation?", true)) {
                 $this->warn("❌ Translation cancelled.");
                 return self::SUCCESS;
@@ -49,10 +73,10 @@ class TranslateCommand extends Command
 
         } catch (\Exception $e) {
             $this->error("❌ Estimation failed: " . $e->getMessage());
-            $this->error("Details: " . $e->getTraceAsString());
             return self::FAILURE;
         }
 
+        // Step 2: Run translation
         $this->newLine();
         $this->info("🚀 Starting translation process...\n");
 
@@ -69,6 +93,9 @@ class TranslateCommand extends Command
         }
     }
 
+    /**
+     * Display command header
+     */
     protected function displayHeader(): void
     {
         $this->line("
@@ -83,78 +110,108 @@ class TranslateCommand extends Command
         ");
     }
 
+    /**
+     * Initialize all required services
+     */
     protected function initializeServices(): void
     {
         $config = config('laravel-ai-translator');
 
-        // Extract scan paths
-        $scanPaths = $config['scan_paths'] ?? [resource_path('views')];
-        $excludeFiles = $config['exclude_files'] ?? [];
-
-        // Create services
-        $scanner = new ViewScanner($scanPaths, $excludeFiles);
+        // Core services
+        $scanner = new ViewScanner($config);
         $extractor = new KeyExtractor();
+        $translatorManager = new TranslatorManager($config['translators'] ?? []);
         
-        // FIXED: Pass full config (not $config['translators'])
-        // TranslatorManager needs full config to access $config['providers']
-        $translatorManager = new TranslatorManager($config);
-        
+        // Backup service (needed by LanguageFileWriter)
         $backupService = new BackupService($config['backup'] ?? []);
         $writer = new LanguageFileWriter($backupService, $config);
 
+        // Tracking services (for change detection)
+        $hashGenerator = new HashGenerator();
+        $metadataPath = $config['change_tracking']['metadata_path'] ?? lang_path('.translations-meta.json');
+        $metadataManager = new MetadataManager($metadataPath);
+        $changeTracker = new ChangeTracker($hashGenerator, $metadataManager);
+
+        // Initialize translation service with all dependencies
         $this->translationService = new TranslationService(
             $scanner,
             $extractor,
             $translatorManager,
             $writer,
+            $changeTracker,
             $config
         );
     }
 
+    /**
+     * Estimate translation cost
+     */
     protected function estimateCost(?string $specificLang): array
     {
-        $options = [];
+        $config = config('laravel-ai-translator');
+        $targetLanguages = $specificLang 
+            ? [$specificLang] 
+            : $config['target_languages'];
+        
+        $force = $this->option('force');
 
-        if ($specificLang) {
-            $options['target_langs'] = [$specificLang];
-        }
-
-        return $this->translationService->estimateCost($options);
+        return $this->translationService->estimateCost($targetLanguages, $force);
     }
 
+    /**
+     * Display cost estimation
+     */
     protected function displayEstimation(array $estimation): void
     {
-        $this->table(
-            ['Metric', 'Value'],
-            [
-                ['Total Keys', number_format($estimation['total_keys'])],
-                ['Total Characters', number_format($estimation['total_characters'])],
-                ['Target Languages', implode(', ', $estimation['languages'])],
-                ['Estimated Cost', '$' . number_format($estimation['estimated_cost'], 4)],
-                ['Estimated Time', $estimation['estimated_time']],
-            ]
-        );
-    }
-
-    protected function runTranslation(bool $force, ?string $specificLang): array
-    {
-        $options = [
-            'force' => $force,
+        $rows = [
+            ['Total Keys', number_format($estimation['total_keys'])],
         ];
 
-        if ($specificLang) {
-            $options['target_langs'] = [$specificLang];
+        // Show skipped keys if change tracking is enabled
+        if (isset($estimation['skipped_keys']) && $estimation['skipped_keys'] > 0) {
+            $rows[] = ['Skipped (Unchanged)', number_format($estimation['skipped_keys'])];
         }
 
+        $rows[] = ['Total Characters', number_format($estimation['total_characters'])];
+        $rows[] = ['Target Languages', implode(', ', $estimation['languages'])];
+        $rows[] = ['Estimated Cost', '$' . number_format($estimation['estimated_cost'], 4)];
+        $rows[] = ['Estimated Time', $estimation['estimated_time']];
+
+        $this->table(['Metric', 'Value'], $rows);
+
+        // Show helpful message if nothing to translate
+        if ($estimation['total_keys'] === 0 || $estimation['total_characters'] === 0) {
+            $this->newLine();
+            $this->info("✨ No translations needed! All keys are up to date.");
+            $this->info("💡 Use --force to re-translate everything anyway.");
+        }
+    }
+
+    /**
+     * Run the translation process
+     */
+    protected function runTranslation(bool $force, ?string $specificLang): array
+    {
+        $config = config('laravel-ai-translator');
+        $targetLanguages = $specificLang 
+            ? [$specificLang] 
+            : $config['target_languages'];
+        
+        $dryRun = $this->option('dry-run');
+
+        // Create progress bar
         $this->output->progressStart(100);
 
-        $results = $this->translationService->translateAll($options);
+        $results = $this->translationService->translateAll($targetLanguages, $force, $dryRun);
 
         $this->output->progressFinish();
 
         return $results;
     }
 
+    /**
+     * Display translation results
+     */
     protected function displayResults(array $results): void
     {
         $this->newLine(2);
@@ -163,37 +220,22 @@ class TranslateCommand extends Command
         $this->info("═══════════════════════════════════════════════════════");
         $this->newLine();
 
-        $this->table(
-            ['Metric', 'Value'],
-            [
-                ['Total Keys', number_format($results['total_keys'])],
-                ['Languages Processed', count($results['languages'])],
-                ['Files Written', count($results['files_written'])],
-                ['Duration', $results['duration'] . 's'],
-            ]
-        );
+        // Summary statistics
+        $rows = [
+            ['Total Keys', number_format($results['total_keys'])],
+        ];
 
-        if (!empty($results['languages'])) {
-            $this->newLine();
-            $this->info("📊 Translation Breakdown:");
-            $this->newLine();
-
-            $rows = [];
-            foreach ($results['languages'] as $lang => $data) {
-                $rows[] = [
-                    strtoupper($lang),
-                    $data['translated'] ?? 0,
-                    $data['skipped'] ?? 0,
-                    count($data['files'] ?? []),
-                ];
-            }
-
-            $this->table(
-                ['Language', 'Translated', 'Skipped', 'Files'],
-                $rows
-            );
+        if (isset($results['skipped_unchanged']) && $results['skipped_unchanged'] > 0) {
+            $rows[] = ['Skipped (Unchanged)', number_format($results['skipped_unchanged'])];
         }
 
+        $rows[] = ['Languages Processed', $results['languages_processed']];
+        $rows[] = ['Files Written', count($results['files_written'])];
+        $rows[] = ['Duration', $results['duration'] . 's'];
+
+        $this->table(['Metric', 'Value'], $rows);
+
+        // Files written
         if (!empty($results['files_written'])) {
             $this->newLine();
             $this->info("📁 Files Created/Updated:");
@@ -202,6 +244,7 @@ class TranslateCommand extends Command
             }
         }
 
+        // Errors
         if (!empty($results['errors'])) {
             $this->newLine();
             $this->warn("⚠️  Errors:");
@@ -211,7 +254,15 @@ class TranslateCommand extends Command
         }
 
         $this->newLine();
-        $this->info("🎉 All translations saved with automatic backups!");
+        
+        if (count($results['files_written']) > 0) {
+            $this->info("🎉 All translations saved with automatic backups!");
+        }
+        
+        if (isset($results['skipped_unchanged']) && $results['skipped_unchanged'] > 0) {
+            $this->info("💰 Change tracking saved API costs by skipping " . $results['skipped_unchanged'] . " unchanged keys!");
+        }
+        
         $this->info("💡 Use 'php artisan lang:scan' to see what was translated.");
         $this->newLine();
     }

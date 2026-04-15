@@ -5,6 +5,9 @@ namespace YoussefMekkkawy\LaravelAiTranslator;
 use Illuminate\Support\ServiceProvider;
 use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\ScanTranslationsCommand;
 use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\TranslateCommand;
+use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\LockTranslationCommand;
+use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\UnlockTranslationCommand;
+use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\ListLockedCommand;
 
 class LaravelAiTranslatorServiceProvider extends ServiceProvider
 {
@@ -35,6 +38,9 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
             $this->commands([
                 ScanTranslationsCommand::class,
                 TranslateCommand::class,
+                LockTranslationCommand::class,
+                UnlockTranslationCommand::class,
+                ListLockedCommand::class,
             ]);
         }
     }

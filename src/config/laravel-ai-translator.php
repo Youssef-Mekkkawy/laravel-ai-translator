@@ -3,33 +3,72 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Translation Driver
+    | Source Language
     |--------------------------------------------------------------------------
-    | Supported: "deepl", "openai", "claude"
+    |
+    | The source language for your translations. This is typically 'en' for English.
+    | All translations will be generated from this language.
+    |
     */
-    'driver' => env('AUTO_TRANSLATE_DRIVER', 'deepl'),
+    'source_language' => env('AI_TRANSLATOR_SOURCE_LANGUAGE', 'en'),
 
     /*
     |--------------------------------------------------------------------------
-    | Supported Languages
+    | Target Languages
     |--------------------------------------------------------------------------
-    | List all languages you want to support (ISO 639-1 codes)
+    |
+    | The languages you want to translate to. Add or remove language codes as needed.
+    | Common codes: ar (Arabic), fr (French), es (Spanish), de (German), etc.
+    |
     */
-    'languages' => explode(',', env('SUPPORTED_LANGUAGES', 'en,ar,fr,es')),
+    'target_languages' => [
+        'ar', // Arabic
+        'fr', // French
+        'es', // Spanish
+    ],
 
     /*
     |--------------------------------------------------------------------------
-    | Default Language
+    | Translation Provider
     |--------------------------------------------------------------------------
-    | The source language for translations (usually English)
+    |
+    | The AI translation service to use. Currently supported: 'deepl'
+    | Future: 'openai', 'claude', 'google'
+    |
     */
-    'default_language' => env('DEFAULT_LANGUAGE', 'en'),
+    'provider' => env('AI_TRANSLATOR_PROVIDER', 'deepl'),
 
     /*
     |--------------------------------------------------------------------------
-    | Scan Paths
+    | Provider Configurations
     |--------------------------------------------------------------------------
-    | Directories to scan for translation keys
+    |
+    | API keys and settings for each translation provider
+    |
+    */
+    'providers' => [
+        'deepl' => [
+            'api_key' => env('DEEPL_API_KEY'),
+            'plan' => env('DEEPL_PLAN', 'free'), // 'free' or 'pro'
+        ],
+        // Future providers
+        'openai' => [
+            'api_key' => env('OPENAI_API_KEY'),
+            'model' => env('OPENAI_MODEL', 'gpt-4'),
+        ],
+        'claude' => [
+            'api_key' => env('CLAUDE_API_KEY'),
+            'model' => env('CLAUDE_MODEL', 'claude-3-sonnet'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | View Scanner Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Paths to scan for translation keys in your Blade views
+    |
     */
     'scan_paths' => [
         resource_path('views'),
@@ -39,69 +78,71 @@ return [
     |--------------------------------------------------------------------------
     | Exclude Patterns
     |--------------------------------------------------------------------------
-    | Files/directories to ignore during scanning
+    |
+    | Files or directories to exclude from scanning
+    |
     */
-    'exclude_files' => explode(',', env('AUTO_TRANSLATE_EXCLUDE_FILES', 'vendor/**,node_modules/**,tests/**')),
+    'exclude_files' => [
+        '*/vendor/*',
+        '*/node_modules/*',
+        '*.min.js',
+    ],
 
     /*
     |--------------------------------------------------------------------------
-    | Translation Providers Configuration
+    | Backup Configuration
     |--------------------------------------------------------------------------
+    |
+    | Settings for backing up translation files before overwriting
+    |
     */
-    'providers' => [
-        'deepl' => [
-            'api_key' => env('DEEPL_API_KEY'),
-            'plan' => env('DEEPL_PLAN', 'free'), // 'free' or 'pro'
-        ],
+    'backup' => [
+        'enabled' => true,
+        'path' => storage_path('app/translation-backups'),
+        'keep_days' => 30, // How many days to keep backups
+    ],
 
-        'openai' => [
-            'api_key' => env('OPENAI_API_KEY'),
-            'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
-            'temperature' => 0.3,
-            'max_tokens' => 2000,
-        ],
-
-        'claude' => [
-            'api_key' => env('ANTHROPIC_API_KEY'),
-            'model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
-            'max_tokens' => 2000,
-        ],
+    /*
+    |--------------------------------------------------------------------------
+    | Change Tracking Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Enable smart change detection to save API costs by only translating
+    | what actually changed. Tracks translation hashes in metadata file.
+    |
+    | 💡 TIP: This can save you 70% on translation costs!
+    |
+    */
+    'change_tracking' => [
+        'enabled' => true, // Enable/disable change tracking
+        'metadata_path' => lang_path('.translations-meta.json'), // Where to store metadata
     ],
 
     /*
     |--------------------------------------------------------------------------
     | Translation Options
     |--------------------------------------------------------------------------
+    |
+    | General translation behavior settings
+    |
     */
-    'options' => [
-        'context' => env('AUTO_TRANSLATE_CONTEXT', ''),
-        'exclude_words' => explode(',', env('AUTO_TRANSLATE_EXCLUDE_WORDS', 'Laravel,PHP,API')),
-        'preserve_html' => env('AUTO_TRANSLATE_PRESERVE_HTML', true),
-        'preserve_placeholders' => env('AUTO_TRANSLATE_PRESERVE_PLACEHOLDERS', true),
-        'chunk_size' => env('AUTO_TRANSLATE_CHUNK_SIZE', 100),
+    'translation' => [
+        'preserve_parameters' => true, // Keep :name, {count}, etc. in translations
+        'formality' => 'default', // 'default', 'formal', or 'informal' (provider-dependent)
+        'batch_size' => 50, // Number of translations per API call
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Backup Settings
+    | File Writer Configuration
     |--------------------------------------------------------------------------
+    |
+    | Settings for writing translation files
+    |
     */
-    'backup' => [
-        'enabled' => env('AUTO_TRANSLATE_BACKUP', true),
-        'path' => base_path('lang/.backup'),
-        'keep' => env('AUTO_TRANSLATE_BACKUP_KEEP', 5),
-        'cleanup' => env('AUTO_TRANSLATE_BACKUP_CLEANUP', true),
-        'restore_confirm' => env('AUTO_TRANSLATE_RESTORE_CONFIRM', true),
-        'auto_restore_on_error' => env('AUTO_TRANSLATE_AUTO_RESTORE_ON_ERROR', false),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Storage Paths
-    |--------------------------------------------------------------------------
-    */
-    'storage' => [
-        'metadata_file' => base_path('lang/.translations-meta.json'),
-        'lock_file' => base_path('lang/.locked-translations.json'),
+    'file_writer' => [
+        'format' => 'php', // Output format: 'php' or 'json'
+        'organize_by_namespace' => true, // Group by namespace (auth.php, validation.php, etc.)
+        'sort_keys' => true, // Sort translation keys alphabetically
     ],
 ];
