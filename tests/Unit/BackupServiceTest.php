@@ -8,10 +8,7 @@ describe('BackupService', function () {
     beforeEach(function () {
         // Create test directory
         $this->testPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'backup-test-' . time();
-        
-        // Mock base_path
-        $this->app->instance('path.base', $this->testPath);
-        
+
         // Create lang directory with test files
         $langPath = $this->testPath . DIRECTORY_SEPARATOR . 'lang';
         File::makeDirectory($langPath . DIRECTORY_SEPARATOR . 'en', 0755, true);
@@ -23,6 +20,7 @@ describe('BackupService', function () {
         // Create backup service
         $this->config = [
             'enabled' => true,
+            'lang_path' => $langPath,
             'path' => $langPath . DIRECTORY_SEPARATOR . '.backup',
             'keep' => 3,
         ];

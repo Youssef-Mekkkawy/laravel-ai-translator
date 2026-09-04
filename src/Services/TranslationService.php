@@ -7,129 +7,97 @@ use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\KeyExtractor;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\TranslatorManager;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Writers\LanguageFileWriter;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\ChangeTracker;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockManager;
+use Illuminate\Support\Facades\File;
 
 class TranslationService
 {
     protected ViewScanner $scanner;
     protected KeyExtractor $extractor;
-    protected TranslatorManager $translator;
+    protected TranslatorManager $translatorManager;
     protected LanguageFileWriter $writer;
     protected ChangeTracker $changeTracker;
+    protected LockManager $lockManager;
     protected array $config;
 
     public function __construct(
         ViewScanner $scanner,
         KeyExtractor $extractor,
-        TranslatorManager $translator,
+        TranslatorManager $translatorManager,
         LanguageFileWriter $writer,
         ChangeTracker $changeTracker,
-        array $config
+        LockManager $lockManager,
+        array $config = []
     ) {
-        $this->scanner = $scanner;
-        $this->extractor = $extractor;
-        $this->translator = $translator;
-        $this->writer = $writer;
-        $this->changeTracker = $changeTracker;
-        $this->config = $config;
+        $this->scanner           = $scanner;
+        $this->extractor         = $extractor;
+        $this->translatorManager = $translatorManager;
+        $this->writer            = $writer;
+        $this->changeTracker     = $changeTracker;
+        $this->lockManager       = $lockManager;
+        $this->config            = $config;
     }
 
     /**
-     * Translate all discovered keys to target languages
-     *
-     * @param array $targetLanguages Target language codes
-     * @param bool $force Force re-translation of all keys
-     * @param bool $dryRun Don't actually write files
-     * @return array Results
+     * Translate all keys to specified languages.
      */
     public function translateAll(array $targetLanguages, bool $force = false, bool $dryRun = false): array
     {
-        $results = [
-            'total_keys' => 0,
-            'languages_processed' => 0,
-            'files_written' => [],
-            'errors' => [],
-            'skipped_unchanged' => 0,
-            'duration' => 0,
-        ];
-
-        $startTime = microtime(true);
+        $startTime  = microtime(true);
+        $sourceLang = $this->config['default_language'] ?? 'en';
 
         // Step 1: Scan views for translation keys
-        $scanPaths = $this->config['scan_paths'] ?? [resource_path('views')];
-        $discoveredKeys = [];
-        
-        foreach ($scanPaths as $path) {
-            $keys = $this->scanner->scan($path);
-            $discoveredKeys = array_merge($discoveredKeys, $keys);
-        }
-        
-        $discoveredKeys = array_unique($discoveredKeys);
-        
-        // Step 2: Load source translations (en/)
-        $sourceTranslations = $this->loadSourceTranslations();
-        
-        // Step 3: Merge discovered keys with source
-        $allTranslations = $this->mergeTranslations($discoveredKeys, $sourceTranslations);
-        
-        $results['total_keys'] = count($allTranslations);
+        $allKeys = $this->scanner->scanAll();
 
-        // Step 4: Use change tracking to filter (unless forced)
-        $translationsToProcess = $allTranslations;
-        
-        if (!$force && ($this->config['change_tracking']['enabled'] ?? true)) {
-            // Get only changed/new keys
-            $sourceLanguage = $this->config['source_language'] ?? 'en';
-            $changedKeys = $this->changeTracker->getKeysToTranslate(
-                $allTranslations,
-                $sourceLanguage,
-                $force
-            );
-            
-            // Filter to only changed keys
-            $translationsToProcess = [];
-            foreach ($changedKeys as $key) {
-                if (isset($allTranslations[$key])) {
-                    $translationsToProcess[$key] = $allTranslations[$key];
-                }
+        // Step 2: Extract and organise keys
+        $organized          = $this->extractor->extractMultiple($allKeys);
+        $sourceTranslations = $this->loadSourceTranslations($sourceLang);
+
+        // Step 3: Build the source-value map
+        $keysToTranslate = [];
+
+        foreach ($organized as $data) {
+            $key     = $data['key'];
+            $fullKey = $data['full_key'];
+
+            // FIX: was generateValue() — correct method is generateDefaultValue()
+            $sourceValue = $sourceTranslations[$fullKey]
+                ?? $this->extractor->generateDefaultValue($fullKey);
+
+            $keysToTranslate[$fullKey] = $sourceValue;
+        }
+
+        // Step 4: Translate to each target language
+        $results = [
+            'total_keys'          => count($keysToTranslate),
+            'languages_processed' => 0,
+            'files_written'       => [],
+            'errors'              => [],
+            'skipped_unchanged'   => 0,
+            'locked_keys'         => 0,
+        ];
+
+        foreach ($targetLanguages as $targetLang) {
+            if ($targetLang === $sourceLang) {
+                continue;
             }
-            
-            $results['skipped_unchanged'] = count($allTranslations) - count($translationsToProcess);
-        }
 
-        // Step 5: Translate to each target language
-        foreach ($targetLanguages as $language) {
             try {
-                $languageResult = $this->translateToLanguage(
-                    $language,
-                    $translationsToProcess,
+                $langResult = $this->translateToLanguage(
+                    $keysToTranslate,
+                    $targetLang,
+                    $sourceLang,
+                    $force,
                     $dryRun
                 );
-                
-                if ($languageResult['success']) {
-                    $results['languages_processed']++;
-                    $results['files_written'] = array_merge(
-                        $results['files_written'],
-                        $languageResult['files_written']
-                    );
-                } else {
-                    $results['errors'][$language] = $languageResult['error'];
-                }
-            } catch (\Exception $e) {
-                $results['errors'][$language] = $e->getMessage();
-            }
-        }
 
-        // Step 6: Update tracking metadata (if not dry run and tracking enabled)
-        if (!$dryRun && ($this->config['change_tracking']['enabled'] ?? true)) {
-            try {
-                $sourceLanguage = $this->config['source_language'] ?? 'en';
-                $this->changeTracker->updateHashes($allTranslations, $sourceLanguage);
-                
-                // Cleanup deleted keys
-                $this->changeTracker->cleanupDeletedKeys($allTranslations, $sourceLanguage);
+                $results['languages_processed']++;
+                $results['files_written']     = array_merge($results['files_written'], $langResult['files']);
+                $results['skipped_unchanged'] += $langResult['skipped'] ?? 0;
+                $results['locked_keys']       += $langResult['locked']  ?? 0;
+
             } catch (\Exception $e) {
-                // Log error but don't fail the whole process
-                $results['errors']['tracking'] = 'Failed to update tracking: ' . $e->getMessage();
+                $results['errors'][$targetLang] = $e->getMessage();
             }
         }
 
@@ -139,247 +107,169 @@ class TranslationService
     }
 
     /**
-     * Translate to a specific language
-     *
-     * @param string $language Target language code
-     * @param array $translations Translations to process (flat array with dot notation keys)
-     * @param bool $dryRun Don't write files
-     * @return array Result
+     * Translate keys to a specific language.
      */
-    protected function translateToLanguage(string $language, array $translations, bool $dryRun = false): array
-    {
-        $result = [
-            'success' => false,
-            'files_written' => [],
-            'error' => null,
-        ];
+    protected function translateToLanguage(
+        array $keysToTranslate,
+        string $targetLang,
+        string $sourceLang,
+        bool $force = false,
+        bool $dryRun = false
+    ): array {
+        $translated = [];
+        $skipped    = 0;
+        $locked     = 0;
 
-        try {
-            // Load existing translations for this language
-            $existing = $this->loadLanguageTranslations($language);
+        // Filter out locked keys
+        foreach ($keysToTranslate as $fullKey => $value) {
+            if ($this->lockManager->isLocked($targetLang, $fullKey)) {
+                $locked++;
+                continue;
+            }
+            $translated[$fullKey] = $value;
+        }
 
-            // Determine which keys need translation
-            $keysToTranslate = [];
-            foreach ($translations as $key => $text) {
-                // Skip if already exists (unless forcing)
-                if (isset($existing[$key])) {
-                    continue;
+        // Skip keys that already have translations (unless --force)
+        if (!$force) {
+            $toTranslate = [];
+
+            foreach ($translated as $fullKey => $value) {
+                $parts        = explode('.', $fullKey, 2);
+                $file         = $parts[0];
+                $existingPath = lang_path("{$targetLang}/{$file}.php");
+
+                if (file_exists($existingPath)) {
+                    $existing = include $existingPath;
+                    $key      = $parts[1] ?? $fullKey;
+
+                    if (isset($existing[$key])) {
+                        $skipped++;
+                        continue;
+                    }
                 }
-                $keysToTranslate[$key] = $text;
+
+                $toTranslate[$fullKey] = $value;
             }
 
-            // If nothing to translate, we're done
-            if (empty($keysToTranslate)) {
-                $result['success'] = true;
-                return $result;
-            }
+            $translated = $toTranslate;
+        }
 
-            // Translate the batch
-            $translated = $this->translator->translateBatch(
-                array_values($keysToTranslate),
-                $language
+        // Translate remaining texts
+        $translatedValues = [];
+
+        if (!empty($translated)) {
+            $translator       = $this->translatorManager->translator();
+            $translatedValues = $translator->translateBatch(
+                array_values($translated),
+                $targetLang,
+                $sourceLang
             );
-
-            // Map back to keys
-            $keysList = array_keys($keysToTranslate);
-            $translatedMap = [];
-            foreach ($translated as $index => $translatedText) {
-                $translatedMap[$keysList[$index]] = $translatedText;
-            }
-
-            // Merge with existing
-            $final = array_merge($existing, $translatedMap);
-
-            // Write files (unless dry run)
-            if (!$dryRun) {
-                // Group translations by file
-                $fileTranslations = $this->groupByFile($final);
-                
-                // Write using writeMultiple
-                $files = $this->writer->writeMultiple($language, $fileTranslations);
-                $result['files_written'] = array_values($files);
-            }
-
-            $result['success'] = true;
-
-        } catch (\Exception $e) {
-            $result['error'] = $e->getMessage();
         }
 
-        return $result;
-    }
+        // Map translated values back to keys
+        $finalTranslations = [];
+        $index             = 0;
 
-    /**
-     * Group flat translations by file
-     *
-     * @param array $translations Flat array with dot notation keys
-     * @return array Grouped by file
-     */
-    protected function groupByFile(array $translations): array
-    {
-        $grouped = [];
-        
-        foreach ($translations as $key => $value) {
-            // Parse key to get file and actual key
-            $parsed = $this->extractor->parseKey($key);
-            $file = $parsed['file'];
-            $actualKey = $parsed['key'];
-            
-            if (!isset($grouped[$file])) {
-                $grouped[$file] = [];
-            }
-            
-            $grouped[$file][$actualKey] = $value;
+        foreach ($translated as $fullKey => $originalValue) {
+            $finalTranslations[$fullKey] = $translatedValues[$index] ?? $originalValue;
+            $index++;
         }
-        
-        return $grouped;
+
+        // Organise by file and write
+        $organizedByFile = $this->writer->organizeByFile($finalTranslations);
+        $writtenFiles    = [];
+
+        if (!$dryRun) {
+            foreach ($organizedByFile as $file => $translations) {
+                $writtenFiles[] = $this->writer->write($targetLang, $file, $translations, true);
+            }
+        }
+
+        return [
+            'translated' => count($finalTranslations),
+            'skipped'    => $skipped,
+            'locked'     => $locked,
+            'files'      => $writtenFiles,
+        ];
     }
 
     /**
-     * Load source language translations
-     *
-     * @return array Flat array of translations
+     * Load source translations from language files (flattened with dot notation).
      */
-    protected function loadSourceTranslations(): array
+    protected function loadSourceTranslations(string $sourceLang): array
     {
-        $sourceLanguage = $this->config['source_language'] ?? 'en';
-        return $this->loadLanguageTranslations($sourceLanguage);
-    }
+        $langPath = base_path('lang') . DIRECTORY_SEPARATOR . $sourceLang;
 
-    /**
-     * Load translations for a language
-     *
-     * @param string $language Language code
-     * @return array Flat array of translations
-     */
-    protected function loadLanguageTranslations(string $language): array
-    {
-        $langPath = lang_path($language);
-        
-        if (!file_exists($langPath)) {
+        if (!File::exists($langPath)) {
             return [];
         }
 
         $translations = [];
-        $files = glob($langPath . '/*.php');
 
-        foreach ($files as $file) {
-            $namespace = basename($file, '.php');
-            $data = include $file;
-            
-            if (is_array($data)) {
-                foreach ($data as $key => $value) {
-                    $flatKey = $namespace . '.' . $key;
-                    $translations[$flatKey] = $value;
-                }
+        foreach (File::files($langPath) as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
             }
+
+            $fileName         = $file->getBasename('.php');
+            $fileTranslations = include $file->getPathname();
+
+            if (!is_array($fileTranslations)) {
+                continue;
+            }
+
+            $translations = array_merge(
+                $translations,
+                $this->flattenArray($fileTranslations, $fileName)
+            );
         }
 
         return $translations;
     }
 
     /**
-     * Merge discovered keys with source translations
-     *
-     * @param array $discovered Discovered keys from views
-     * @param array $source Source language translations
-     * @return array Merged translations
+     * Flatten a nested array using dot-notation keys.
      */
-    protected function mergeTranslations(array $discovered, array $source): array
+    protected function flattenArray(array $array, string $prefix = ''): array
     {
-        $merged = [];
+        $result = [];
 
-        // Add all discovered keys
-        foreach ($discovered as $key) {
-            // Parse the key to get namespace and actual key
-            $parsed = $this->extractor->parseKey($key);
-            
-            // If exists in source, use source value
-            if (isset($source[$key])) {
-                $merged[$key] = $source[$key];
+        foreach ($array as $key => $value) {
+            $newKey = $prefix ? "{$prefix}.{$key}" : $key;
+
+            if (is_array($value)) {
+                $result = array_merge($result, $this->flattenArray($value, $newKey));
             } else {
-                // Generate default value
-                $merged[$key] = $this->extractor->generateDefaultValue($parsed['key']);
+                $result[$newKey] = $value;
             }
         }
 
-        return $merged;
+        return $result;
     }
 
     /**
-     * Estimate translation cost
-     *
-     * @param array $targetLanguages Target languages
-     * @param bool $force Force re-translation
-     * @return array Cost estimation
+     * Get target languages (all configured languages minus the source language).
+     */
+    protected function getTargetLanguages(): array
+    {
+        $languages  = $this->config['languages']         ?? ['en'];
+        $sourceLang = $this->config['default_language']  ?? 'en';
+
+        return array_values(array_filter($languages, fn ($lang) => $lang !== $sourceLang));
+    }
+
+    /**
+     * Estimate translation cost without actually translating.
      */
     public function estimateCost(array $targetLanguages, bool $force = false): array
     {
-        // Scan and load translations
-        $scanPaths = $this->config['scan_paths'] ?? [resource_path('views')];
-        $discoveredKeys = [];
-        
-        foreach ($scanPaths as $path) {
-            $keys = $this->scanner->scan($path);
-            $discoveredKeys = array_merge($discoveredKeys, $keys);
-        }
-        
-        $discoveredKeys = array_unique($discoveredKeys);
-        
-        $sourceTranslations = $this->loadSourceTranslations();
-        $allTranslations = $this->mergeTranslations($discoveredKeys, $sourceTranslations);
-        
-        // Filter by change tracking
-        $translationsToProcess = $allTranslations;
-        
-        if (!$force && ($this->config['change_tracking']['enabled'] ?? true)) {
-            $sourceLanguage = $this->config['source_language'] ?? 'en';
-            $translationsToProcess = $this->changeTracker->filterChanged(
-                $allTranslations,
-                $sourceLanguage,
-                $force
-            );
-        }
-        
-        // Get character count
-        $totalCharacters = array_sum(array_map('mb_strlen', $translationsToProcess));
-        
-        // Get estimation from translator (pass array of languages, not count!)
-        $texts = array_values($translationsToProcess);
-        $estimation = $this->translator->estimateCost($texts, $targetLanguages);
-        
-        // Format for command display
-        return [
-            'total_keys' => count($translationsToProcess),
-            'total_characters' => $totalCharacters,
-            'languages' => $targetLanguages, // Return array for display
-            'language_count' => count($targetLanguages), // Count for calculations
-            'estimated_cost' => $estimation['estimated_cost'] ?? 0,
-            'estimated_time' => $estimation['estimated_time'] ?? '~1 second',
-            'skipped_keys' => count($allTranslations) - count($translationsToProcess),
-        ];
-    }
+        $allKeys   = $this->scanner->scanAll();
+        $organized = $this->extractor->extractMultiple($allKeys);
 
-    /**
-     * Get change tracking report
-     *
-     * @return array Report
-     */
-    public function getChangeReport(): array
-    {
-        $sourceLanguage = $this->config['source_language'] ?? 'en';
-        $sourceTranslations = $this->loadSourceTranslations();
-        
-        return $this->changeTracker->getChangeReport($sourceTranslations, $sourceLanguage);
-    }
+        $texts = array_column($organized, 'key');
 
-    /**
-     * Reset change tracking
-     *
-     * @return void
-     */
-    public function resetTracking(): void
-    {
-        $this->changeTracker->reset();
+        $translator = $this->translatorManager->translator();
+
+        return $translator->estimateCost($texts, $targetLanguages);
     }
 }

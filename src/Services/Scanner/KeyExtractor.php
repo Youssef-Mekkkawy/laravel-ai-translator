@@ -1,5 +1,6 @@
 <?php
 
+// cspell:ignore Youssef Mekkkawy
 namespace YoussefMekkkawy\LaravelAiTranslator\Services\Scanner;
 
 use Illuminate\Support\Str;
@@ -25,24 +26,55 @@ class KeyExtractor
     }
 
     /**
+     * Alias for parseKey() — also adds default_value to the result.
+     * Used by ScanTranslationsCommand and other callers.
+     */
+    public function extractFromKey(string $key): array
+    {
+        $parsed = $this->parseKey($key);
+        $parsed['default_value'] = $this->generateDefaultValue($key);
+        return $parsed;
+    }
+
+    /**
+     * Process multiple keys at once — returns a flat array of parsed key data.
+     * Used by TranslationService.
+     *
+     * @param array $keys Array of raw translation keys
+     * @return array Flat array of parsed key data, each with default_value included
+     */
+    public function extractMultiple(array $keys): array
+    {
+        $result = [];
+
+        foreach ($keys as $key) {
+            $parsed = $this->parseKey($key);
+            $parsed['default_value'] = $this->generateDefaultValue($key);
+            $result[] = $parsed;
+        }
+
+        return $result;
+    }
+
+    /**
      * Parse dot notation key (e.g., 'auth.login' or 'messages.success')
      */
     protected function parseDotNotationKey(string $key): array
     {
         $parts = explode('.', $key);
         $originalPartsCount = count($parts);
-        
+
         // First part is the file name
         $file = array_shift($parts);
-        
+
         // Remaining parts form the nested key
         $nestedKey = implode('.', $parts);
 
         return [
-            'file' => $file,
-            'key' => $nestedKey,
-            'full_key' => $key,
-            'is_nested' => $originalPartsCount > 2, // More than 2 parts means nested (e.g., messages.success.saved)
+            'file'      => $file,
+            'key'       => $nestedKey,
+            'full_key'  => $key,
+            'is_nested' => $originalPartsCount > 2,
         ];
     }
 
@@ -51,14 +83,13 @@ class KeyExtractor
      */
     protected function parsePlainKey(string $key): array
     {
-        // Convert to snake_case for the key name
         $snakeKey = $this->toSnakeCase($key);
 
         return [
-            'file' => 'auto', // Auto-generated keys go to 'auto.php'
-            'key' => $snakeKey,
-            'full_key' => $key,
-            'is_nested' => false,
+            'file'          => 'auto',
+            'key'           => $snakeKey,
+            'full_key'      => $key,
+            'is_nested'     => false,
             'original_text' => $key,
         ];
     }
@@ -68,16 +99,9 @@ class KeyExtractor
      */
     protected function toSnakeCase(string $text): string
     {
-        // Remove special characters
         $text = preg_replace('/[^a-zA-Z0-9\s]/', '', $text);
-        
-        // Convert to snake_case
         $text = Str::snake($text);
-        
-        // Remove multiple underscores
         $text = preg_replace('/_+/', '_', $text);
-        
-        // Trim underscores from start and end
         return trim($text, '_');
     }
 
@@ -86,7 +110,7 @@ class KeyExtractor
      */
     public function keyExists(string $key, string $language = 'en'): bool
     {
-        $parsed = $this->parseKey($key);
+        $parsed   = $this->parseKey($key);
         $filePath = base_path("lang/{$language}/{$parsed['file']}.php");
 
         if (!File::exists($filePath)) {
@@ -95,7 +119,6 @@ class KeyExtractor
 
         $translations = include $filePath;
 
-        // Check for nested keys (e.g., 'auth.login' -> $translations['auth']['login'])
         if ($parsed['is_nested']) {
             return $this->hasNestedKey($translations, $parsed['key']);
         }
@@ -109,16 +132,16 @@ class KeyExtractor
     protected function hasNestedKey(array $array, string $key): bool
     {
         $keys = explode('.', $key);
-        
+
         foreach ($keys as $segment) {
             if (!isset($array[$segment])) {
                 return false;
             }
-            
+
             if (!is_array($array[$segment])) {
-                return true; // Reached a string value
+                return true;
             }
-            
+
             $array = $array[$segment];
         }
 
@@ -134,8 +157,8 @@ class KeyExtractor
             return null;
         }
 
-        $parsed = $this->parseKey($key);
-        $filePath = base_path("lang/{$language}/{$parsed['file']}.php");
+        $parsed       = $this->parseKey($key);
+        $filePath     = base_path("lang/{$language}/{$parsed['file']}.php");
         $translations = include $filePath;
 
         if ($parsed['is_nested']) {
@@ -151,16 +174,16 @@ class KeyExtractor
     protected function getNestedValue(array $array, string $key): ?string
     {
         $keys = explode('.', $key);
-        
+
         foreach ($keys as $segment) {
             if (!isset($array[$segment])) {
                 return null;
             }
-            
+
             if (is_string($array[$segment])) {
                 return $array[$segment];
             }
-            
+
             $array = $array[$segment];
         }
 
@@ -174,13 +197,10 @@ class KeyExtractor
     {
         $parsed = $this->parseKey($key);
 
-        // If it's a plain text key, return the original text
         if (isset($parsed['original_text'])) {
             return $parsed['original_text'];
         }
 
-        // For dot notation, generate from the key name
-        // Example: 'user_settings' -> 'User Settings'
         return Str::headline($parsed['key']);
     }
 
@@ -195,20 +215,17 @@ class KeyExtractor
         $organized = [];
 
         foreach ($keys as $key) {
-            // Parse the key
             $parsed = $this->parseKey($key);
-            $file = $parsed['file'];
+            $file   = $parsed['file'];
 
-            // Initialize array for this file if not exists
             if (!isset($organized[$file])) {
                 $organized[$file] = [];
             }
 
-            // Add the key data as an array
             $organized[$file][] = [
-                'key' => $parsed['key'],
-                'full_key' => $key, // Use original key, not parsed['full_key']
-                'is_nested' => $parsed['is_nested'] ?? false,
+                'key'           => $parsed['key'],
+                'full_key'      => $key,
+                'is_nested'     => $parsed['is_nested'] ?? false,
                 'default_value' => $this->generateDefaultValue($key),
             ];
         }

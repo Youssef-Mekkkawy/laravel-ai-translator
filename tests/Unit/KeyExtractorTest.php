@@ -1,6 +1,6 @@
 <?php
 
-use LaravelAiTranslator\Services\Scanner\KeyExtractor;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\KeyExtractor;
 
 test('key extractor parses dot notation keys', function () {
     $extractor = new KeyExtractor();

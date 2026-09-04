@@ -9,10 +9,7 @@ describe('LanguageFileWriter', function () {
     beforeEach(function () {
         // Create test directory
         $this->testPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'lang-writer-test-' . time();
-        
-        // Mock base_path to use test directory
-        $this->app->instance('path.base', $this->testPath);
-        
+
         // Create lang directory
         $langPath = $this->testPath . DIRECTORY_SEPARATOR . 'lang';
         File::makeDirectory($langPath, 0755, true);
@@ -20,12 +17,15 @@ describe('LanguageFileWriter', function () {
         // Create backup service
         $backupConfig = [
             'enabled' => true,
+            'lang_path' => $langPath,
             'path' => $langPath . DIRECTORY_SEPARATOR . '.backup',
             'keep' => 5,
         ];
-        
+
+        $writerConfig = ['lang_path' => $langPath];
+
         $this->backupService = new BackupService($backupConfig);
-        $this->writer = new LanguageFileWriter($this->backupService);
+        $this->writer = new LanguageFileWriter($this->backupService, $writerConfig);
     });
 
     afterEach(function () {
@@ -217,24 +217,24 @@ describe('LanguageFileWriter', function () {
     });
 
     it('can restore from backup', function () {
-        // Write version 1
+        // Write version 1 (no prior file, no backup created)
         $this->writer->write('ar', 'test', ['version' => 1], false);
         sleep(1);
-        
-        // Get backup timestamp
+
+        // Write version 2 — this creates a backup of version 1
+        $this->writer->write('ar', 'test', ['version' => 2], false);
+
+        // Get backup timestamp (this is the backup of version 1)
         $backups = $this->writer->listBackups();
         $timestamp = $backups[0]['timestamp'];
-        
-        // Write version 2
-        $this->writer->write('ar', 'test', ['version' => 2], false);
-        
+
         // Verify version 2 is active
         $current = $this->writer->read('ar', 'test');
         expect($current['version'])->toBe(2);
-        
+
         // Restore version 1
         $this->writer->restore($timestamp);
-        
+
         // Verify version 1 is back
         $restored = $this->writer->read('ar', 'test');
         expect($restored['version'])->toBe(1);

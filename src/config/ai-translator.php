@@ -52,8 +52,6 @@ return [
         'deepl' => [
             'api_key' => env('DEEPL_API_KEY'),
             'plan' => env('DEEPL_PLAN', 'free'), // 'free' or 'pro'
-            'batch_size' => 50, // Max texts per batch
-            'timeout' => 30, // Request timeout in seconds
         ],
         
         'openai' => [
@@ -61,38 +59,12 @@ return [
             'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
             'temperature' => 0.3,
             'max_tokens' => 2000,
-            'batch_size' => 20,
-            'timeout' => 60,
         ],
         
         'claude' => [
             'api_key' => env('ANTHROPIC_API_KEY'),
             'model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
-            'temperature' => 0.3,
             'max_tokens' => 2000,
-            'batch_size' => 20,
-            'timeout' => 60,
-        ],
-
-        'google' => [
-            'api_key' => env('GOOGLE_TRANSLATE_API_KEY'),
-            'batch_size' => 100,
-            'timeout' => 30,
-        ],
-
-        'gemini' => [
-            'api_key' => env('GEMINI_API_KEY'),
-            'model' => env('GEMINI_MODEL', 'gemini-pro'),
-            'temperature' => 0.3,
-            'batch_size' => 20,
-            'timeout' => 60,
-        ],
-
-        'ollama' => [
-            'base_url' => env('OLLAMA_BASE_URL', 'http://localhost:11434'),
-            'model' => env('OLLAMA_MODEL', 'llama2'),
-            'batch_size' => 10,
-            'timeout' => 120,
         ],
     ],
 

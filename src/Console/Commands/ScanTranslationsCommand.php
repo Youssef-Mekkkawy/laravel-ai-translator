@@ -3,47 +3,42 @@
 namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\File;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\KeyExtractor;
 
 class ScanTranslationsCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     */
-    protected $signature = 'lang:scan 
+    protected $signature = 'lang:scan
                             {--missing-only : Show only missing translations}
                             {--path=* : Additional paths to scan}';
 
-    /**
-     * The console command description.
-     */
     protected $description = 'Scan Blade views for translation keys';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(): int
     {
         $this->info('🔍 Scanning Blade views for translation keys...');
         $this->newLine();
 
-        // Get scan paths from config and options
         $paths = config('ai-translator.scan_paths', [resource_path('views')]);
 
         if ($additionalPaths = $this->option('path')) {
             $paths = array_merge($paths, $additionalPaths);
         }
 
-        // Initialize scanner
-        $scanner = new ViewScanner($paths);
+        $paths = array_values(array_filter($paths, fn ($path) => File::isDirectory($path)));
+
+        if (empty($paths)) {
+            $this->components->warn('⚠️  No valid scan paths found. Check your config or use --path.');
+            return self::FAILURE;
+        }
+
+        $scanner   = new ViewScanner($paths);
         $extractor = new KeyExtractor();
 
-        // Show paths being scanned
         $this->components->info('📂 Scanning: ' . implode(', ', $paths));
         $this->newLine();
 
-        // Scan all files
         $keys = $scanner->scanAll();
 
         if (empty($keys)) {
@@ -51,100 +46,73 @@ class ScanTranslationsCommand extends Command
             return self::SUCCESS;
         }
 
-        // Fixed: Use concatenation instead of interpolation
         $keyCount = count($keys);
         $this->components->info("✅ Found {$keyCount} unique translation keys");
         $this->newLine();
 
-        // Get missing keys if requested
-        $missingOnly = $this->option('missing-only');
-        $defaultLang = config('ai-translator.default_language', 'en');
+        $defaultLang  = config('ai-translator.default_language', 'en');
+        $langBasePath = base_path('lang' . DIRECTORY_SEPARATOR . $defaultLang);
+        $missingOnly  = $this->option('missing-only');
 
-        // Organize keys by file
-        $organized = $extractor->organizeKeysByFile($keys);
+        $rows          = [];
+        $existingCount = 0;
+        $missingCount  = 0;
 
-        // Display results
-        $this->displayResults($organized, $extractor, $defaultLang, $missingOnly);
+        foreach ($keys as $key) {
+            $parsed       = $extractor->extractFromKey($key);
+            $file         = $parsed['file'];
+            $subKey       = $parsed['key'];
+            $defaultValue = $parsed['default_value'];
 
-        // Show summary
-        $this->displaySummary($keys, $extractor, $defaultLang);
+            $langFile = $langBasePath . DIRECTORY_SEPARATOR . $file . '.php';
+            $exists   = false;
+            $value    = "(missing) → {$defaultValue}";
 
-        return self::SUCCESS;
-    }
+            if (File::exists($langFile)) {
+                $translations = require $langFile;
 
-    /**
-     * Display the translation keys in a table
-     */
-    protected function displayResults(
-        array $organized,
-        KeyExtractor $extractor,
-        string $language,
-        bool $missingOnly
-    ): void {
-        $this->components->info('📋 Translation Keys:');
-        $this->newLine();
-
-        $rows = [];
-
-        foreach ($organized as $file => $fileKeys) {
-            foreach ($fileKeys as $keyData) {
-                $fullKey = $keyData['full_key'];
-                $exists = $extractor->keyExists($fullKey, $language);
-
-                // Skip if only showing missing and this exists
-                if ($missingOnly && $exists) {
-                    continue;
+                if (is_array($translations) && isset($translations[$subKey])) {
+                    $exists = true;
+                    $value  = $translations[$subKey];
+                    $existingCount++;
+                } else {
+                    $missingCount++;
                 }
-
-                $value = $exists
-                    ? $extractor->getKeyValue($fullKey, $language)
-                    : $keyData['default_value'];
-
-                $rows[] = [
-                    $fullKey,
-                    $file . '.php',
-                    $exists ? '✅' : '❌',
-                    $exists ? $value : '(missing)',
-                ];
+            } else {
+                $missingCount++;
             }
+
+            if ($missingOnly && $exists) {
+                continue;
+            }
+
+            $rows[] = [
+                $key,
+                $file . '.php',
+                $exists ? '✅' : '❌',
+                $value,
+            ];
         }
 
-        if (empty($rows)) {
-            if ($missingOnly) {
-                $this->components->info('✨ All translation keys exist!');
-            }
-            return;
+        if (!empty($rows)) {
+            $this->components->info('📋 Translation Keys:');
+            $this->newLine();
+            $this->table(['Key', 'File', 'Exists', 'Value'], $rows);
+        } elseif ($missingOnly) {
+            $this->components->info('✨ All translation keys exist!');
         }
 
-        $this->table(
-            ['Key', 'File', 'Exists', 'Value'],
-            $rows
-        );
-    }
-
-    /**
-     * Display summary statistics
-     */
-    protected function displaySummary(
-        array $keys,
-        KeyExtractor $extractor,
-        string $language
-    ): void {
         $this->newLine();
         $this->components->info('📊 Summary:');
-
-        $missing = $extractor->getMissingKeys($keys, $language);
-        $existing = count($keys) - count($missing);
-        $totalKeys = count($keys);
-        $missingCount = count($missing);
-
-        $this->line("   Total Keys: <fg=cyan>{$totalKeys}</>");
-        $this->line("   Existing: <fg=green>{$existing}</>");
+        $this->line("   Total Keys: <fg=cyan>{$keyCount}</>");
+        $this->line("   Existing: <fg=green>{$existingCount}</>");
         $this->line("   Missing: <fg=yellow>{$missingCount}</>");
 
         if ($missingCount > 0) {
             $this->newLine();
             $this->components->info('💡 Tip: Missing keys will be auto-generated when you run lang:sync');
         }
+
+        return self::SUCCESS;
     }
 }

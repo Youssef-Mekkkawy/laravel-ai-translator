@@ -186,14 +186,176 @@ return [
 
 ## Commands
 
-| Command                                | Description                               |
-| -------------------------------------- | ----------------------------------------- |
-| `php artisan lang:sync`                | Scan views and translate to all languages |
-| `php artisan lang:lock <lang> <key>`   | Protect a translation from auto-updates   |
-| `php artisan lang:unlock <lang> <key>` | Remove protection from a translation      |
-| `php artisan lang:locked`              | List all locked translations              |
-| `php artisan lang:backup:list`         | Show all available backups                |
-| `php artisan lang:restore [timestamp]` | Restore from a backup                     |
+| Command | Description | Example |
+|---------|-------------|---------|
+| `lang:scan` | Scan views for translation keys | `php artisan lang:scan` |
+| `lang:translate` | Translate to all configured languages | `php artisan lang:translate` |
+| `lang:lock` | Lock a translation to protect from overwrites | `php artisan lang:lock ar auth.login` |
+| `lang:unlock` | Remove a lock from a translation | `php artisan lang:unlock ar auth.login` |
+| `lang:locked` | List all currently locked translations | `php artisan lang:locked` |
+| `lang:validate` | Validate translation quality and detect issues | `php artisan lang:validate` |
+| `lang:restore` | Restore translations from a backup | `php artisan lang:restore` |
+| `lang:backup:list` | List all available backups | `php artisan lang:backup:list` |
+
+### Command Options
+
+**`lang:translate`**
+```bash
+php artisan lang:translate                # Translate all languages
+php artisan lang:translate --lang=ar      # Translate Arabic only
+php artisan lang:translate --force        # Re-translate all keys (ignore change tracking)
+php artisan lang:translate --dry-run      # Preview without writing any files
+php artisan lang:translate --no-backup    # Skip backup creation
+```
+
+**`lang:validate`**
+```bash
+php artisan lang:validate                 # Validate all languages
+php artisan lang:validate --lang=ar       # Validate Arabic only
+php artisan lang:validate --strict        # Exit with error code if warnings found
+```
+
+**`lang:restore`**
+```bash
+php artisan lang:restore                                # Interactive selection
+php artisan lang:restore 2026-04-16_14-30-00           # Restore specific backup
+php artisan lang:restore --latest                       # Restore most recent backup
+php artisan lang:restore --list                         # List backups without restoring
+```
+
+**`lang:backup:list`**
+```bash
+php artisan lang:backup:list              # Show backup summary table
+php artisan lang:backup:list --details    # Show file list per backup
+```
+
+## Examples
+
+### First-Time Setup
+
+```bash
+# 1. Install the package
+composer require youssef-mekkkawy/laravel-ai-translator
+
+# 2. Add your API key to .env
+DEEPL_API_KEY=your-key-here
+SUPPORTED_LANGUAGES=en,ar,fr,es
+
+# 3. Run translation
+php artisan lang:translate
+```
+
+### Daily Workflow
+
+```bash
+# 1. Add new translation keys to your Blade views
+{{ __('dashboard.new_feature') }}
+
+# 2. Add the English source value
+# lang/en/dashboard.php → 'new_feature' => 'New Feature'
+
+# 3. Translate — only new/changed keys are sent to the API
+php artisan lang:translate
+
+# 4. Review quality (optional)
+php artisan lang:validate
+
+# 5. Lock any translations you've manually improved
+php artisan lang:lock ar dashboard.new_feature
+```
+
+### Safe Deploy Workflow
+
+```bash
+# Before deploy: create a manual backup
+php artisan lang:backup:list
+
+# If something goes wrong: restore
+php artisan lang:restore --latest
+
+# Or pick a specific backup
+php artisan lang:restore 2026-04-16_14-30-00
+```
+
+---
+
+## Configuration
+
+All configuration lives in `config/laravel-ai-translator.php`:
+
+```php
+return [
+    // AI provider: 'deepl', 'openai', 'claude'
+    'driver' => env('AUTO_TRANSLATE_DRIVER', 'deepl'),
+
+    // Languages to support (ISO 639-1 codes)
+    'languages' => explode(',', env('SUPPORTED_LANGUAGES', 'en,ar,fr,es')),
+
+    // Source language (never translated)
+    'default_language' => env('DEFAULT_LANGUAGE', 'en'),
+
+    // Blade view directories to scan
+    'scan_paths' => [
+        resource_path('views'),
+    ],
+
+    // Patterns to ignore during scanning
+    'exclude_files' => explode(',', env('AUTO_TRANSLATE_EXCLUDE_FILES', 'vendor/**,node_modules/**,tests/**')),
+
+    // Backup settings
+    'backup' => [
+        'enabled' => env('AUTO_TRANSLATE_BACKUP', true),
+        'path'    => base_path('lang/.backup'),
+        'keep'    => env('AUTO_TRANSLATE_BACKUP_KEEP', 5),   // Keep last N backups
+    ],
+
+    // Provider credentials
+    'providers' => [
+        'deepl' => [
+            'api_key' => env('DEEPL_API_KEY'),
+            'plan'    => env('DEEPL_PLAN', 'free'),          // 'free' or 'pro'
+        ],
+        'openai' => [
+            'api_key' => env('OPENAI_API_KEY'),
+            'model'   => env('OPENAI_MODEL', 'gpt-4o-mini'),
+        ],
+        'claude' => [
+            'api_key' => env('ANTHROPIC_API_KEY'),
+            'model'   => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
+        ],
+    ],
+];
+```
+
+---
+
+## Troubleshooting
+
+### "DeepL API key not configured"
+**Solution:** Add `DEEPL_API_KEY=your-key` to your `.env` file and run `php artisan config:clear`.
+
+### "No translation keys found"
+**Solution:** Make sure you're using the standard `{{ __('key') }}` syntax in your Blade views. The scanner supports `__()`, `@lang()`, and `trans()`.
+
+### "Translation files not created"
+**Solution:** Check that your `lang/` directory exists and is writable. Also ensure `scan_paths` in the config points to the correct views directory.
+
+### "Locked translation was overwritten"
+**Solution:** The lock wasn't applied before the last translation run. Re-apply it: `php artisan lang:lock <lang> <key>`, then translations will be protected on subsequent runs.
+
+### "Validate shows placeholder issues"
+**Solution:** Your AI translation removed a placeholder like `:name` or `{0}`. Manually correct the affected translation, then lock it: `php artisan lang:lock <lang> <key> --reason="placeholder fix"`.
+
+### Want to start fresh?
+```bash
+# See what backups exist
+php artisan lang:backup:list
+
+# Restore a clean state
+php artisan lang:restore --latest
+```
+
+---
 
 ## AI Provider Comparison
 

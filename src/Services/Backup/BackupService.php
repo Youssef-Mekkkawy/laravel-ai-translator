@@ -7,49 +7,71 @@ use Carbon\Carbon;
 
 class BackupService
 {
-    /**
-     * Backup configuration
-     */
     protected array $config;
 
-    /**
-     * Constructor
-     */
     public function __construct(array $config = [])
     {
         $this->config = $config;
     }
 
+    protected function getLangPath(): string
+    {
+        return $this->config['lang_path'] ?? lang_path();
+    }
+
+    protected function getBackupPath(): string
+    {
+        return $this->config['path'] ?? base_path('lang/.backup');
+    }
+
     /**
-     * Create a backup of the lang directory
+     * Generate a unique timestamp string.
+     * Includes microseconds so two backups created within the same
+     * second (e.g. original + safety-backup in restore()) never collide.
+     */
+    protected function makeTimestamp(): string
+    {
+        $micro = sprintf('%06d', (int) (fmod(microtime(true), 1) * 1_000_000));
+        return Carbon::now()->format('Y-m-d_H-i-s') . '_' . $micro;
+    }
+
+    /**
+     * Create a full backup of the lang directory.
      *
      * @return string Backup directory path
      */
     public function backup(): string
     {
-        $langPath = base_path('lang');
+        $langPath  = $this->getLangPath();
         $backupPath = $this->getBackupPath();
-        $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
-        $backupDir = $backupPath . DIRECTORY_SEPARATOR . $timestamp;
+        $timestamp  = $this->makeTimestamp();
+        $backupDir  = $backupPath . DIRECTORY_SEPARATOR . $timestamp;
 
-        // Create backup directory
         if (!File::exists($backupDir)) {
             File::makeDirectory($backupDir, 0755, true);
         }
 
-        // Copy all language files
         if (File::exists($langPath)) {
-            File::copyDirectory($langPath, $backupDir);
+            $backupDirName = basename($backupPath);
+
+            foreach (File::directories($langPath) as $dir) {
+                if (basename($dir) !== $backupDirName) {
+                    File::copyDirectory($dir, $backupDir . DIRECTORY_SEPARATOR . basename($dir));
+                }
+            }
+
+            foreach (File::files($langPath) as $file) {
+                File::copy($file->getPathname(), $backupDir . DIRECTORY_SEPARATOR . $file->getFilename());
+            }
         }
 
-        // Clean old backups
         $this->cleanOldBackups();
 
         return $backupDir;
     }
 
     /**
-     * Backup a specific file
+     * Backup a specific file.
      *
      * @param string $filePath Full path to the file
      * @return string|null Backup file path
@@ -60,28 +82,29 @@ class BackupService
             return null;
         }
 
-        $langPath = base_path('lang');
-        $relativePath = str_replace($langPath . DIRECTORY_SEPARATOR, '', $filePath);
-        
-        $backupPath = $this->getBackupPath();
-        $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
-        $backupDir = $backupPath . DIRECTORY_SEPARATOR . $timestamp;
-        $backupFile = $backupDir . DIRECTORY_SEPARATOR . $relativePath;
+        $sep            = DIRECTORY_SEPARATOR;
+        $langPath       = rtrim(str_replace(['/', '\\'], $sep, $this->getLangPath()), $sep);
+        $normalizedFile = str_replace(['/', '\\'], $sep, $filePath);
+        $relativePath   = ltrim(str_replace($langPath . $sep, '', $normalizedFile), $sep);
 
-        // Create directory
+        $backupPath  = $this->getBackupPath();
+        $timestamp   = $this->makeTimestamp();
+        $backupDir   = $backupPath . DIRECTORY_SEPARATOR . $timestamp;
+        $backupFile  = $backupDir . DIRECTORY_SEPARATOR . $relativePath;
         $backupFileDir = dirname($backupFile);
+
         if (!File::exists($backupFileDir)) {
             File::makeDirectory($backupFileDir, 0755, true);
         }
 
-        // Copy file
         File::copy($filePath, $backupFile);
+        $this->cleanOldBackups();
 
         return $backupFile;
     }
 
     /**
-     * List all available backups
+     * List all available backups, newest first.
      *
      * @return array
      */
@@ -94,126 +117,117 @@ class BackupService
         }
 
         $backups = [];
-        $directories = File::directories($backupPath);
 
-        foreach ($directories as $dir) {
+        foreach (File::directories($backupPath) as $dir) {
             $timestamp = basename($dir);
             $backups[] = [
                 'timestamp' => $timestamp,
-                'path' => $dir,
-                'date' => $this->parseTimestamp($timestamp),
-                'size' => $this->getDirectorySize($dir),
+                'path'      => $dir,
+                'date'      => $this->parseTimestamp($timestamp),
+                'size'      => $this->getDirectorySize($dir),
             ];
         }
 
-        // Sort by timestamp (newest first)
-        usort($backups, function ($a, $b) {
-            return strcmp($b['timestamp'], $a['timestamp']);
-        });
+        usort($backups, fn($a, $b) => strcmp($b['timestamp'], $a['timestamp']));
 
         return $backups;
     }
 
     /**
-     * Restore from a backup
+     * Restore from a backup.
      *
-     * @param string $timestamp Backup timestamp
+     * @param string $timestamp Backup timestamp (directory name)
      * @return bool
      */
     public function restore(string $timestamp): bool
     {
         $backupPath = $this->getBackupPath();
-        $backupDir = $backupPath . DIRECTORY_SEPARATOR . $timestamp;
+        $backupDir  = $backupPath . DIRECTORY_SEPARATOR . $timestamp;
 
         if (!File::exists($backupDir)) {
             throw new \RuntimeException("Backup not found: {$timestamp}");
         }
 
-        $langPath = base_path('lang');
+        $langPath = $this->getLangPath();
 
-        // Backup current state before restoring (safety!)
+        // Safety backup of current state BEFORE we wipe anything.
+        // Uses a new unique timestamp so it never overwrites $backupDir.
         $this->backup();
 
-        // Remove current lang directory
-        if (File::exists($langPath)) {
-            File::deleteDirectory($langPath);
+        // Confirm the target backup still exists (safety backup could have
+        // triggered cleanOldBackups which might have pruned it).
+        if (!File::exists($backupDir)) {
+            throw new \RuntimeException("Backup was removed during safety-backup cleanup: {$timestamp}");
         }
 
-        // Restore from backup
+        // Remove all lang files/dirs except the backup folder itself
+        $backupDirName = basename($backupPath);
+
+        foreach (File::directories($langPath) as $dir) {
+            if (basename($dir) !== $backupDirName) {
+                File::deleteDirectory($dir);
+            }
+        }
+
+        foreach (File::files($langPath) as $file) {
+            File::delete($file->getPathname());
+        }
+
+        // Copy backed-up content back into the lang directory
         File::copyDirectory($backupDir, $langPath);
 
         return true;
     }
 
     /**
-     * Delete old backups keeping only the configured number
+     * Delete old backups, keeping only the configured number.
      */
     protected function cleanOldBackups(): void
     {
-        $keep = $this->config['keep'] ?? 5;
+        $keep    = $this->config['keep'] ?? 5;
         $backups = $this->listBackups();
 
         if (count($backups) <= $keep) {
             return;
         }
 
-        // Delete oldest backups
-        $toDelete = array_slice($backups, $keep);
-        
-        foreach ($toDelete as $backup) {
+        foreach (array_slice($backups, $keep) as $backup) {
             File::deleteDirectory($backup['path']);
         }
     }
 
-    /**
-     * Get backup directory path
-     */
-    protected function getBackupPath(): string
-    {
-        return $this->config['path'] ?? base_path('lang/.backup');
-    }
-
-    /**
-     * Parse timestamp to Carbon instance
-     */
     protected function parseTimestamp(string $timestamp): ?Carbon
     {
-        try {
-            return Carbon::createFromFormat('Y-m-d_H-i-s', $timestamp);
-        } catch (\Exception $e) {
-            return null;
+        // Try full format with microseconds first, then plain format
+        foreach (['Y-m-d_H-i-s_u', 'Y-m-d_H-i-s'] as $format) {
+            try {
+                $dt = Carbon::createFromFormat($format, $timestamp);
+                if ($dt !== false) {
+                    return $dt;
+                }
+            } catch (\Exception $e) {
+                // try next format
+            }
         }
+        return null;
     }
 
-    /**
-     * Get directory size in bytes
-     */
     protected function getDirectorySize(string $path): int
     {
         $size = 0;
-        $files = File::allFiles($path);
-
-        foreach ($files as $file) {
+        foreach (File::allFiles($path) as $file) {
             $size += $file->getSize();
         }
-
         return $size;
     }
 
-    /**
-     * Format bytes to human readable
-     */
     public function formatBytes(int $bytes): string
     {
         $units = ['B', 'KB', 'MB', 'GB'];
-        $power = $bytes > 0 ? floor(log($bytes, 1024)) : 0;
-        
+        $power = $bytes > 0 ? (int) floor(log($bytes, 1024)) : 0;
         return round($bytes / pow(1024, $power), 2) . ' ' . $units[$power];
     }
 
-    /**
-     * Check if backup is enabled
-     */
     public function isEnabled(): bool
     {
         return $this->config['enabled'] ?? true;

@@ -8,6 +8,9 @@ use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\TranslateCommand;
 use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\LockTranslationCommand;
 use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\UnlockTranslationCommand;
 use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\ListLockedCommand;
+use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\ValidateTranslationsCommand;
+use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\RestoreCommand;
+use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\ListBackupsCommand;
 
 class LaravelAiTranslatorServiceProvider extends ServiceProvider
 {
@@ -16,10 +19,9 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Merge package config with app config
         $this->mergeConfigFrom(
-            __DIR__.'/config/laravel-ai-translator.php',
-            'laravel-ai-translator'
+            __DIR__ . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'ai-translator.php',
+            'ai-translator'
         );
     }
 
@@ -30,10 +32,11 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
     {
         // Publish configuration file
         $this->publishes([
-            __DIR__.'/config/laravel-ai-translator.php' => config_path('laravel-ai-translator.php'),
-        ], 'laravel-ai-translator-config');
+            __DIR__ . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'ai-translator.php'
+                => config_path('ai-translator.php'),
+        ], 'ai-translator-config');
 
-        // Register commands
+        // Register all commands
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ScanTranslationsCommand::class,
@@ -41,6 +44,9 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
                 LockTranslationCommand::class,
                 UnlockTranslationCommand::class,
                 ListLockedCommand::class,
+                ValidateTranslationsCommand::class,
+                RestoreCommand::class,
+                ListBackupsCommand::class,
             ]);
         }
     }

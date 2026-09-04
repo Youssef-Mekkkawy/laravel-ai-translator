@@ -195,10 +195,14 @@ HEADER;
     /**
      * Get full file path for a language file
      */
+    protected function getLangPath(): string
+    {
+        return $this->config['lang_path'] ?? lang_path();
+    }
+
     protected function getFilePath(string $lang, string $file): string
     {
-        $langPath = base_path('lang');
-        return $langPath . DIRECTORY_SEPARATOR . $lang . DIRECTORY_SEPARATOR . $file . '.php';
+        return $this->getLangPath() . DIRECTORY_SEPARATOR . $lang . DIRECTORY_SEPARATOR . $file . '.php';
     }
 
     /**
@@ -259,7 +263,7 @@ HEADER;
      */
     public function getFiles(string $lang): array
     {
-        $langPath = base_path('lang') . DIRECTORY_SEPARATOR . $lang;
+        $langPath = $this->getLangPath() . DIRECTORY_SEPARATOR . $lang;
 
         if (!File::exists($langPath)) {
             return [];

@@ -12,6 +12,8 @@ use YoussefMekkkawy\LaravelAiTranslator\Services\Backup\BackupService;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\HashGenerator;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\ChangeTracker;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\MetadataManager;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockManager;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockStorage;
 
 class TranslateCommand extends Command
 {
@@ -118,9 +120,12 @@ class TranslateCommand extends Command
         $config = config('laravel-ai-translator');
 
         // Core services
-        $scanner = new ViewScanner($config);
+        $scanner = new ViewScanner(
+            $config['scan_paths'] ?? [resource_path('views')],
+            $config['exclude_files'] ?? []
+        );
         $extractor = new KeyExtractor();
-        $translatorManager = new TranslatorManager($config['translators'] ?? []);
+        $translatorManager = new TranslatorManager($config);
         
         // Backup service (needed by LanguageFileWriter)
         $backupService = new BackupService($config['backup'] ?? []);
@@ -131,6 +136,10 @@ class TranslateCommand extends Command
         $metadataPath = $config['change_tracking']['metadata_path'] ?? lang_path('.translations-meta.json');
         $metadataManager = new MetadataManager($metadataPath);
         $changeTracker = new ChangeTracker($hashGenerator, $metadataManager);
+        
+        // Lock services (for protecting manual edits)
+        $lockStorage = new LockStorage();
+        $lockManager = new LockManager($lockStorage);
 
         // Initialize translation service with all dependencies
         $this->translationService = new TranslationService(
@@ -139,6 +148,7 @@ class TranslateCommand extends Command
             $translatorManager,
             $writer,
             $changeTracker,
+            $lockManager,
             $config
         );
     }
@@ -149,9 +159,13 @@ class TranslateCommand extends Command
     protected function estimateCost(?string $specificLang): array
     {
         $config = config('laravel-ai-translator');
+        $allLanguages = $config['languages'] ?? ['ar', 'fr', 'es'];
+        $sourceLang = $config['default_language'] ?? 'en';
+        
+        // Filter out source language
         $targetLanguages = $specificLang 
             ? [$specificLang] 
-            : $config['target_languages'];
+            : array_filter($allLanguages, fn($lang) => $lang !== $sourceLang);
         
         $force = $this->option('force');
 
@@ -193,9 +207,13 @@ class TranslateCommand extends Command
     protected function runTranslation(bool $force, ?string $specificLang): array
     {
         $config = config('laravel-ai-translator');
+        $allLanguages = $config['languages'] ?? ['ar', 'fr', 'es'];
+        $sourceLang = $config['default_language'] ?? 'en';
+        
+        // Filter out source language
         $targetLanguages = $specificLang 
             ? [$specificLang] 
-            : $config['target_languages'];
+            : array_filter($allLanguages, fn($lang) => $lang !== $sourceLang);
         
         $dryRun = $this->option('dry-run');
 

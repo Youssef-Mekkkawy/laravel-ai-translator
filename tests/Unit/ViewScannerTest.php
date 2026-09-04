@@ -1,7 +1,7 @@
 <?php
 
 
-use LaravelAiTranslator\Services\Scanner\ViewScanner;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
 use Illuminate\Support\Facades\File;
 
 
