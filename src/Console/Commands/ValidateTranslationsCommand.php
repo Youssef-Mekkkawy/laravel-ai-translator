@@ -15,15 +15,19 @@ class ValidateTranslationsCommand extends Command
 
     public function handle(): int
     {
-        $sourceLang   = config('laravel-ai-translator.default_language',
-                          config('ai-translator.default_language', 'en'));
-        $allLanguages = config('laravel-ai-translator.languages',
-                          config('ai-translator.languages', ['ar', 'fr', 'es']));
+        $sourceLang   = config(
+            'laravel-ai-translator.default_language',
+            config('ai-translator.default_language', 'en')
+        );
+        $allLanguages = config(
+            'laravel-ai-translator.languages',
+            config('ai-translator.languages', ['ar', 'fr', 'es'])
+        );
         $specificLang = $this->option('lang');
 
         $targetLanguages = $specificLang
             ? [$specificLang]
-            : array_values(array_filter($allLanguages, fn ($l) => $l !== $sourceLang));
+            : array_values(array_filter($allLanguages, fn($l) => $l !== $sourceLang));
 
         $this->info('lang:validate: Checking All source keys present in target languages...');
 
@@ -116,7 +120,8 @@ class ValidateTranslationsCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info('All translations valid. All keys present.');
+        $this->info('All translations valid.');
+        $this->info('All keys present.');
         return self::SUCCESS;
     }
 

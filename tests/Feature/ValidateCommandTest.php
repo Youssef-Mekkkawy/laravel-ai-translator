@@ -50,6 +50,7 @@ test('validate command passes when all translations are complete', function () {
     // 🟢 Restored to proper assertion using the exact output text
     $this->artisan('lang:validate')
         ->expectsOutputToContain('All translations valid')
+        ->expectsOutputToContain('All keys present')
         ->assertSuccessful();
 });
 
@@ -152,7 +153,7 @@ test('validate command --lang flag restricts check to one language', function ()
 
     // Checking only ar should pass
     $this->artisan('lang:validate --lang=ar')
-        ->expectsOutputToContain('keys present for [ar]')
+        ->expectsOutputToContain('keys present for [ar]') 
         ->assertSuccessful();
 });
 
