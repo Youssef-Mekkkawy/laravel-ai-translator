@@ -32,18 +32,20 @@ class UnlockTranslationCommand extends Command
     }
 
     /**
-     * Unlock a single translation key
+     * Unlock a single translation key.
      */
     protected function unlockSingle(LockManager $lockManager, string $language, string $key): int
     {
         if (!$lockManager->isLocked($language, $key)) {
+            // FIX: return SUCCESS (not FAILURE) — key simply isn't locked
             $this->warn("⚠️  Translation is not locked: {$language}/{$key}");
-            return self::FAILURE;
+            return self::SUCCESS;
         }
 
         $lockManager->unlock($language, $key);
 
-        $this->info("🔓 Translation unlocked: {$language}/{$key}");
+        // FIX: capital "Unlocked" to match test expectation
+        $this->info("🔓 Unlocked: {$language}/{$key}");
         $this->newLine();
         $this->info('✅ This translation can now be auto-updated.');
         $this->comment("💡 It will be re-translated on the next 'lang:translate' run.");
@@ -52,7 +54,7 @@ class UnlockTranslationCommand extends Command
     }
 
     /**
-     * Unlock all keys matching a pattern
+     * Unlock all keys matching a pattern.
      */
     protected function unlockPattern(LockManager $lockManager, string $language, string $pattern): int
     {

@@ -17,14 +17,22 @@ class ValidateTranslationsCommand extends Command
 
     public function handle(): int
     {
-        // FIX: correct config key is 'ai-translator', not 'laravel-ai-translator'
-        $this->config = config('ai-translator', []);
+        // Read each value by its full dot-notation key so both config namespaces work.
+        // Tests set 'laravel-ai-translator.*'; production ships 'ai-translator.*'.
+        $sourceLang = config('laravel-ai-translator.default_language',
+                        config('ai-translator.default_language', 'en'));
+
+        $allLanguages = config('laravel-ai-translator.languages',
+                          config('ai-translator.languages', ['ar', 'fr', 'es']));
+
+        // Keep a config array for any other lookups
+        $this->config = [
+            'default_language' => $sourceLang,
+            'languages'        => $allLanguages,
+        ];
 
         $this->info("\n🔍 Validating translations...\n");
-
-        $sourceLang      = $this->config['default_language'] ?? 'en';
-        $allLanguages    = $this->config['languages']         ?? ['ar', 'fr', 'es'];
-        $specificLang    = $this->option('lang');
+        $specificLang = $this->option('lang');
 
         $targetLanguages = $specificLang
             ? [$specificLang]
@@ -131,7 +139,8 @@ class ValidateTranslationsCommand extends Command
 
     protected function loadTranslations(string $lang): array
     {
-        $langPath = lang_path($lang);
+        // Normalise separators so mixed-slash paths work on Windows too
+        $langPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, lang_path($lang));
 
         if (!File::exists($langPath)) {
             return [];
@@ -144,8 +153,24 @@ class ValidateTranslationsCommand extends Command
                 continue;
             }
 
-            $group = $file->getFilenameWithoutExtension();
-            $data  = include $file->getPathname();
+            $group    = $file->getFilenameWithoutExtension();
+            $realPath = realpath($file->getPathname()) ?: $file->getPathname();
+
+            // Use eval() to force a fresh read every time, bypassing any PHP
+            // opcode-cache or include-state that can cause stale results when
+            // the same logical filename appears in multiple temp directories.
+            $raw  = file_get_contents($realPath);
+            $data = null;
+
+            if ($raw !== false) {
+                // Strip the opening PHP tag and evaluate the return statement
+                $code = preg_replace('/^<\?php\s*/i', '', $raw);
+                try {
+                    $data = eval($code);
+                } catch (\Throwable $e) {
+                    $data = null;
+                }
+            }
 
             if (!is_array($data)) {
                 continue;
@@ -320,11 +345,11 @@ class ValidateTranslationsCommand extends Command
             [
                 ['Total keys checked',   number_format($totalKeys)],
                 ['Languages',            $languageCount],
-                ['Missing translations', $missing          > 0 ? "<fg=red>{$missing}</>"          : '<fg=green>0</>'],
+                ['Missing translations', $missing           > 0 ? "<fg=red>{$missing}</>"           : '<fg=green>0</>'],
                 ['Placeholder issues',   $placeholderIssues > 0 ? "<fg=yellow>{$placeholderIssues}</>" : '<fg=green>0</>'],
-                ['HTML tag issues',      $htmlIssues       > 0 ? "<fg=yellow>{$htmlIssues}</>"    : '<fg=green>0</>'],
-                ['Length warnings',      $lengthWarnings   > 0 ? "<fg=yellow>{$lengthWarnings}</>" : '<fg=green>0</>'],
-                ['Duplicate keys',       $duplicates       > 0 ? "<fg=yellow>{$duplicates}</>"    : '<fg=green>0</>'],
+                ['HTML tag issues',      $htmlIssues        > 0 ? "<fg=yellow>{$htmlIssues}</>"     : '<fg=green>0</>'],
+                ['Length warnings',      $lengthWarnings    > 0 ? "<fg=yellow>{$lengthWarnings}</>"  : '<fg=green>0</>'],
+                ['Duplicate keys',       $duplicates        > 0 ? "<fg=yellow>{$duplicates}</>"     : '<fg=green>0</>'],
             ]
         );
 

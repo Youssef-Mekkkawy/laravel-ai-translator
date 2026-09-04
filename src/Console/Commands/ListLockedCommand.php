@@ -16,49 +16,73 @@ class ListLockedCommand extends Command
 
     public function handle(): int
     {
-        $language  = $this->option('lang');
-        $detailed  = $this->option('detail');
+        $language = $this->option('lang');
+        $detailed = $this->option('detail');
 
         $storage     = new LockStorage();
         $lockManager = new LockManager($storage);
 
-        $locks = $lockManager->getAll($language);
+        $rawLocks = $lockManager->getAll($language);
 
-        if (empty($locks)) {
+        // When $language is null, getAll() returns ['ar' => ['key' => info], ...]
+        // When $language is set,  getAll() returns ['key' => info, ...]
+        // Normalise to a flat list: [['lang' => 'ar', 'key' => 'auth.login', 'info' => [...]], ...]
+        $flatLocks = [];
+
+        if ($language !== null) {
+            // Already filtered to one language
+            foreach ($rawLocks as $key => $info) {
+                $flatLocks[] = ['lang' => $language, 'key' => $key, 'info' => $info];
+            }
+        } else {
+            // All languages
+            foreach ($rawLocks as $lang => $langLocks) {
+                if (!is_array($langLocks)) {
+                    continue;
+                }
+                foreach ($langLocks as $key => $info) {
+                    $flatLocks[] = ['lang' => $lang, 'key' => $key, 'info' => $info];
+                }
+            }
+        }
+
+        if (empty($flatLocks)) {
             $this->info('✨ No locked translations found.');
             $this->comment("💡 Use 'lang:lock' to protect translations from auto-updates.");
             return self::SUCCESS;
         }
 
+        // Show header with language info when filtered
         $this->newLine();
-        $this->info('🔒 Locked Translations');
+        if ($language !== null) {
+            $this->info("🔒 Locked Translations — Language: {$language}");
+        } else {
+            $this->info('🔒 Locked Translations — All Languages');
+        }
         $this->line(str_repeat('─', 60));
 
         if ($detailed) {
-            foreach ($locks as $key => $lockInfo) {
-                $this->line("\n  🔑 {$key}");
-                $this->line('     Value: '     . ($lockInfo['value']     ?? 'N/A'));
-                $this->line('     Locked by: ' . ($lockInfo['locked_by'] ?? 'Unknown'));
-                $this->line('     Locked at: ' . ($lockInfo['locked_at'] ?? 'Unknown'));
-
-                if (!empty($lockInfo['reason'])) {
-                    $this->line('     Reason: ' . $lockInfo['reason']);
+            foreach ($flatLocks as $item) {
+                $this->line("\n  [{$item['lang']}] 🔑 {$item['key']}");
+                $this->line('     Value: '     . ($item['info']['value']     ?? 'N/A'));
+                $this->line('     Locked by: ' . ($item['info']['locked_by'] ?? 'Unknown'));
+                $this->line('     Locked at: ' . ($item['info']['locked_at'] ?? 'Unknown'));
+                if (!empty($item['info']['reason'])) {
+                    $this->line('     Reason: ' . $item['info']['reason']);
                 }
             }
         } else {
             $rows = [];
-            foreach ($locks as $key => $lockInfo) {
-                $value = $lockInfo['value'] ?? 'N/A';
+            foreach ($flatLocks as $item) {
+                $value = $item['info']['value'] ?? 'N/A';
                 $rows[] = [
-                    $key,
-                    mb_strlen($value) > 30
-                        ? mb_substr($value, 0, 30) . '...'
-                        : $value,
-                    $lockInfo['locked_by'] ?? 'Unknown',
+                    $item['lang'],
+                    $item['key'],
+                    mb_strlen($value) > 30 ? mb_substr($value, 0, 30) . '...' : $value,
+                    $item['info']['locked_by'] ?? 'Unknown',
                 ];
             }
-
-            $this->table(['Key', 'Value', 'Locked By'], $rows);
+            $this->table(['Language', 'Key', 'Value', 'Locked By'], $rows);
         }
 
         $this->newLine();
