@@ -47,9 +47,9 @@ test('validate command passes when all translations are complete', function () {
     writeLang($this->langPath . '/ar/auth.php', ['login' => 'تسجيل الدخول', 'logout' => 'تسجيل الخروج']);
     writeLang($this->langPath . '/fr/auth.php', ['login' => 'Connexion', 'logout' => 'Déconnexion']);
 
+    // 🟢 Restored to proper assertion using the exact output text
     $this->artisan('lang:validate')
-        ->expectsOutputToContain('All')
-        ->expectsOutputToContain('keys present')
+        ->expectsOutputToContain('All translations valid')
         ->assertSuccessful();
 });
 
@@ -152,7 +152,7 @@ test('validate command --lang flag restricts check to one language', function ()
 
     // Checking only ar should pass
     $this->artisan('lang:validate --lang=ar')
-        ->expectsOutputToContain('keys present')
+        ->expectsOutputToContain('keys present for [ar]')
         ->assertSuccessful();
 });
 

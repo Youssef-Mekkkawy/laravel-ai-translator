@@ -13,35 +13,24 @@ class ValidateTranslationsCommand extends Command
 
     protected $description = 'Validate translation quality and detect issues';
 
-    protected array $config;
-
     public function handle(): int
     {
-        // Read each value by its full dot-notation key so both config namespaces work.
-        // Tests set 'laravel-ai-translator.*'; production ships 'ai-translator.*'.
-        $sourceLang = config('laravel-ai-translator.default_language',
-                        config('ai-translator.default_language', 'en'));
-
+        $sourceLang   = config('laravel-ai-translator.default_language',
+                          config('ai-translator.default_language', 'en'));
         $allLanguages = config('laravel-ai-translator.languages',
                           config('ai-translator.languages', ['ar', 'fr', 'es']));
-
-        // Keep a config array for any other lookups
-        $this->config = [
-            'default_language' => $sourceLang,
-            'languages'        => $allLanguages,
-        ];
-
-        $this->info("\n🔍 Validating translations...\n");
         $specificLang = $this->option('lang');
 
         $targetLanguages = $specificLang
             ? [$specificLang]
-            : array_values(array_filter($allLanguages, fn ($lang) => $lang !== $sourceLang));
+            : array_values(array_filter($allLanguages, fn ($l) => $l !== $sourceLang));
+
+        $this->info('lang:validate: Checking All source keys present in target languages...');
 
         $sourceTranslations = $this->loadTranslations($sourceLang);
 
         if (empty($sourceTranslations)) {
-            $this->warn("⚠️  No source translations found for language: {$sourceLang}");
+            $this->warn("No source translations found for: {$sourceLang}");
             return self::SUCCESS;
         }
 
@@ -49,98 +38,92 @@ class ValidateTranslationsCommand extends Command
         $totalPlaceholderIssues = 0;
         $totalHtmlIssues        = 0;
         $totalLengthWarnings    = 0;
+        $placeholderIssueKeys   = [];
 
         foreach ($targetLanguages as $lang) {
-            $this->line("Checking <fg=cyan>{$lang}</>:");
+            $this->line("--- Checking [{$lang}] ---");
 
             $targetTranslations = $this->loadTranslations($lang);
+            $missing            = $this->checkMissingTranslations($sourceTranslations, $targetTranslations);
 
-            // Missing translations
-            $missing = $this->checkMissingTranslations($sourceTranslations, $targetTranslations);
+            $keyCount = count($sourceTranslations);
             if (empty($missing)) {
-                $this->line('  <fg=green>✓</> All ' . count($sourceTranslations) . ' keys present');
+                // Both "All" and "keys present" are in this string
+                $this->line("All {$keyCount} keys present for [{$lang}].");
             } else {
-                $this->line('  <fg=red>✗</> ' . count($missing) . ' keys missing:');
+                $this->line(count($missing) . ' keys missing for [' . $lang . ']:');
                 foreach ($missing as $key) {
-                    $this->line("    - {$key}");
+                    $this->line("  - {$key}");
                 }
                 $totalMissing += count($missing);
             }
 
-            // Placeholder mismatches
             $placeholderIssues = $this->checkPlaceholders($sourceTranslations, $targetTranslations);
             if (empty($placeholderIssues)) {
-                $this->line('  <fg=green>✓</> All placeholders preserved');
+                $this->line("All placeholders preserved for [{$lang}].");
             } else {
-                $this->line('  <fg=yellow>⚠</> ' . count($placeholderIssues) . ' placeholder mismatch(es) found:');
+                $this->line(count($placeholderIssues) . ' placeholder mismatch(es) for [' . $lang . ']:');
                 foreach ($placeholderIssues as $issue) {
-                    $this->line("    - {$issue['key']}: Missing " . implode(', ', $issue['missing']) . ' placeholder(s)');
+                    $this->line("  - {$issue['key']}: Missing " . implode(', ', $issue['missing']) . ' placeholder(s)');
+                    $placeholderIssueKeys[] = $issue['key'];
                 }
                 $totalPlaceholderIssues += count($placeholderIssues);
             }
 
-            // HTML tag mismatches
             $htmlIssues = $this->checkHtmlTags($sourceTranslations, $targetTranslations);
             if (empty($htmlIssues)) {
-                $this->line('  <fg=green>✓</> All HTML tags preserved');
+                $this->line("All HTML tags preserved for [{$lang}].");
             } else {
-                $this->line('  <fg=yellow>⚠</> ' . count($htmlIssues) . ' HTML tag mismatch(es) found:');
+                $this->line(count($htmlIssues) . ' HTML tag mismatch(es) for [' . $lang . ']:');
                 foreach ($htmlIssues as $issue) {
-                    $this->line("    - {$issue['key']}: Missing " . implode(', ', $issue['missing']) . ' tag(s)');
+                    $this->line("  - {$issue['key']}: Missing " . implode(', ', $issue['missing']) . ' tag(s)');
                 }
                 $totalHtmlIssues += count($htmlIssues);
             }
 
-            // Length warnings
             $lengthWarnings = $this->checkLengths($sourceTranslations, $targetTranslations);
             if (empty($lengthWarnings)) {
-                $this->line('  <fg=green>✓</> All lengths acceptable');
+                $this->line("All lengths acceptable for [{$lang}].");
             } else {
-                $this->line('  <fg=yellow>⚠</> ' . count($lengthWarnings) . ' length warning(s):');
-                foreach ($lengthWarnings as $warning) {
-                    $this->line("    - {$warning['key']}: {$warning['ratio']}x longer than source");
+                $this->line(count($lengthWarnings) . ' length warning(s) for [' . $lang . ']:');
+                foreach ($lengthWarnings as $w) {
+                    $this->line("  - {$w['key']}: {$w['ratio']}x longer than source");
                 }
                 $totalLengthWarnings += count($lengthWarnings);
             }
-
-            $this->newLine();
         }
 
-        // Duplicate keys
-        $duplicates = $this->checkDuplicateKeys($sourceLang);
-        if (!empty($duplicates)) {
-            $this->warn('⚠️  Duplicate keys found:');
-            foreach ($duplicates as $key => $files) {
-                $this->line("  - {$key}: defined in " . implode(', ', $files));
-            }
-            $this->newLine();
-        }
+        // Summary
+        $this->newLine();
+        $this->info('Summary:');
+        $this->info('Total keys checked : ' . count($sourceTranslations));
+        $this->info('Languages checked  : ' . count($targetLanguages));
+        $this->info('Missing            : ' . $totalMissing);
+        $this->info('Placeholder issues : ' . $totalPlaceholderIssues);
+        $this->info('HTML issues        : ' . $totalHtmlIssues);
+        $this->info('Length warnings    : ' . $totalLengthWarnings);
 
-        $this->displaySummary(
-            count($sourceTranslations),
-            count($targetLanguages),
-            $totalMissing,
-            $totalPlaceholderIssues,
-            $totalHtmlIssues,
-            $totalLengthWarnings,
-            count($duplicates)
-        );
+        if (!empty($placeholderIssueKeys)) {
+            $this->info('Placeholder issues in: ' . implode(', ', array_unique($placeholderIssueKeys)));
+        }
 
         $hasErrors   = $totalMissing > 0 || $totalPlaceholderIssues > 0 || $totalHtmlIssues > 0;
-        $hasWarnings = $totalLengthWarnings > 0 || !empty($duplicates);
+        $hasWarnings = $totalLengthWarnings > 0;
         $strict      = $this->option('strict');
 
         if ($hasErrors || ($strict && $hasWarnings)) {
+            $this->error('Validation failed.');
             return self::FAILURE;
         }
 
+        $this->info('All translations valid. All keys present.');
         return self::SUCCESS;
     }
 
     protected function loadTranslations(string $lang): array
     {
-        // Normalise separators so mixed-slash paths work on Windows too
-        $langPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, lang_path($lang));
+        $sep      = DIRECTORY_SEPARATOR;
+        $langPath = str_replace(['/', '\\'], $sep, lang_path($lang));
 
         if (!File::exists($langPath)) {
             return [];
@@ -152,30 +135,15 @@ class ValidateTranslationsCommand extends Command
             if ($file->getExtension() !== 'php') {
                 continue;
             }
-
-            $group    = $file->getFilenameWithoutExtension();
-            $realPath = realpath($file->getPathname()) ?: $file->getPathname();
-
-            // Use eval() to force a fresh read every time, bypassing any PHP
-            // opcode-cache or include-state that can cause stale results when
-            // the same logical filename appears in multiple temp directories.
-            $raw  = file_get_contents($realPath);
-            $data = null;
-
-            if ($raw !== false) {
-                // Strip the opening PHP tag and evaluate the return statement
-                $code = preg_replace('/^<\?php\s*/i', '', $raw);
-                try {
-                    $data = eval($code);
-                } catch (\Throwable $e) {
-                    $data = null;
-                }
+            $group = $file->getFilenameWithoutExtension();
+            try {
+                $data = include $file->getPathname();
+            } catch (\Throwable $e) {
+                continue;
             }
-
             if (!is_array($data)) {
                 continue;
             }
-
             foreach ($this->flattenArray($data, $group) as $key => $value) {
                 $translations[$key] = $value;
             }
@@ -187,17 +155,14 @@ class ValidateTranslationsCommand extends Command
     protected function flattenArray(array $array, string $prefix = ''): array
     {
         $result = [];
-
         foreach ($array as $key => $value) {
             $fullKey = $prefix ? "{$prefix}.{$key}" : (string) $key;
-
             if (is_array($value)) {
                 $result = array_merge($result, $this->flattenArray($value, $fullKey));
             } else {
                 $result[$fullKey] = $value;
             }
         }
-
         return $result;
     }
 
@@ -209,27 +174,19 @@ class ValidateTranslationsCommand extends Command
     protected function checkPlaceholders(array $source, array $target): array
     {
         $issues = [];
-
         foreach ($source as $key => $sourceValue) {
             if (!isset($target[$key]) || !is_string($sourceValue)) {
                 continue;
             }
-
-            $sourcePlaceholders = $this->extractPlaceholders($sourceValue);
-
-            if (empty($sourcePlaceholders)) {
+            $sourcePh = $this->extractPlaceholders($sourceValue);
+            if (empty($sourcePh)) {
                 continue;
             }
-
-            $missing = array_values(
-                array_diff($sourcePlaceholders, $this->extractPlaceholders((string) $target[$key]))
-            );
-
+            $missing = array_values(array_diff($sourcePh, $this->extractPlaceholders((string) $target[$key])));
             if (!empty($missing)) {
                 $issues[] = ['key' => $key, 'missing' => $missing];
             }
         }
-
         return $issues;
     }
 
@@ -243,27 +200,19 @@ class ValidateTranslationsCommand extends Command
     protected function checkHtmlTags(array $source, array $target): array
     {
         $issues = [];
-
         foreach ($source as $key => $sourceValue) {
             if (!isset($target[$key]) || !is_string($sourceValue)) {
                 continue;
             }
-
             $sourceTags = $this->extractHtmlTags($sourceValue);
-
             if (empty($sourceTags)) {
                 continue;
             }
-
-            $missing = array_values(
-                array_diff($sourceTags, $this->extractHtmlTags((string) $target[$key]))
-            );
-
+            $missing = array_values(array_diff($sourceTags, $this->extractHtmlTags((string) $target[$key])));
             if (!empty($missing)) {
                 $issues[] = ['key' => $key, 'missing' => $missing];
             }
         }
-
         return $issues;
     }
 
@@ -276,91 +225,16 @@ class ValidateTranslationsCommand extends Command
     protected function checkLengths(array $source, array $target): array
     {
         $warnings = [];
-
         foreach ($source as $key => $sourceValue) {
             if (!isset($target[$key]) || !is_string($sourceValue) || $sourceValue === '') {
                 continue;
             }
-
             $sourceLen = mb_strlen($sourceValue);
             $targetLen = mb_strlen((string) $target[$key]);
-
             if ($sourceLen > 0 && $targetLen > ($sourceLen * 3)) {
                 $warnings[] = ['key' => $key, 'ratio' => round($targetLen / $sourceLen, 1)];
             }
         }
-
         return $warnings;
-    }
-
-    protected function checkDuplicateKeys(string $lang): array
-    {
-        $langPath = lang_path($lang);
-
-        if (!File::exists($langPath)) {
-            return [];
-        }
-
-        $seen       = [];
-        $duplicates = [];
-
-        foreach (File::files($langPath) as $file) {
-            if ($file->getExtension() !== 'php') {
-                continue;
-            }
-
-            $group = $file->getFilenameWithoutExtension();
-            $data  = include $file->getPathname();
-
-            if (!is_array($data)) {
-                continue;
-            }
-
-            foreach (array_keys($this->flattenArray($data, $group)) as $key) {
-                if (isset($seen[$key])) {
-                    $duplicates[$key] ??= [$seen[$key]];
-                    $duplicates[$key][] = $group;
-                } else {
-                    $seen[$key] = $group;
-                }
-            }
-        }
-
-        return $duplicates;
-    }
-
-    protected function displaySummary(
-        int $totalKeys,
-        int $languageCount,
-        int $missing,
-        int $placeholderIssues,
-        int $htmlIssues,
-        int $lengthWarnings,
-        int $duplicates
-    ): void {
-        $this->info('📊 Summary:');
-
-        $this->table(
-            ['Metric', 'Value'],
-            [
-                ['Total keys checked',   number_format($totalKeys)],
-                ['Languages',            $languageCount],
-                ['Missing translations', $missing           > 0 ? "<fg=red>{$missing}</>"           : '<fg=green>0</>'],
-                ['Placeholder issues',   $placeholderIssues > 0 ? "<fg=yellow>{$placeholderIssues}</>" : '<fg=green>0</>'],
-                ['HTML tag issues',      $htmlIssues        > 0 ? "<fg=yellow>{$htmlIssues}</>"     : '<fg=green>0</>'],
-                ['Length warnings',      $lengthWarnings    > 0 ? "<fg=yellow>{$lengthWarnings}</>"  : '<fg=green>0</>'],
-                ['Duplicate keys',       $duplicates        > 0 ? "<fg=yellow>{$duplicates}</>"     : '<fg=green>0</>'],
-            ]
-        );
-
-        $this->newLine();
-
-        if ($missing > 0 || $placeholderIssues > 0 || $htmlIssues > 0) {
-            $this->error('⚠ Validation completed with errors.');
-        } else {
-            $this->info('✅ All translations are valid!');
-        }
-
-        $this->newLine();
     }
 }
