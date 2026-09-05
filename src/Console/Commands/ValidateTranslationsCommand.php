@@ -15,19 +15,15 @@ class ValidateTranslationsCommand extends Command
 
     public function handle(): int
     {
-        $sourceLang   = config(
-            'laravel-ai-translator.default_language',
-            config('ai-translator.default_language', 'en')
-        );
-        $allLanguages = config(
-            'laravel-ai-translator.languages',
-            config('ai-translator.languages', ['ar', 'fr', 'es'])
-        );
+        $sourceLang   = config('laravel-ai-translator.default_language',
+                          config('ai-translator.default_language', 'en'));
+        $allLanguages = config('laravel-ai-translator.languages',
+                          config('ai-translator.languages', ['ar', 'fr', 'es']));
         $specificLang = $this->option('lang');
 
         $targetLanguages = $specificLang
             ? [$specificLang]
-            : array_values(array_filter($allLanguages, fn($l) => $l !== $sourceLang));
+            : array_values(array_filter($allLanguages, fn ($l) => $l !== $sourceLang));
 
         $this->info('lang:validate: Checking All source keys present in target languages...');
 
@@ -128,27 +124,28 @@ class ValidateTranslationsCommand extends Command
     protected function loadTranslations(string $lang): array
     {
         $sep      = DIRECTORY_SEPARATOR;
-        $langPath = str_replace(['/', '\\'], $sep, lang_path($lang));
+        $langBase = rtrim(str_replace(['/', '\\'], $sep, lang_path()), '/\\');
+        $langPath = $langBase . $sep . $lang;
 
-        if (!File::exists($langPath)) {
+        if (!is_dir($langPath)) {
             return [];
         }
 
         $translations = [];
 
-        foreach (File::files($langPath) as $file) {
-            if ($file->getExtension() !== 'php') {
-                continue;
-            }
-            $group = $file->getFilenameWithoutExtension();
-            try {
-                $data = include $file->getPathname();
-            } catch (\Throwable $e) {
-                continue;
-            }
+        // glob() is more reliable than File::files() on Windows with mixed separators.
+        // @include suppresses PHP warnings (e.g. path/encoding quirks) and returns
+        // false on failure rather than emitting a warning that pollutes the output.
+        $phpFiles = glob($langPath . $sep . '*.php') ?: [];
+
+        foreach ($phpFiles as $filePath) {
+            $group = pathinfo($filePath, PATHINFO_FILENAME);
+            $data  = @include $filePath;
+
             if (!is_array($data)) {
                 continue;
             }
+
             foreach ($this->flattenArray($data, $group) as $key => $value) {
                 $translations[$key] = $value;
             }

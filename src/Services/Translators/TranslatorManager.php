@@ -4,111 +4,82 @@ namespace YoussefMekkkawy\LaravelAiTranslator\Services\Translators;
 
 use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\TranslatorInterface;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\DeepLTranslator;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\OllamaTranslator;
 
 class TranslatorManager
 {
-    /**
-     * Active translator instance
-     */
     protected ?TranslatorInterface $translator = null;
-
-    /**
-     * Configuration
-     */
     protected array $config;
 
     /**
-     * Available translators
+     * All registered translation drivers.
      */
     protected array $translators = [
-        'deepl' => DeepLTranslator::class,
-        // 'openai' => OpenAITranslator::class,
-        // 'claude' => ClaudeTranslator::class,
-        // 'google' => GoogleTranslator::class,
-        // 'gemini' => GeminiTranslator::class,
-        // 'ollama' => OllamaTranslator::class,
+        'deepl'  => DeepLTranslator::class,
+        'ollama' => OllamaTranslator::class,
+        // 'openai'  => OpenAITranslator::class,
+        // 'claude'  => ClaudeTranslator::class,
+        // 'google'  => GoogleTranslator::class,
+        // 'gemini'  => GeminiTranslator::class,
     ];
 
-    /**
-     * Constructor
-     */
     public function __construct(array $config)
     {
         $this->config = $config;
     }
 
     /**
-     * Get translator instance
+     * Resolve and return the active translator instance.
      */
     public function translator(?string $driver = null): TranslatorInterface
     {
-        $driver = $driver ?? $this->config['driver'] ?? 'deepl';
+        $driver = $driver ?? $this->config['driver'] ?? 'ollama';
 
         if (!isset($this->translators[$driver])) {
-            throw new \RuntimeException("Translation driver '{$driver}' is not supported");
+            throw new \RuntimeException("Translation driver '{$driver}' is not supported.");
         }
 
-        $translatorClass = $this->translators[$driver];
-        $translatorConfig = $this->config['providers'][$driver] ?? [];
+        $class  = $this->translators[$driver];
+        $config = $this->config['providers'][$driver] ?? [];
 
-        return new $translatorClass($translatorConfig);
+        return new $class($config);
     }
 
-    /**
-     * Translate single text
-     */
     public function translate(string $text, string $targetLang, string $sourceLang = 'en', ?string $driver = null): string
     {
         return $this->translator($driver)->translate($text, $targetLang, $sourceLang);
     }
 
-    /**
-     * Translate multiple texts
-     */
     public function translateBatch(array $texts, string $targetLang, string $sourceLang = 'en', ?string $driver = null): array
     {
         return $this->translator($driver)->translateBatch($texts, $targetLang, $sourceLang);
     }
 
-    /**
-     * Check if driver is available
-     */
     public function isAvailable(?string $driver = null): bool
     {
         try {
             return $this->translator($driver)->isAvailable();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return false;
         }
     }
 
-    /**
-     * Estimate translation cost
-     */
     public function estimateCost(array $texts, array $targetLangs, ?string $driver = null): array
     {
         return $this->translator($driver)->estimateCost($texts, $targetLangs);
     }
 
-    /**
-     * Get list of available drivers
-     */
     public function getAvailableDrivers(): array
     {
         $drivers = [];
-
         foreach (array_keys($this->translators) as $driver) {
             if ($this->isAvailable($driver)) {
                 $drivers[] = $driver;
             }
         }
-
         return $drivers;
     }
 
-    /**
-     * Get all configured drivers (even if not available)
-     */
     public function getAllDrivers(): array
     {
         return array_keys($this->translators);
