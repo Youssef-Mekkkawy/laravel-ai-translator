@@ -105,8 +105,14 @@ return [
         'lock_file' => base_path('lang/.locked-translations.json'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard Settings
+    |--------------------------------------------------------------------------
+    */
     'dashboard' => [
-        'path' => 'ai-translator',
-        'enabled' => true,
+        'enabled'    => env('AI_TRANSLATOR_DASHBOARD', true),
+        'path'       => env('AI_TRANSLATOR_PATH', 'ai-translator'),
+        'middleware' => ['web'],
     ],
 ];

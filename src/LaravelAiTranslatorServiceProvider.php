@@ -57,11 +57,10 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
             __DIR__ . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'ai-translator.php' => config_path('ai-translator.php'),
         ], 'ai-translator-config');
 
-        // ── ADD THESE TWO LINES ──────────────────────────────────────
+        // ── ADD THESE 2 LINES ──
         $this->loadRoutesFrom(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'routes' . DIRECTORY_SEPARATOR . 'web.php');
         $this->loadViewsFrom(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'views', 'ai-translator');
-        // ────────────────────────────────────────────────────────────
-
+        // ──────────────────────
         // Register all commands
         if ($this->app->runningInConsole()) {
             $this->commands([
