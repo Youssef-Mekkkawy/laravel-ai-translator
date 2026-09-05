@@ -7,15 +7,15 @@ use Illuminate\Support\Facades\File;
 // ─────────────────────────────────────────────────
 
 beforeEach(function () {
-    $this->tempPath = sys_get_temp_dir() . '/ai-translator-lock-test-' . uniqid();
-    $this->langPath = $this->tempPath . '/lang';
+    $this->tempPath = sys_get_temp_dir().'/ai-translator-lock-test-'.uniqid();
+    $this->langPath = $this->tempPath.'/lang';
 
-    File::makeDirectory($this->langPath . '/ar', 0755, true);
-    File::makeDirectory($this->langPath . '/fr', 0755, true);
+    File::makeDirectory($this->langPath.'/ar', 0755, true);
+    File::makeDirectory($this->langPath.'/fr', 0755, true);
 
     // Write a source translation file so keys exist
-    File::put($this->langPath . '/ar/auth.php', '<?php return ["login" => "تسجيل الدخول", "logout" => "تسجيل الخروج"];');
-    File::put($this->langPath . '/fr/auth.php', '<?php return ["login" => "Connexion"];');
+    File::put($this->langPath.'/ar/auth.php', '<?php return ["login" => "تسجيل الدخول", "logout" => "تسجيل الخروج"];');
+    File::put($this->langPath.'/fr/auth.php', '<?php return ["login" => "Connexion"];');
 
     $this->app->useLangPath($this->langPath);
 });
@@ -32,12 +32,13 @@ afterEach(function () {
 
 function lockFilePath(string $langPath): string
 {
-    return $langPath . '/.locked-translations.json';
+    return $langPath.'/.locked-translations.json';
 }
 
 function readLocks(string $langPath): array
 {
     $file = lockFilePath($langPath);
+
     return File::exists($file) ? json_decode(File::get($file), true) ?? [] : [];
 }
 

@@ -53,14 +53,14 @@ return [
             'api_key' => env('DEEPL_API_KEY'),
             'plan' => env('DEEPL_PLAN', 'free'), // 'free' or 'pro'
         ],
-        
+
         'openai' => [
             'api_key' => env('OPENAI_API_KEY'),
             'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
             'temperature' => 0.3,
             'max_tokens' => 2000,
         ],
-        
+
         'claude' => [
             'api_key' => env('ANTHROPIC_API_KEY'),
             'model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
@@ -103,5 +103,10 @@ return [
     'storage' => [
         'metadata_file' => base_path('lang/.translations-meta.json'),
         'lock_file' => base_path('lang/.locked-translations.json'),
+    ],
+
+    'dashboard' => [
+        'path' => 'ai-translator',
+        'enabled' => true,
     ],
 ];

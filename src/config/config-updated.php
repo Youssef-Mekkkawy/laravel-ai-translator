@@ -55,7 +55,7 @@ return [
             'batch_size' => 50, // Max texts per batch
             'timeout' => 30, // Request timeout in seconds
         ],
-        
+
         'openai' => [
             'api_key' => env('OPENAI_API_KEY'),
             'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
@@ -64,7 +64,7 @@ return [
             'batch_size' => 20,
             'timeout' => 60,
         ],
-        
+
         'claude' => [
             'api_key' => env('ANTHROPIC_API_KEY'),
             'model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),

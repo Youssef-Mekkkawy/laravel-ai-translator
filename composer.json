@@ -27,7 +27,7 @@
     "source": "https://github.com/Youssef-Mekkkawy/laravel-ai-translator"
   },
   "require": {
-    "php": "^8.1",
+    "php": "^8.4",
     "illuminate/support": "^10.0|^11.0",
     "illuminate/console": "^10.0|^11.0",
     "illuminate/filesystem": "^10.0|^11.0",
@@ -75,6 +75,9 @@
     "allow-plugins": {
       "pestphp/pest-plugin": true,
       "php-http/discovery": true
+    },
+    "platform": {
+      "php": "8.4.24"
     }
   }
 }

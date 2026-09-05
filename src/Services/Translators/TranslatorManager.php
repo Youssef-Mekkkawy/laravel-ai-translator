@@ -2,20 +2,17 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Services\Translators;
 
-use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\TranslatorInterface;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\DeepLTranslator;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\OllamaTranslator;
-
 class TranslatorManager
 {
     protected ?TranslatorInterface $translator = null;
+
     protected array $config;
 
     /**
      * All registered translation drivers.
      */
     protected array $translators = [
-        'deepl'  => DeepLTranslator::class,
+        'deepl' => DeepLTranslator::class,
         'ollama' => OllamaTranslator::class,
         // 'openai'  => OpenAITranslator::class,
         // 'claude'  => ClaudeTranslator::class,
@@ -35,11 +32,11 @@ class TranslatorManager
     {
         $driver = $driver ?? $this->config['driver'] ?? 'ollama';
 
-        if (!isset($this->translators[$driver])) {
+        if (! isset($this->translators[$driver])) {
             throw new \RuntimeException("Translation driver '{$driver}' is not supported.");
         }
 
-        $class  = $this->translators[$driver];
+        $class = $this->translators[$driver];
         $config = $this->config['providers'][$driver] ?? [];
 
         return new $class($config);
@@ -77,6 +74,7 @@ class TranslatorManager
                 $drivers[] = $driver;
             }
         }
+
         return $drivers;
     }
 

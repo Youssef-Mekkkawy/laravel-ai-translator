@@ -1,24 +1,24 @@
 <?php
 
-use YoussefMekkkawy\LaravelAiTranslator\Services\Writers\LanguageFileWriter;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Backup\BackupService;
 use Illuminate\Support\Facades\File;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Backup\BackupService;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Writers\LanguageFileWriter;
 
 describe('LanguageFileWriter', function () {
-    
+
     beforeEach(function () {
         // Create test directory
-        $this->testPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'lang-writer-test-' . time();
+        $this->testPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'lang-writer-test-'.time();
 
         // Create lang directory
-        $langPath = $this->testPath . DIRECTORY_SEPARATOR . 'lang';
+        $langPath = $this->testPath.DIRECTORY_SEPARATOR.'lang';
         File::makeDirectory($langPath, 0755, true);
-        
+
         // Create backup service
         $backupConfig = [
             'enabled' => true,
             'lang_path' => $langPath,
-            'path' => $langPath . DIRECTORY_SEPARATOR . '.backup',
+            'path' => $langPath.DIRECTORY_SEPARATOR.'.backup',
             'keep' => 5,
         ];
 
@@ -45,7 +45,7 @@ describe('LanguageFileWriter', function () {
         $filePath = $this->writer->write('ar', 'welcome', $translations, false);
 
         expect(File::exists($filePath))->toBeTrue();
-        
+
         $content = include $filePath;
         expect($content)->toBeArray()
             ->and($content['welcome'])->toBe('مرحبا')
@@ -53,8 +53,8 @@ describe('LanguageFileWriter', function () {
     });
 
     it('creates language directory if missing', function () {
-        $langPath = $this->testPath . DIRECTORY_SEPARATOR . 'lang' . DIRECTORY_SEPARATOR . 'fr';
-        
+        $langPath = $this->testPath.DIRECTORY_SEPARATOR.'lang'.DIRECTORY_SEPARATOR.'fr';
+
         expect(File::exists($langPath))->toBeFalse();
 
         $this->writer->write('fr', 'test', ['key' => 'value']);
@@ -152,19 +152,19 @@ describe('LanguageFileWriter', function () {
 
         // Check PHP opening tag
         expect($content)->toContain('<?php');
-        
+
         // Check proper array syntax
-        expect($content)->toContain("return [");
+        expect($content)->toContain('return [');
         expect($content)->toContain("'simple' => 'value'");
-        
+
         // Check closing
         expect($content)->toEndWith(";\n");
     });
 
     it('adds auto-generated header to files', function () {
         $this->writer->write('ar', 'test', ['key' => 'value']);
-        
-        $filePath = $this->testPath . '/lang/ar/test.php';
+
+        $filePath = $this->testPath.'/lang/ar/test.php';
         $content = File::get($filePath);
 
         expect($content)->toContain('Auto-generated Translation File')
@@ -175,7 +175,7 @@ describe('LanguageFileWriter', function () {
     it('escapes special characters in values', function () {
         $translations = [
             'quote' => "It's a test",
-            'backslash' => "Path: C:\\Users\\test",
+            'backslash' => 'Path: C:\\Users\\test',
             'mixed' => "Value with 'quotes' and \\ backslash",
         ];
 
@@ -183,7 +183,7 @@ describe('LanguageFileWriter', function () {
         $result = $this->writer->read('ar', 'special');
 
         expect($result['quote'])->toBe("It's a test")
-            ->and($result['backslash'])->toBe("Path: C:\\Users\\test")
+            ->and($result['backslash'])->toBe('Path: C:\\Users\\test')
             ->and($result['mixed'])->toBe("Value with 'quotes' and \\ backslash");
     });
 
@@ -191,16 +191,16 @@ describe('LanguageFileWriter', function () {
     it('creates backup before overwriting', function () {
         // Write initial file
         $this->writer->write('ar', 'test', ['old' => 'value'], false);
-        
+
         // Wait a second to ensure different timestamp
         sleep(1);
-        
+
         // Overwrite (should create backup)
         $this->writer->write('ar', 'test', ['new' => 'value'], false);
 
         // Check backup exists
         $backups = $this->writer->listBackups();
-        
+
         expect($backups)->not->toBeEmpty();
     });
 
@@ -250,7 +250,7 @@ describe('LanguageFileWriter', function () {
         $backups = $this->writer->listBackups();
 
         expect($backups)->toHaveCount(3);
-        
+
         // Check order (newest first)
         expect($backups[0]['timestamp'])->toBeGreaterThan($backups[1]['timestamp'])
             ->and($backups[1]['timestamp'])->toBeGreaterThan($backups[2]['timestamp']);
@@ -296,14 +296,14 @@ describe('LanguageFileWriter', function () {
 
     it('can delete a file with backup', function () {
         $this->writer->write('ar', 'delete-test', ['key' => 'value']);
-        
+
         expect($this->writer->exists('ar', 'delete-test'))->toBeTrue();
 
         $deleted = $this->writer->delete('ar', 'delete-test');
 
         expect($deleted)->toBeTrue()
             ->and($this->writer->exists('ar', 'delete-test'))->toBeFalse();
-        
+
         // Check backup was created
         $backups = $this->writer->listBackups();
         expect($backups)->not->toBeEmpty();

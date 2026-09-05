@@ -2,10 +2,10 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
 
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Backup\BackupService;
-use Carbon\Carbon;
 
 class RestoreCommand extends Command
 {
@@ -48,6 +48,7 @@ class RestoreCommand extends Command
 
         if (empty($backups)) {
             $this->warn('⚠️  No backups available.');
+
             return self::SUCCESS;
         }
 
@@ -56,6 +57,7 @@ class RestoreCommand extends Command
 
         if ($selected === null) {
             $this->warn('❌ No backup selected. Aborting.');
+
             return self::SUCCESS;
         }
 
@@ -63,8 +65,9 @@ class RestoreCommand extends Command
         $this->showBackupDetails($selected);
 
         // Confirm
-        if (!$this->confirmRestore()) {
+        if (! $this->confirmRestore()) {
             $this->warn('❌ Restore cancelled.');
+
             return self::SUCCESS;
         }
 
@@ -78,6 +81,7 @@ class RestoreCommand extends Command
     {
         if (empty($backups)) {
             $this->warn('⚠️  No backups available.');
+
             return self::SUCCESS;
         }
 
@@ -116,6 +120,7 @@ class RestoreCommand extends Command
                 }
             }
             $this->error("❌ Backup not found: {$timestamp}");
+
             return null;
         }
 
@@ -149,8 +154,9 @@ class RestoreCommand extends Command
 
         $index = (int) $answer - 1;
 
-        if (!isset($backups[$index])) {
+        if (! isset($backups[$index])) {
             $this->error("❌ Invalid selection: {$answer}");
+
             return null;
         }
 
@@ -187,6 +193,7 @@ class RestoreCommand extends Command
     protected function confirmRestore(): bool
     {
         $this->warn('⚠️  This will overwrite your current translations.');
+
         return $this->confirm('Continue?', false);
     }
 
@@ -221,8 +228,9 @@ class RestoreCommand extends Command
 
             return self::SUCCESS;
         } catch (\Throwable $e) {
-            $this->error('❌ Restore failed: ' . $e->getMessage());
+            $this->error('❌ Restore failed: '.$e->getMessage());
             $this->warn("💡 Your safety backup is available: {$safetyName}");
+
             return self::FAILURE;
         }
     }
@@ -232,7 +240,7 @@ class RestoreCommand extends Command
      */
     protected function removeLangFiles(string $langPath): void
     {
-        if (!File::exists($langPath)) {
+        if (! File::exists($langPath)) {
             return;
         }
 
@@ -260,15 +268,15 @@ class RestoreCommand extends Command
 
         foreach (File::allFiles($source) as $file) {
             // Skip anything inside a nested .backup directory
-            if (str_contains($file->getPath(), DIRECTORY_SEPARATOR . '.backup')) {
+            if (str_contains($file->getPath(), DIRECTORY_SEPARATOR.'.backup')) {
                 continue;
             }
 
             $relative = $file->getRelativePathname();
-            $target = $destination . DIRECTORY_SEPARATOR . $relative;
+            $target = $destination.DIRECTORY_SEPARATOR.$relative;
             $targetDir = dirname($target);
 
-            if (!File::exists($targetDir)) {
+            if (! File::exists($targetDir)) {
                 File::makeDirectory($targetDir, 0755, true);
             }
 
@@ -284,7 +292,7 @@ class RestoreCommand extends Command
      */
     protected function countBackupFiles(string $path): int
     {
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return 0;
         }
 
@@ -296,7 +304,7 @@ class RestoreCommand extends Command
      */
     protected function detectLanguages(string $backupPath): array
     {
-        if (!File::exists($backupPath)) {
+        if (! File::exists($backupPath)) {
             return [];
         }
 

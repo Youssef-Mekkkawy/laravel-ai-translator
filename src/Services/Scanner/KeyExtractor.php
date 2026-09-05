@@ -1,17 +1,18 @@
 <?php
 
 // cspell:ignore Youssef Mekkkawy
+
 namespace YoussefMekkkawy\LaravelAiTranslator\Services\Scanner;
 
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 class KeyExtractor
 {
     /**
      * Parse a translation key and determine its file and key name
      *
-     * @param string $key Translation key (e.g., 'auth.login' or 'Welcome')
+     * @param  string  $key  Translation key (e.g., 'auth.login' or 'Welcome')
      * @return array ['file' => 'auth', 'key' => 'login', 'value' => null]
      */
     public function parseKey(string $key): array
@@ -33,6 +34,7 @@ class KeyExtractor
     {
         $parsed = $this->parseKey($key);
         $parsed['default_value'] = $this->generateDefaultValue($key);
+
         return $parsed;
     }
 
@@ -40,7 +42,7 @@ class KeyExtractor
      * Process multiple keys at once — returns a flat array of parsed key data.
      * Used by TranslationService.
      *
-     * @param array $keys Array of raw translation keys
+     * @param  array  $keys  Array of raw translation keys
      * @return array Flat array of parsed key data, each with default_value included
      */
     public function extractMultiple(array $keys): array
@@ -71,9 +73,9 @@ class KeyExtractor
         $nestedKey = implode('.', $parts);
 
         return [
-            'file'      => $file,
-            'key'       => $nestedKey,
-            'full_key'  => $key,
+            'file' => $file,
+            'key' => $nestedKey,
+            'full_key' => $key,
             'is_nested' => $originalPartsCount > 2,
         ];
     }
@@ -86,10 +88,10 @@ class KeyExtractor
         $snakeKey = $this->toSnakeCase($key);
 
         return [
-            'file'          => 'auto',
-            'key'           => $snakeKey,
-            'full_key'      => $key,
-            'is_nested'     => false,
+            'file' => 'auto',
+            'key' => $snakeKey,
+            'full_key' => $key,
+            'is_nested' => false,
             'original_text' => $key,
         ];
     }
@@ -102,6 +104,7 @@ class KeyExtractor
         $text = preg_replace('/[^a-zA-Z0-9\s]/', '', $text);
         $text = Str::snake($text);
         $text = preg_replace('/_+/', '_', $text);
+
         return trim($text, '_');
     }
 
@@ -110,10 +113,10 @@ class KeyExtractor
      */
     public function keyExists(string $key, string $language = 'en'): bool
     {
-        $parsed   = $this->parseKey($key);
+        $parsed = $this->parseKey($key);
         $filePath = base_path("lang/{$language}/{$parsed['file']}.php");
 
-        if (!File::exists($filePath)) {
+        if (! File::exists($filePath)) {
             return false;
         }
 
@@ -134,11 +137,11 @@ class KeyExtractor
         $keys = explode('.', $key);
 
         foreach ($keys as $segment) {
-            if (!isset($array[$segment])) {
+            if (! isset($array[$segment])) {
                 return false;
             }
 
-            if (!is_array($array[$segment])) {
+            if (! is_array($array[$segment])) {
                 return true;
             }
 
@@ -153,12 +156,12 @@ class KeyExtractor
      */
     public function getKeyValue(string $key, string $language = 'en'): ?string
     {
-        if (!$this->keyExists($key, $language)) {
+        if (! $this->keyExists($key, $language)) {
             return null;
         }
 
-        $parsed       = $this->parseKey($key);
-        $filePath     = base_path("lang/{$language}/{$parsed['file']}.php");
+        $parsed = $this->parseKey($key);
+        $filePath = base_path("lang/{$language}/{$parsed['file']}.php");
         $translations = include $filePath;
 
         if ($parsed['is_nested']) {
@@ -176,7 +179,7 @@ class KeyExtractor
         $keys = explode('.', $key);
 
         foreach ($keys as $segment) {
-            if (!isset($array[$segment])) {
+            if (! isset($array[$segment])) {
                 return null;
             }
 
@@ -207,7 +210,7 @@ class KeyExtractor
     /**
      * Organize keys by file
      *
-     * @param array $keys Array of translation keys
+     * @param  array  $keys  Array of translation keys
      * @return array Grouped by file ['auth' => [['key' => 'login', ...]], ...]
      */
     public function organizeKeysByFile(array $keys): array
@@ -216,16 +219,16 @@ class KeyExtractor
 
         foreach ($keys as $key) {
             $parsed = $this->parseKey($key);
-            $file   = $parsed['file'];
+            $file = $parsed['file'];
 
-            if (!isset($organized[$file])) {
+            if (! isset($organized[$file])) {
                 $organized[$file] = [];
             }
 
             $organized[$file][] = [
-                'key'           => $parsed['key'],
-                'full_key'      => $key,
-                'is_nested'     => $parsed['is_nested'] ?? false,
+                'key' => $parsed['key'],
+                'full_key' => $key,
+                'is_nested' => $parsed['is_nested'] ?? false,
                 'default_value' => $this->generateDefaultValue($key),
             ];
         }
@@ -241,7 +244,7 @@ class KeyExtractor
         $missing = [];
 
         foreach ($keys as $key) {
-            if (!$this->keyExists($key, $language)) {
+            if (! $this->keyExists($key, $language)) {
                 $missing[] = $key;
             }
         }

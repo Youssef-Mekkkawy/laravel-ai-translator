@@ -24,9 +24,9 @@ class TestCase extends Orchestra
         // Setup default database to use sqlite :memory:
         $app['config']->set('database.default', 'testing');
         $app['config']->set('database.connections.testing', [
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
-            'prefix'   => '',
+            'prefix' => '',
         ]);
 
         // Setup package config for testing
@@ -37,20 +37,20 @@ class TestCase extends Orchestra
 
     protected function getTempDirectory(): string
     {
-        return __DIR__ . DIRECTORY_SEPARATOR . 'temp';
+        return __DIR__.DIRECTORY_SEPARATOR.'temp';
     }
 
     protected function createTestLanguageFile(string $lang, string $file, array $content): void
     {
-        $path = $this->getTempDirectory() . DIRECTORY_SEPARATOR . "lang" . DIRECTORY_SEPARATOR . $lang;
+        $path = $this->getTempDirectory().DIRECTORY_SEPARATOR.'lang'.DIRECTORY_SEPARATOR.$lang;
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             mkdir($path, 0755, true);
         }
 
         file_put_contents(
-            $path . DIRECTORY_SEPARATOR . $file . ".php",
-            '<?php return ' . var_export($content, true) . ';'
+            $path.DIRECTORY_SEPARATOR.$file.'.php',
+            '<?php return '.var_export($content, true).';'
         );
     }
 
@@ -67,14 +67,14 @@ class TestCase extends Orchestra
 
     protected function deleteDirectory(string $dir): void
     {
-        if (!file_exists($dir)) {
+        if (! file_exists($dir)) {
             return;
         }
 
         $files = array_diff(scandir($dir), ['.', '..']);
 
         foreach ($files as $file) {
-            $path = $dir . DIRECTORY_SEPARATOR . $file;
+            $path = $dir.DIRECTORY_SEPARATOR.$file;
             is_dir($path) ? $this->deleteDirectory($path) : unlink($path);
         }
 

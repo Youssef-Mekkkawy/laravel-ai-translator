@@ -7,14 +7,16 @@ use Illuminate\Support\Facades\File;
 class MetadataManager
 {
     protected string $metadataPath;
+
     protected string $backupPath;
+
     protected int $lockTimeout = 5; // seconds
 
     public function __construct(?string $metadataPath = null)
     {
         // Default to lang/.translations-meta.json
         $this->metadataPath = $metadataPath ?? lang_path('.translations-meta.json');
-        $this->backupPath = $this->metadataPath . '.backup';
+        $this->backupPath = $this->metadataPath.'.backup';
     }
 
     /**
@@ -25,21 +27,22 @@ class MetadataManager
     public function load(): array
     {
         // If file doesn't exist, return empty structure
-        if (!File::exists($this->metadataPath)) {
+        if (! File::exists($this->metadataPath)) {
             return $this->getEmptyStructure();
         }
 
         try {
             // Read file with shared lock
             $handle = fopen($this->metadataPath, 'r');
-            
+
             if ($handle === false) {
                 return $this->getEmptyStructure();
             }
 
             // Acquire shared lock (allows multiple readers)
-            if (!flock($handle, LOCK_SH, $wouldBlock)) {
+            if (! flock($handle, LOCK_SH, $wouldBlock)) {
                 fclose($handle);
+
                 return $this->getEmptyStructure();
             }
 
@@ -54,9 +57,10 @@ class MetadataManager
             $data = json_decode($content, true);
 
             // Validate structure
-            if (!$this->validateStructure($data)) {
+            if (! $this->validateStructure($data)) {
                 // If invalid, backup and return empty
                 $this->backupCorrupted();
+
                 return $this->getEmptyStructure();
             }
 
@@ -71,20 +75,20 @@ class MetadataManager
     /**
      * Save metadata to JSON file
      *
-     * @param array $data Metadata to save
+     * @param  array  $data  Metadata to save
      * @return bool Success status
      */
     public function save(array $data): bool
     {
         try {
             // Validate before saving
-            if (!$this->validateStructure($data)) {
+            if (! $this->validateStructure($data)) {
                 throw new \InvalidArgumentException('Invalid metadata structure');
             }
 
             // Create directory if doesn't exist
             $directory = dirname($this->metadataPath);
-            if (!File::exists($directory)) {
+            if (! File::exists($directory)) {
                 File::makeDirectory($directory, 0755, true);
             }
 
@@ -95,14 +99,15 @@ class MetadataManager
 
             // Open file for writing
             $handle = fopen($this->metadataPath, 'w');
-            
+
             if ($handle === false) {
                 return false;
             }
 
             // Acquire exclusive lock (blocks all other access)
-            if (!flock($handle, LOCK_EX, $wouldBlock)) {
+            if (! flock($handle, LOCK_EX, $wouldBlock)) {
                 fclose($handle);
+
                 return false;
             }
 
@@ -144,6 +149,7 @@ class MetadataManager
                 $this->backup();
                 File::delete($this->metadataPath);
             }
+
             return true;
         } catch (\Exception $e) {
             return false;
@@ -160,8 +166,10 @@ class MetadataManager
         try {
             if (File::exists($this->metadataPath)) {
                 File::copy($this->metadataPath, $this->backupPath);
+
                 return true;
             }
+
             return false;
         } catch (\Exception $e) {
             return false;
@@ -178,8 +186,10 @@ class MetadataManager
         try {
             if (File::exists($this->backupPath)) {
                 File::copy($this->backupPath, $this->metadataPath);
+
                 return true;
             }
+
             return false;
         } catch (\Exception $e) {
             return false;
@@ -188,14 +198,12 @@ class MetadataManager
 
     /**
      * Backup corrupted file
-     *
-     * @return void
      */
     protected function backupCorrupted(): void
     {
         try {
             if (File::exists($this->metadataPath)) {
-                $corruptedPath = $this->metadataPath . '.corrupted.' . time();
+                $corruptedPath = $this->metadataPath.'.corrupted.'.time();
                 File::copy($this->metadataPath, $corruptedPath);
             }
         } catch (\Exception $e) {
@@ -220,29 +228,29 @@ class MetadataManager
     /**
      * Validate metadata structure
      *
-     * @param mixed $data Data to validate
+     * @param  mixed  $data  Data to validate
      * @return bool True if valid
      */
     protected function validateStructure($data): bool
     {
         // Must be array
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             return false;
         }
 
         // Must have required keys
-        if (!isset($data['version']) || !isset($data['hashes'])) {
+        if (! isset($data['version']) || ! isset($data['hashes'])) {
             return false;
         }
 
         // Hashes must be array
-        if (!is_array($data['hashes'])) {
+        if (! is_array($data['hashes'])) {
             return false;
         }
 
         // Each language must be array of string keys
         foreach ($data['hashes'] as $language => $hashes) {
-            if (!is_string($language) || !is_array($hashes)) {
+            if (! is_string($language) || ! is_array($hashes)) {
                 return false;
             }
         }
@@ -277,9 +285,10 @@ class MetadataManager
      */
     public function getSize(): int
     {
-        if (!File::exists($this->metadataPath)) {
+        if (! File::exists($this->metadataPath)) {
             return 0;
         }
+
         return File::size($this->metadataPath);
     }
 
@@ -290,9 +299,10 @@ class MetadataManager
      */
     public function getLastModified(): ?int
     {
-        if (!File::exists($this->metadataPath)) {
+        if (! File::exists($this->metadataPath)) {
             return null;
         }
+
         return File::lastModified($this->metadataPath);
     }
 
@@ -304,15 +314,15 @@ class MetadataManager
     public function getStatistics(): array
     {
         $data = $this->load();
-        
+
         $totalKeys = 0;
         $languages = [];
-        
+
         foreach ($data['hashes'] as $language => $hashes) {
             $languages[$language] = count($hashes);
             $totalKeys += count($hashes);
         }
-        
+
         return [
             'version' => $data['version'],
             'last_sync' => $data['last_full_sync'] ?? 'Never',

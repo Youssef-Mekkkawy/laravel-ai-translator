@@ -20,7 +20,8 @@ class OllamaTranslator extends AbstractTranslator
     public function isAvailable(): bool
     {
         try {
-            $response = Http::timeout(3)->get($this->baseUrl() . '/api/tags');
+            $response = Http::timeout(3)->get($this->baseUrl().'/api/tags');
+
             return $response->successful();
         } catch (\Throwable $e) {
             return false;
@@ -62,19 +63,20 @@ class OllamaTranslator extends AbstractTranslator
 
         foreach ($texts as $i => $text) {
             if (empty(trim((string) $text))) {
-                $prepared[$i]   = '';
+                $prepared[$i] = '';
                 $restoreMap[$i] = [[], []];
+
                 continue;
             }
 
             [$preparedText, $placeholders, $tags] = $this->prepareText((string) $text);
-            $prepared[$i]   = $preparedText;
+            $prepared[$i] = $preparedText;
             $restoreMap[$i] = [$placeholders, $tags];
         }
 
         // Split into chunks so we don't exceed context windows
-        $chunkSize   = (int) $this->getConfig('chunk_size', 20);
-        $chunks      = array_chunk($prepared, $chunkSize, true);
+        $chunkSize = (int) $this->getConfig('chunk_size', 20);
+        $chunks = array_chunk($prepared, $chunkSize, true);
         $translations = [];
 
         foreach ($chunks as $chunk) {
@@ -86,8 +88,8 @@ class OllamaTranslator extends AbstractTranslator
         $result = [];
         foreach ($texts as $i => $text) {
             [$placeholders, $tags] = $restoreMap[$i];
-            $raw                   = $translations[$i] ?? (string) $text;
-            $result[]              = $this->restoreText($raw, $placeholders, $tags);
+            $raw = $translations[$i] ?? (string) $text;
+            $result[] = $this->restoreText($raw, $placeholders, $tags);
         }
 
         return $result;
@@ -104,12 +106,12 @@ class OllamaTranslator extends AbstractTranslator
         }
 
         return [
-            'characters'       => $totalChars * count($targetLangs),
+            'characters' => $totalChars * count($targetLangs),
             'total_characters' => $totalChars * count($targetLangs),
-            'cost'             => 0.0,
-            'estimated_cost'   => 0.0,
-            'currency'         => 'USD',
-            'note'             => 'Ollama runs locally — zero API cost',
+            'cost' => 0.0,
+            'estimated_cost' => 0.0,
+            'currency' => 'USD',
+            'note' => 'Ollama runs locally — zero API cost',
         ];
     }
 
@@ -131,15 +133,15 @@ class OllamaTranslator extends AbstractTranslator
         $prompt = $this->buildBatchPrompt($toTranslate, $targetLang, $sourceLang);
 
         try {
-            $raw  = $this->sendChatRequest($prompt);
+            $raw = $this->sendChatRequest($prompt);
             $json = $this->extractJson($raw);
 
             if (is_array($json)) {
                 // Map translated values back to original positions.
                 // Works whether model returns {"0":"val"} or ["val1","val2"].
                 $jsonValues = array_values($json);
-                $result     = [];
-                $pos        = 0;
+                $result = [];
+                $pos = 0;
 
                 foreach ($chunk as $i => $text) {
                     $result[$i] = trim((string) $text) === ''
@@ -173,25 +175,25 @@ class OllamaTranslator extends AbstractTranslator
         $timeout = (int) $this->getConfig('timeout', 120);
 
         $response = Http::timeout($timeout)
-            ->post($this->baseUrl() . '/v1/chat/completions', [
-                'model'       => $this->model(),
-                'messages'    => [
+            ->post($this->baseUrl().'/v1/chat/completions', [
+                'model' => $this->model(),
+                'messages' => [
                     [
-                        'role'    => 'system',
+                        'role' => 'system',
                         'content' => 'You are a professional translator. Follow all instructions exactly.',
                     ],
                     [
-                        'role'    => 'user',
+                        'role' => 'user',
                         'content' => $userMessage,
                     ],
                 ],
-                'stream'      => false,
+                'stream' => false,
                 'temperature' => 0.1, // Low temperature = more deterministic output
             ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new \RuntimeException(
-                "Ollama API error [{$response->status()}]: " . $response->body()
+                "Ollama API error [{$response->status()}]: ".$response->body()
             );
         }
 
@@ -226,7 +228,7 @@ PROMPT;
     private function buildBatchPrompt(array $texts, string $targetLang, string $sourceLang): string
     {
         $targetName = $this->languageName($targetLang);
-        $input      = json_encode($texts, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $input = json_encode($texts, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
         return <<<PROMPT
 Translate the following JSON object values from {$sourceLang} to {$targetName}.
@@ -283,6 +285,7 @@ PROMPT;
     private function baseUrl(): string
     {
         $url = $this->getConfig('api_url', 'http://localhost:11434');
+
         // Strip any /v1 suffix — we add it ourselves per-endpoint
         return rtrim(str_replace('/v1', '', $url), '/');
     }

@@ -3,7 +3,7 @@
 use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\DeepLTranslator;
 
 describe('DeepLTranslator', function () {
-    
+
     beforeEach(function () {
         // Mock config (you'll need real API key for integration tests)
         $this->config = [
@@ -15,7 +15,7 @@ describe('DeepLTranslator', function () {
 
     it('can be instantiated', function () {
         $translator = new DeepLTranslator($this->config);
-        
+
         expect($translator)->toBeInstanceOf(DeepLTranslator::class);
         expect($translator->getName())->toBe('DeepL');
     });
@@ -30,7 +30,7 @@ describe('DeepLTranslator', function () {
 
     it('normalizes language codes correctly', function () {
         $translator = new DeepLTranslator($this->config);
-        
+
         // Use reflection to test protected method
         $reflection = new ReflectionClass($translator);
         $method = $reflection->getMethod('normalizeLanguageCode');
@@ -113,15 +113,15 @@ describe('DeepLTranslator', function () {
 
     it('estimates cost correctly', function () {
         $translator = new DeepLTranslator($this->config);
-        
+
         $texts = [
             'Hello world',
             'How are you?',
             'This is a test',
         ];
-        
+
         $targetLangs = ['ar', 'fr', 'es'];
-        
+
         $estimate = $translator->estimateCost($texts, $targetLangs);
 
         expect($estimate)->toHaveKey('characters');
@@ -133,22 +133,22 @@ describe('DeepLTranslator', function () {
 
     it('throws exception when API key is missing', function () {
         $translator = new DeepLTranslator([]);
-        
-        expect(fn() => $translator->translate('test', 'ar'))
+
+        expect(fn () => $translator->translate('test', 'ar'))
             ->toThrow(RuntimeException::class, 'DeepL API key not configured');
     });
 
     it('handles empty batch translation', function () {
         $translator = new DeepLTranslator($this->config);
-        
+
         $result = $translator->translateBatch([], 'ar');
-        
+
         expect($result)->toBe([]);
     });
 
     // Note: The following tests require a real DeepL API key
     // Mark them as @group integration to run separately
-    
+
     it('can translate text with real API', function () {
         // Skip if no API key
         if (empty(env('DEEPL_API_KEY'))) {
@@ -160,7 +160,7 @@ describe('DeepLTranslator', function () {
         ]);
 
         $result = $translator->translate('Hello world', 'ar');
-        
+
         expect($result)->not->toBeEmpty();
         expect($result)->not->toBe('Hello world');
     })->group('integration', 'requires-api');
@@ -177,7 +177,7 @@ describe('DeepLTranslator', function () {
 
         $texts = ['Hello', 'World', 'How are you?'];
         $results = $translator->translateBatch($texts, 'ar');
-        
+
         expect($results)->toHaveCount(3);
         expect($results[0])->not->toBe('Hello');
     })->group('integration', 'requires-api');
@@ -193,7 +193,7 @@ describe('DeepLTranslator', function () {
         ]);
 
         $result = $translator->translate('Welcome back, :name!', 'ar');
-        
+
         expect($result)->toContain(':name');
     })->group('integration', 'requires-api');
 });

@@ -3,7 +3,7 @@
 use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\KeyExtractor;
 
 test('key extractor parses dot notation keys', function () {
-    $extractor = new KeyExtractor();
+    $extractor = new KeyExtractor;
     $result = $extractor->parseKey('auth.login');
 
     expect($result)->toBeArray()
@@ -13,7 +13,7 @@ test('key extractor parses dot notation keys', function () {
 });
 
 test('key extractor parses nested keys', function () {
-    $extractor = new KeyExtractor();
+    $extractor = new KeyExtractor;
     $result = $extractor->parseKey('messages.success.saved');
 
     expect($result)->toBeArray()
@@ -23,7 +23,7 @@ test('key extractor parses nested keys', function () {
 });
 
 test('key extractor parses plain text keys', function () {
-    $extractor = new KeyExtractor();
+    $extractor = new KeyExtractor;
     $result = $extractor->parseKey('Welcome to our platform');
 
     expect($result)->toBeArray()
@@ -33,8 +33,8 @@ test('key extractor parses plain text keys', function () {
 });
 
 test('key extractor converts text to snake_case', function () {
-    $extractor = new KeyExtractor();
-    
+    $extractor = new KeyExtractor;
+
     $result1 = $extractor->parseKey('User Settings');
     expect($result1['key'])->toBe('user_settings');
 
@@ -46,7 +46,7 @@ test('key extractor converts text to snake_case', function () {
 });
 
 test('key extractor generates default values', function () {
-    $extractor = new KeyExtractor();
+    $extractor = new KeyExtractor;
 
     // Plain text should return original
     $value1 = $extractor->generateDefaultValue('Welcome Home');
@@ -58,8 +58,8 @@ test('key extractor generates default values', function () {
 });
 
 test('key extractor organizes keys by file', function () {
-    $extractor = new KeyExtractor();
-    
+    $extractor = new KeyExtractor;
+
     $keys = [
         'auth.login',
         'auth.register',
@@ -79,9 +79,9 @@ test('key extractor organizes keys by file', function () {
 });
 
 test('key extractor handles special characters in plain text', function () {
-    $extractor = new KeyExtractor();
-    
-    $result = $extractor->parseKey("Hello, World!");
+    $extractor = new KeyExtractor;
+
+    $result = $extractor->parseKey('Hello, World!');
     expect($result['key'])->toBe('hello_world');
 
     $result2 = $extractor->parseKey("User's Settings");
@@ -89,8 +89,8 @@ test('key extractor handles special characters in plain text', function () {
 });
 
 test('key extractor removes multiple underscores', function () {
-    $extractor = new KeyExtractor();
-    
+    $extractor = new KeyExtractor;
+
     $result = $extractor->parseKey('Multiple   Spaces   Here');
     expect($result['key'])->toBe('multiple_spaces_here');
 });

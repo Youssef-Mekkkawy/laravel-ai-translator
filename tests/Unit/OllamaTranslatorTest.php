@@ -1,7 +1,8 @@
 <?php
 
-use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\OllamaTranslator;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\OllamaTranslator;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ function ollamaTagsResponse(): array
 function makeOllama(array $overrides = []): OllamaTranslator
 {
     return new OllamaTranslator(array_merge([
-        'model'   => 'llama3',
+        'model' => 'llama3',
         'api_url' => 'http://localhost:11434',
         'timeout' => 5,
     ], $overrides));
@@ -72,7 +73,7 @@ describe('OllamaTranslator', function () {
 
     it('is not available when connection is refused', function () {
         Http::fake([
-            '*/api/tags' => fn () => throw new \Illuminate\Http\Client\ConnectionException('refused'),
+            '*/api/tags' => fn () => throw new ConnectionException('refused'),
         ]);
 
         expect(makeOllama()->isAvailable())->toBeFalse();
@@ -191,7 +192,7 @@ describe('OllamaTranslator', function () {
     });
 
     it('handles markdown-wrapped JSON from the model', function () {
-        $batchResponse = "```json\n" . json_encode([0 => 'مرحبا', 1 => 'وداعا']) . "\n```";
+        $batchResponse = "```json\n".json_encode([0 => 'مرحبا', 1 => 'وداعا'])."\n```";
 
         Http::fake([
             '*/v1/chat/completions' => Http::response(
@@ -244,8 +245,7 @@ describe('OllamaTranslator', function () {
 
         makeOllama(['model' => 'mistral'])->translate('Hello', 'ar');
 
-        Http::assertSent(fn ($request) =>
-            $request->data()['model'] === 'mistral'
+        Http::assertSent(fn ($request) => $request->data()['model'] === 'mistral'
         );
     });
 
@@ -258,8 +258,7 @@ describe('OllamaTranslator', function () {
 
         makeOllama(['api_url' => 'http://my-server:11434'])->translate('Hello', 'ar');
 
-        Http::assertSent(fn ($request) =>
-            str_contains($request->url(), 'my-server:11434')
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'my-server:11434')
         );
     });
 
@@ -271,7 +270,7 @@ describe('OllamaTranslator', function () {
         ]);
 
         expect(fn () => makeOllama()->translate('Hello', 'ar'))
-            ->toThrow(\RuntimeException::class);
+            ->toThrow(RuntimeException::class);
     });
 
 });

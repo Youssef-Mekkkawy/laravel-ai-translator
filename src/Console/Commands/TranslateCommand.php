@@ -3,18 +3,17 @@
 namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
-use YoussefMekkkawy\LaravelAiTranslator\Services\TranslationService;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\KeyExtractor;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\TranslatorManager;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Writers\LanguageFileWriter;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Backup\BackupService;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\HashGenerator;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\ChangeTracker;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\MetadataManager;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockManager;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockStorage;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\KeyExtractor;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\ChangeTracker;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\HashGenerator;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\MetadataManager;
+use YoussefMekkkawy\LaravelAiTranslator\Services\TranslationService;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\TranslatorManager;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Writers\LanguageFileWriter;
 
 class TranslateCommand extends Command
 {
@@ -36,12 +35,13 @@ class TranslateCommand extends Command
         try {
             $this->initializeServices();
         } catch (\Throwable $e) {
-            $this->error('Failed to initialise services: ' . $e->getMessage());
+            $this->error('Failed to initialise services: '.$e->getMessage());
+
             return self::FAILURE;
         }
 
-        $force        = $this->option('force');
-        $dryRun       = $this->option('dry-run');
+        $force = $this->option('force');
+        $dryRun = $this->option('dry-run');
         $specificLang = $this->option('lang');
 
         // Determine target languages
@@ -55,20 +55,20 @@ class TranslateCommand extends Command
         $estimatedCost = 0.0;
 
         try {
-            $estimation    = $this->translationService->estimateCost($targetLanguages, $force);
-            $totalChars    = $estimation['total_characters'] ?? $estimation['characters'] ?? 0;
-            $estimatedCost = $estimation['estimated_cost']  ?? $estimation['cost']       ?? 0.0;
+            $estimation = $this->translationService->estimateCost($targetLanguages, $force);
+            $totalChars = $estimation['total_characters'] ?? $estimation['characters'] ?? 0;
+            $estimatedCost = $estimation['estimated_cost'] ?? $estimation['cost'] ?? 0.0;
         } catch (\Throwable $e) {
             // No translator configured — that's fine for dry-run / skip-all scenarios
         }
 
         $this->line("  Total Characters : <fg=cyan>{$totalChars}</>");
-        $this->line('  Estimated Cost   : <fg=cyan>$' . number_format($estimatedCost, 4) . '</>');
+        $this->line('  Estimated Cost   : <fg=cyan>$'.number_format($estimatedCost, 4).'</>');
         $this->newLine();
 
         // Target languages summary
-        if (!empty($targetLanguages)) {
-            $this->line('  Target languages : ' . implode(', ', $targetLanguages));
+        if (! empty($targetLanguages)) {
+            $this->line('  Target languages : '.implode(', ', $targetLanguages));
             $this->newLine();
         }
 
@@ -76,13 +76,15 @@ class TranslateCommand extends Command
         if ($dryRun) {
             $this->warn('🔍 DRY RUN MODE - No changes will be made');
             $this->newLine();
+
             return self::SUCCESS;
         }
 
         // ── Confirmation ─────────────────────────────────────────────────
-        if (!$this->confirm('Start translation?', true)) {
+        if (! $this->confirm('Start translation?', true)) {
             $this->info('Translation cancelled.');
             $this->newLine();
+
             return self::SUCCESS;
         }
 
@@ -94,7 +96,8 @@ class TranslateCommand extends Command
         try {
             $results = $this->translationService->translateAll($targetLanguages, $force, false);
         } catch (\Throwable $e) {
-            $this->error('Translation failed: ' . $e->getMessage());
+            $this->error('Translation failed: '.$e->getMessage());
+
             return self::FAILURE;
         }
 
@@ -104,20 +107,20 @@ class TranslateCommand extends Command
         $this->info('═══════════════════════════════════════');
         $this->newLine();
 
-        $this->line('  Total keys       : ' . ($results['total_keys']          ?? 0));
-        $this->line('  Languages done   : ' . ($results['languages_processed'] ?? 0));
-        $this->line('  Skipped (exist)  : ' . ($results['skipped_unchanged']   ?? 0));
-        $this->line('  Locked (skipped) : ' . ($results['locked_keys']         ?? 0));
+        $this->line('  Total keys       : '.($results['total_keys'] ?? 0));
+        $this->line('  Languages done   : '.($results['languages_processed'] ?? 0));
+        $this->line('  Skipped (exist)  : '.($results['skipped_unchanged'] ?? 0));
+        $this->line('  Locked (skipped) : '.($results['locked_keys'] ?? 0));
 
-        if (!empty($results['files_written'])) {
+        if (! empty($results['files_written'])) {
             $this->newLine();
             $this->info('📁 Files written:');
             foreach ($results['files_written'] as $file) {
-                $this->line('  ✔ ' . str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file));
+                $this->line('  ✔ '.str_replace(base_path().DIRECTORY_SEPARATOR, '', $file));
             }
         }
 
-        if (!empty($results['errors'])) {
+        if (! empty($results['errors'])) {
             $this->newLine();
             $this->warn('⚠️  Errors:');
             foreach ($results['errors'] as $lang => $error) {
@@ -128,7 +131,7 @@ class TranslateCommand extends Command
         $this->newLine();
 
         if (($results['skipped_unchanged'] ?? 0) > 0) {
-            $this->info('💰 Change tracking saved API costs by skipping ' . $results['skipped_unchanged'] . ' unchanged key(s)!');
+            $this->info('💰 Change tracking saved API costs by skipping '.$results['skipped_unchanged'].' unchanged key(s)!');
         }
 
         $this->info("💡 Run 'php artisan lang:scan' to review your translations.");
@@ -142,13 +145,13 @@ class TranslateCommand extends Command
      */
     protected function initializeServices(): void
     {
-        $config     = config('ai-translator', []);
-        $noBackup   = $this->option('no-backup');
+        $config = config('ai-translator', []);
+        $noBackup = $this->option('no-backup');
 
         // ── Scanner ───────────────────────────────────────────────────────
         $scanPaths = $config['scan_paths'] ?? [resource_path('views')];
-        $scanner   = new ViewScanner($scanPaths);
-        $extractor = new KeyExtractor();
+        $scanner = new ViewScanner($scanPaths);
+        $extractor = new KeyExtractor;
 
         // ── Backup / Writer ───────────────────────────────────────────────
         $backupConfig = array_merge(
@@ -161,16 +164,16 @@ class TranslateCommand extends Command
         }
 
         $backupService = new BackupService($backupConfig);
-        $writer        = new LanguageFileWriter($backupService, ['lang_path' => lang_path()]);
+        $writer = new LanguageFileWriter($backupService, ['lang_path' => lang_path()]);
 
         // ── Change tracking ───────────────────────────────────────────────
-        $metaFile      = $config['storage']['metadata_file'] ?? base_path('lang/.translations-meta.json');
-        $hashGenerator = new HashGenerator();
-        $metaManager   = new MetadataManager($metaFile);
+        $metaFile = $config['storage']['metadata_file'] ?? base_path('lang/.translations-meta.json');
+        $hashGenerator = new HashGenerator;
+        $metaManager = new MetadataManager($metaFile);
         $changeTracker = new ChangeTracker($hashGenerator, $metaManager);
 
         // ── Lock manager ──────────────────────────────────────────────────
-        $lockStorage = new LockStorage();
+        $lockStorage = new LockStorage;
         $lockManager = new LockManager($lockStorage);
 
         // ── Translator manager ────────────────────────────────────────────
@@ -193,9 +196,9 @@ class TranslateCommand extends Command
      */
     protected function getTargetLanguages(?string $specificLang): array
     {
-        $config     = config('ai-translator', []);
+        $config = config('ai-translator', []);
         $sourceLang = $config['default_language'] ?? 'en';
-        $all        = $config['languages']         ?? ['en', 'ar'];
+        $all = $config['languages'] ?? ['en', 'ar'];
 
         if ($specificLang !== null) {
             return [$specificLang];

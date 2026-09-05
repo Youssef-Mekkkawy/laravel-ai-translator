@@ -15,12 +15,10 @@ class LockStorage
 
     /**
      * Load locks from file
-     *
-     * @return array
      */
     public function load(): array
     {
-        if (!File::exists($this->filePath)) {
+        if (! File::exists($this->filePath)) {
             return [];
         }
 
@@ -28,7 +26,7 @@ class LockStorage
             $content = File::get($this->filePath);
             $data = json_decode($content, true);
 
-            if (!is_array($data)) {
+            if (! is_array($data)) {
                 return [];
             }
 
@@ -41,16 +39,13 @@ class LockStorage
 
     /**
      * Save locks to file
-     *
-     * @param array $locks
-     * @return bool
      */
     public function save(array $locks): bool
     {
         try {
             // Ensure directory exists
             $directory = dirname($this->filePath);
-            if (!File::exists($directory)) {
+            if (! File::exists($directory)) {
                 File::makeDirectory($directory, 0755, true);
             }
 
@@ -65,8 +60,6 @@ class LockStorage
 
     /**
      * Check if storage file exists
-     *
-     * @return bool
      */
     public function exists(): bool
     {
@@ -75,12 +68,10 @@ class LockStorage
 
     /**
      * Delete storage file
-     *
-     * @return bool
      */
     public function delete(): bool
     {
-        if (!$this->exists()) {
+        if (! $this->exists()) {
             return true;
         }
 
@@ -89,8 +80,6 @@ class LockStorage
 
     /**
      * Get file path
-     *
-     * @return string
      */
     public function getFilePath(): string
     {
@@ -99,12 +88,10 @@ class LockStorage
 
     /**
      * Get file size in bytes
-     *
-     * @return int
      */
     public function getSize(): int
     {
-        if (!$this->exists()) {
+        if (! $this->exists()) {
             return 0;
         }
 
@@ -113,16 +100,14 @@ class LockStorage
 
     /**
      * Backup current locks
-     *
-     * @return bool
      */
     public function backup(): bool
     {
-        if (!$this->exists()) {
+        if (! $this->exists()) {
             return false;
         }
 
-        $backupPath = $this->filePath . '.backup';
+        $backupPath = $this->filePath.'.backup';
 
         try {
             return File::copy($this->filePath, $backupPath);
@@ -133,14 +118,12 @@ class LockStorage
 
     /**
      * Restore from backup
-     *
-     * @return bool
      */
     public function restore(): bool
     {
-        $backupPath = $this->filePath . '.backup';
+        $backupPath = $this->filePath.'.backup';
 
-        if (!File::exists($backupPath)) {
+        if (! File::exists($backupPath)) {
             return false;
         }
 

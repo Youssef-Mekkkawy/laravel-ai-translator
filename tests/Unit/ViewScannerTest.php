@@ -1,24 +1,21 @@
 <?php
 
-
-use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
 use Illuminate\Support\Facades\File;
-
-
+use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
 
 beforeEach(function () {
     // Create temp directory for test files
-    $this->tempDir = __DIR__ . '/../temp/views';
-    
-    if (!File::exists($this->tempDir)) {
+    $this->tempDir = __DIR__.'/../temp/views';
+
+    if (! File::exists($this->tempDir)) {
         File::makeDirectory($this->tempDir, 0755, true);
     }
 });
 
 afterEach(function () {
     // Clean up temp directory
-    if (File::exists(__DIR__ . '/../temp')) {
-        File::deleteDirectory(__DIR__ . '/../temp');
+    if (File::exists(__DIR__.'/../temp')) {
+        File::deleteDirectory(__DIR__.'/../temp');
     }
 });
 
@@ -28,9 +25,9 @@ test('scanner finds blade files in directory', function () {
     File::ensureDirectoryExists($temp);
 
     // ── 2️⃣ Create test files
-    File::put($temp . '/test1.blade.php', '<h1>Test</h1>');
-    File::put($temp . '/test2.blade.php', '<p>Test</p>');
-    File::put($temp . '/not-blade.php', '<?php echo "test"; ?>');
+    File::put($temp.'/test1.blade.php', '<h1>Test</h1>');
+    File::put($temp.'/test2.blade.php', '<p>Test</p>');
+    File::put($temp.'/not-blade.php', '<?php echo "test"; ?>');
 
     // ── 3️⃣ Verify folder existence & that it contains files
     expect(File::exists($temp))->toBeTrue()
@@ -39,7 +36,7 @@ test('scanner finds blade files in directory', function () {
 
     // ── 4️⃣ Run the scanner
     $scanner = new ViewScanner([$temp]);
-    $files   = $scanner->scanForBladeFiles();
+    $files = $scanner->scanForBladeFiles();
 
     // ── 5️⃣ Debug output (optional, shows when you run with --debug)
     dump($files);
@@ -60,10 +57,10 @@ test('scanner extracts keys from double underscore syntax', function () {
         <span>{{ __('auth.login') }}</span>
     ";
 
-    File::put($this->tempDir . '/test.blade.php', $content);
+    File::put($this->tempDir.'/test.blade.php', $content);
 
     $scanner = new ViewScanner([$this->tempDir]);
-    $keys = $scanner->scanFile($this->tempDir . '/test.blade.php');
+    $keys = $scanner->scanFile($this->tempDir.'/test.blade.php');
 
     expect($keys)->toHaveCount(3)
         ->toContain('welcome.title', 'welcome.description', 'auth.login');
@@ -75,10 +72,10 @@ test('scanner extracts keys from lang directive', function () {
         <p>@lang('messages.goodbye')</p>
     ";
 
-    File::put($this->tempDir . '/test.blade.php', $content);
+    File::put($this->tempDir.'/test.blade.php', $content);
 
     $scanner = new ViewScanner([$this->tempDir]);
-    $keys = $scanner->scanFile($this->tempDir . '/test.blade.php');
+    $keys = $scanner->scanFile($this->tempDir.'/test.blade.php');
 
     expect($keys)->toHaveCount(2)
         ->toContain('messages.hello', 'messages.goodbye');
@@ -90,10 +87,10 @@ test('scanner extracts keys from trans function', function () {
         <p>{{ trans('page.subtitle') }}</p>
     ";
 
-    File::put($this->tempDir . '/test.blade.php', $content);
+    File::put($this->tempDir.'/test.blade.php', $content);
 
     $scanner = new ViewScanner([$this->tempDir]);
-    $keys = $scanner->scanFile($this->tempDir . '/test.blade.php');
+    $keys = $scanner->scanFile($this->tempDir.'/test.blade.php');
 
     expect($keys)->toHaveCount(2)
         ->toContain('page.title', 'page.subtitle');
@@ -106,10 +103,10 @@ test('scanner handles mixed translation syntaxes', function () {
         {{ trans('key3') }}
     ";
 
-    File::put($this->tempDir . '/test.blade.php', $content);
+    File::put($this->tempDir.'/test.blade.php', $content);
 
     $scanner = new ViewScanner([$this->tempDir]);
-    $keys = $scanner->scanFile($this->tempDir . '/test.blade.php');
+    $keys = $scanner->scanFile($this->tempDir.'/test.blade.php');
 
     expect($keys)->toHaveCount(3)
         ->toContain('key1', 'key2', 'key3');
@@ -122,18 +119,18 @@ test('scanner removes duplicate keys', function () {
         {{ __('unique.key') }}
     ";
 
-    File::put($this->tempDir . '/test.blade.php', $content);
+    File::put($this->tempDir.'/test.blade.php', $content);
 
     $scanner = new ViewScanner([$this->tempDir]);
-    $keys = $scanner->scanFile($this->tempDir . '/test.blade.php');
+    $keys = $scanner->scanFile($this->tempDir.'/test.blade.php');
 
     expect($keys)->toHaveCount(2)
         ->toContain('duplicate.key', 'unique.key');
 });
 
 test('scanner scans multiple files', function () {
-    File::put($this->tempDir . '/file1.blade.php', "{{ __('key1') }}");
-    File::put($this->tempDir . '/file2.blade.php', "{{ __('key2') }}");
+    File::put($this->tempDir.'/file1.blade.php', "{{ __('key1') }}");
+    File::put($this->tempDir.'/file2.blade.php', "{{ __('key2') }}");
 
     $scanner = new ViewScanner([$this->tempDir]);
     $keys = $scanner->scanAll();
@@ -143,8 +140,8 @@ test('scanner scans multiple files', function () {
 });
 
 test('scanner provides statistics', function () {
-    File::put($this->tempDir . '/test1.blade.php', "{{ __('key1') }}");
-    File::put($this->tempDir . '/test2.blade.php', "{{ __('key2') }}");
+    File::put($this->tempDir.'/test1.blade.php', "{{ __('key1') }}");
+    File::put($this->tempDir.'/test2.blade.php', "{{ __('key2') }}");
 
     $scanner = new ViewScanner([$this->tempDir]);
     $stats = $scanner->getStatistics();
@@ -158,12 +155,12 @@ test('scanner provides statistics', function () {
 });
 
 test('scanner excludes files matching patterns', function () {
-    File::put($this->tempDir . '/include.blade.php', "{{ __('key1') }}");
-    
+    File::put($this->tempDir.'/include.blade.php', "{{ __('key1') }}");
+
     // Create vendor subdirectory
-    $vendorDir = $this->tempDir . '/vendor';
+    $vendorDir = $this->tempDir.'/vendor';
     File::makeDirectory($vendorDir, 0755, true);
-    File::put($vendorDir . '/exclude.blade.php', "{{ __('key2') }}");
+    File::put($vendorDir.'/exclude.blade.php', "{{ __('key2') }}");
 
     $scanner = new ViewScanner([$this->tempDir], ['vendor']);
     $files = $scanner->scanForBladeFiles();

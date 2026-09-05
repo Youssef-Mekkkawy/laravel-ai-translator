@@ -4,8 +4,8 @@ namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\KeyExtractor;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
 
 class ScanTranslationsCommand extends Command
 {
@@ -30,19 +30,21 @@ class ScanTranslationsCommand extends Command
 
         if (empty($paths)) {
             $this->components->warn('⚠️  No valid scan paths found. Check your config or use --path.');
+
             return self::FAILURE;
         }
 
-        $scanner   = new ViewScanner($paths);
-        $extractor = new KeyExtractor();
+        $scanner = new ViewScanner($paths);
+        $extractor = new KeyExtractor;
 
-        $this->components->info('📂 Scanning: ' . implode(', ', $paths));
+        $this->components->info('📂 Scanning: '.implode(', ', $paths));
         $this->newLine();
 
         $keys = $scanner->scanAll();
 
         if (empty($keys)) {
             $this->components->warn('⚠️  No translation keys found');
+
             return self::SUCCESS;
         }
 
@@ -50,30 +52,30 @@ class ScanTranslationsCommand extends Command
         $this->components->info("✅ Found {$keyCount} unique translation keys");
         $this->newLine();
 
-        $defaultLang  = config('ai-translator.default_language', 'en');
-        $langBasePath = base_path('lang' . DIRECTORY_SEPARATOR . $defaultLang);
-        $missingOnly  = $this->option('missing-only');
+        $defaultLang = config('ai-translator.default_language', 'en');
+        $langBasePath = base_path('lang'.DIRECTORY_SEPARATOR.$defaultLang);
+        $missingOnly = $this->option('missing-only');
 
-        $rows          = [];
+        $rows = [];
         $existingCount = 0;
-        $missingCount  = 0;
+        $missingCount = 0;
 
         foreach ($keys as $key) {
-            $parsed       = $extractor->extractFromKey($key);
-            $file         = $parsed['file'];
-            $subKey       = $parsed['key'];
+            $parsed = $extractor->extractFromKey($key);
+            $file = $parsed['file'];
+            $subKey = $parsed['key'];
             $defaultValue = $parsed['default_value'];
 
-            $langFile = $langBasePath . DIRECTORY_SEPARATOR . $file . '.php';
-            $exists   = false;
-            $value    = "(missing) → {$defaultValue}";
+            $langFile = $langBasePath.DIRECTORY_SEPARATOR.$file.'.php';
+            $exists = false;
+            $value = "(missing) → {$defaultValue}";
 
             if (File::exists($langFile)) {
                 $translations = require $langFile;
 
                 if (is_array($translations) && isset($translations[$subKey])) {
                     $exists = true;
-                    $value  = $translations[$subKey];
+                    $value = $translations[$subKey];
                     $existingCount++;
                 } else {
                     $missingCount++;
@@ -88,13 +90,13 @@ class ScanTranslationsCommand extends Command
 
             $rows[] = [
                 $key,
-                $file . '.php',
+                $file.'.php',
                 $exists ? '✅' : '❌',
                 $value,
             ];
         }
 
-        if (!empty($rows)) {
+        if (! empty($rows)) {
             $this->components->info('📋 Translation Keys:');
             $this->newLine();
             $this->table(['Key', 'File', 'Exists', 'Value'], $rows);

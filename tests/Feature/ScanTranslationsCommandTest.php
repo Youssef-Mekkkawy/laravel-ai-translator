@@ -5,15 +5,15 @@ use Illuminate\Support\Facades\File;
 beforeEach(function () {
     // Create temp directory for test views
     $this->testViewsPath = base_path('resources/test-views');
-    
-    if (!File::exists($this->testViewsPath)) {
+
+    if (! File::exists($this->testViewsPath)) {
         File::makeDirectory($this->testViewsPath, 0755, true);
     }
 
     // Create temp lang directory
     $this->testLangPath = base_path('lang/en');
-    
-    if (!File::exists($this->testLangPath)) {
+
+    if (! File::exists($this->testLangPath)) {
         File::makeDirectory($this->testLangPath, 0755, true);
     }
 });
@@ -27,7 +27,7 @@ afterEach(function () {
 
 test('scan command scans views and displays results', function () {
     // Create test view with translation keys
-    File::put($this->testViewsPath . '/welcome.blade.php', "
+    File::put($this->testViewsPath.'/welcome.blade.php', "
         <h1>{{ __('welcome.title') }}</h1>
         <p>{{ __('welcome.description') }}</p>
     ");
@@ -40,7 +40,7 @@ test('scan command scans views and displays results', function () {
 
 test('scan command shows missing translations', function () {
     // Create view with keys
-    File::put($this->testViewsPath . '/test.blade.php', "
+    File::put($this->testViewsPath.'/test.blade.php', "
         {{ __('missing.key') }}
     ");
 
@@ -51,10 +51,10 @@ test('scan command shows missing translations', function () {
 
 test('scan command shows only missing when flag is used', function () {
     // Create a translation file
-    File::put($this->testLangPath . '/test.php', "<?php\nreturn ['exists' => 'Value'];");
+    File::put($this->testLangPath.'/test.php', "<?php\nreturn ['exists' => 'Value'];");
 
     // Create view with both existing and missing keys
-    File::put($this->testViewsPath . '/test.blade.php', "
+    File::put($this->testViewsPath.'/test.blade.php', "
         {{ __('test.exists') }}
         {{ __('test.missing') }}
     ");
@@ -67,7 +67,7 @@ test('scan command shows only missing when flag is used', function () {
 });
 
 test('scan command handles multiple syntaxes', function () {
-    File::put($this->testViewsPath . '/test.blade.php', "
+    File::put($this->testViewsPath.'/test.blade.php', "
         {{ __('key1') }}
         @lang('key2')
         {{ trans('key3') }}
@@ -79,7 +79,7 @@ test('scan command handles multiple syntaxes', function () {
 
 test('scan command shows warning when no keys found', function () {
     // Create view without translation keys
-    File::put($this->testViewsPath . '/empty.blade.php', '<h1>No translations</h1>');
+    File::put($this->testViewsPath.'/empty.blade.php', '<h1>No translations</h1>');
 
     $this->artisan('lang:scan', ['--path' => [$this->testViewsPath]])
         ->expectsOutputToContain('No translation keys found')
@@ -87,7 +87,7 @@ test('scan command shows warning when no keys found', function () {
 });
 
 test('scan command handles nested keys', function () {
-    File::put($this->testViewsPath . '/test.blade.php', "
+    File::put($this->testViewsPath.'/test.blade.php', "
         {{ __('auth.login.title') }}
         {{ __('messages.success.saved') }}
     ");
@@ -98,10 +98,10 @@ test('scan command handles nested keys', function () {
 
 test('scan command shows summary statistics', function () {
     // Create translation file with some existing keys
-    File::put($this->testLangPath . '/test.php', "<?php\nreturn ['existing' => 'Value'];");
+    File::put($this->testLangPath.'/test.php', "<?php\nreturn ['existing' => 'Value'];");
 
     // Create view with keys
-    File::put($this->testViewsPath . '/test.blade.php', "
+    File::put($this->testViewsPath.'/test.blade.php', "
         {{ __('test.existing') }}
         {{ __('test.missing') }}
     ");
@@ -116,8 +116,8 @@ test('scan command can scan multiple paths', function () {
     $secondPath = base_path('resources/test-views-2');
     File::ensureDirectoryExists($secondPath);
 
-    File::put($this->testViewsPath . '/file1.blade.php', "{{ __('key1') }}");
-    File::put($secondPath . '/file2.blade.php', "{{ __('key2') }}");
+    File::put($this->testViewsPath.'/file1.blade.php', "{{ __('key1') }}");
+    File::put($secondPath.'/file2.blade.php', "{{ __('key2') }}");
 
     $this->artisan('lang:scan', [
         '--path' => [$this->testViewsPath, $secondPath],
@@ -128,7 +128,7 @@ test('scan command can scan multiple paths', function () {
 });
 
 test('scan command removes duplicate keys', function () {
-    File::put($this->testViewsPath . '/test.blade.php', "
+    File::put($this->testViewsPath.'/test.blade.php', "
         {{ __('duplicate.key') }}
         {{ __('duplicate.key') }}
         {{ __('unique.key') }}
@@ -139,7 +139,7 @@ test('scan command removes duplicate keys', function () {
 });
 
 test('scan command displays table with key information', function () {
-    File::put($this->testViewsPath . '/test.blade.php', "
+    File::put($this->testViewsPath.'/test.blade.php', "
         {{ __('test.key') }}
     ");
 
@@ -149,7 +149,7 @@ test('scan command displays table with key information', function () {
 });
 
 test('scan command shows auto-generated values for missing keys', function () {
-    File::put($this->testViewsPath . '/test.blade.php', "
+    File::put($this->testViewsPath.'/test.blade.php', "
         {{ __('Welcome Home') }}
     ");
 

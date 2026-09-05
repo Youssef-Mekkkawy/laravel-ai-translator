@@ -19,7 +19,7 @@ class ListLockedCommand extends Command
         $language = $this->option('lang');
         $detailed = $this->option('detail');
 
-        $storage     = new LockStorage();
+        $storage = new LockStorage;
         $lockManager = new LockManager($storage);
 
         $rawLocks = $lockManager->getAll($language);
@@ -37,7 +37,7 @@ class ListLockedCommand extends Command
         } else {
             // All languages
             foreach ($rawLocks as $lang => $langLocks) {
-                if (!is_array($langLocks)) {
+                if (! is_array($langLocks)) {
                     continue;
                 }
                 foreach ($langLocks as $key => $info) {
@@ -49,6 +49,7 @@ class ListLockedCommand extends Command
         if (empty($flatLocks)) {
             $this->info('✨ No locked translations found.');
             $this->comment("💡 Use 'lang:lock' to protect translations from auto-updates.");
+
             return self::SUCCESS;
         }
 
@@ -64,11 +65,11 @@ class ListLockedCommand extends Command
         if ($detailed) {
             foreach ($flatLocks as $item) {
                 $this->line("\n  [{$item['lang']}] 🔑 {$item['key']}");
-                $this->line('     Value: '     . ($item['info']['value']     ?? 'N/A'));
-                $this->line('     Locked by: ' . ($item['info']['locked_by'] ?? 'Unknown'));
-                $this->line('     Locked at: ' . ($item['info']['locked_at'] ?? 'Unknown'));
-                if (!empty($item['info']['reason'])) {
-                    $this->line('     Reason: ' . $item['info']['reason']);
+                $this->line('     Value: '.($item['info']['value'] ?? 'N/A'));
+                $this->line('     Locked by: '.($item['info']['locked_by'] ?? 'Unknown'));
+                $this->line('     Locked at: '.($item['info']['locked_at'] ?? 'Unknown'));
+                if (! empty($item['info']['reason'])) {
+                    $this->line('     Reason: '.$item['info']['reason']);
                 }
             }
         } else {
@@ -78,7 +79,7 @@ class ListLockedCommand extends Command
                 $rows[] = [
                     $item['lang'],
                     $item['key'],
-                    mb_strlen($value) > 30 ? mb_substr($value, 0, 30) . '...' : $value,
+                    mb_strlen($value) > 30 ? mb_substr($value, 0, 30).'...' : $value,
                     $item['info']['locked_by'] ?? 'Unknown',
                 ];
             }
@@ -86,6 +87,7 @@ class ListLockedCommand extends Command
         }
 
         $this->newLine();
+
         return self::SUCCESS;
     }
 }

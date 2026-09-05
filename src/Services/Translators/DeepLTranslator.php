@@ -2,8 +2,8 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Services\Translators;
 
-use DeepL\Translator as DeepLClient;
 use DeepL\DeepLException;
+use DeepL\Translator as DeepLClient;
 
 class DeepLTranslator extends AbstractTranslator
 {
@@ -32,7 +32,7 @@ class DeepLTranslator extends AbstractTranslator
     {
         if ($this->client === null) {
             $apiKey = $this->getConfig('api_key');
-            
+
             if (empty($apiKey)) {
                 throw new \RuntimeException('DeepL API key not configured');
             }
@@ -159,7 +159,7 @@ class DeepLTranslator extends AbstractTranslator
     public function estimateCost(array $texts, array $targetLangs): array
     {
         $totalChars = 0;
-        
+
         foreach ($texts as $text) {
             $totalChars += mb_strlen($text);
         }
@@ -193,7 +193,7 @@ class DeepLTranslator extends AbstractTranslator
                 'character_count' => $usage->character->count ?? 0,
                 'character_limit' => $usage->character->limit ?? 0,
                 'remaining' => ($usage->character->limit ?? 0) - ($usage->character->count ?? 0),
-                'percentage_used' => $usage->character->limit > 0 
+                'percentage_used' => $usage->character->limit > 0
                     ? round(($usage->character->count / $usage->character->limit) * 100, 2)
                     : 0,
             ];
@@ -209,7 +209,7 @@ class DeepLTranslator extends AbstractTranslator
     {
         try {
             $languages = $this->getClient()->getTargetLanguages();
-            
+
             $supported = [];
             foreach ($languages as $language) {
                 $supported[] = [

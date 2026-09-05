@@ -2,10 +2,10 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
 
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Backup\BackupService;
-use Carbon\Carbon;
 
 class ListBackupsCommand extends Command
 {
@@ -42,6 +42,7 @@ class ListBackupsCommand extends Command
         if (empty($backups)) {
             $this->warn('⚠️  No backups found.');
             $this->comment("💡 Backups are created automatically when you run 'php artisan lang:translate'.");
+
             return self::SUCCESS;
         }
 
@@ -95,7 +96,7 @@ class ListBackupsCommand extends Command
             $languages = $this->detectLanguages($backup['path']);
             $fileCount = $this->countFiles($backup['path']);
 
-            $this->info("📦 Backup: " . $this->formatTimestamp($backup['timestamp']));
+            $this->info('📦 Backup: '.$this->formatTimestamp($backup['timestamp']));
             $this->newLine();
 
             $this->table(
@@ -110,7 +111,7 @@ class ListBackupsCommand extends Command
 
             $files = File::allFiles($backup['path']);
 
-            if (!empty($files)) {
+            if (! empty($files)) {
                 $this->newLine();
                 $this->line('Files included:');
 
@@ -128,7 +129,7 @@ class ListBackupsCommand extends Command
      */
     protected function countFiles(string $path): int
     {
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return 0;
         }
 
@@ -140,7 +141,7 @@ class ListBackupsCommand extends Command
      */
     protected function detectLanguages(string $backupPath): array
     {
-        if (!File::exists($backupPath)) {
+        if (! File::exists($backupPath)) {
             return [];
         }
 

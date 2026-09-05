@@ -18,10 +18,10 @@ class UnlockTranslationCommand extends Command
     public function handle(): int
     {
         $language = $this->argument('language');
-        $key      = $this->argument('key');
-        $all      = $this->option('all');
+        $key = $this->argument('key');
+        $all = $this->option('all');
 
-        $storage     = new LockStorage();
+        $storage = new LockStorage;
         $lockManager = new LockManager($storage);
 
         if ($all) {
@@ -36,9 +36,10 @@ class UnlockTranslationCommand extends Command
      */
     protected function unlockSingle(LockManager $lockManager, string $language, string $key): int
     {
-        if (!$lockManager->isLocked($language, $key)) {
+        if (! $lockManager->isLocked($language, $key)) {
             // FIX: return SUCCESS (not FAILURE) — key simply isn't locked
             $this->warn("⚠️  Translation is not locked: {$language}/{$key}");
+
             return self::SUCCESS;
         }
 
@@ -64,6 +65,7 @@ class UnlockTranslationCommand extends Command
 
         if ($count === 0) {
             $this->warn("⚠️  No locked keys found matching pattern: {$pattern}");
+
             return self::SUCCESS;
         }
 

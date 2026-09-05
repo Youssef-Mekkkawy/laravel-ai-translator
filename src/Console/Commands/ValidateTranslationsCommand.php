@@ -15,10 +15,10 @@ class ValidateTranslationsCommand extends Command
 
     public function handle(): int
     {
-        $sourceLang   = config('laravel-ai-translator.default_language',
-                          config('ai-translator.default_language', 'en'));
+        $sourceLang = config('laravel-ai-translator.default_language',
+            config('ai-translator.default_language', 'en'));
         $allLanguages = config('laravel-ai-translator.languages',
-                          config('ai-translator.languages', ['ar', 'fr', 'es']));
+            config('ai-translator.languages', ['ar', 'fr', 'es']));
         $specificLang = $this->option('lang');
 
         $targetLanguages = $specificLang
@@ -31,27 +31,28 @@ class ValidateTranslationsCommand extends Command
 
         if (empty($sourceTranslations)) {
             $this->warn("No source translations found for: {$sourceLang}");
+
             return self::SUCCESS;
         }
 
-        $totalMissing           = 0;
+        $totalMissing = 0;
         $totalPlaceholderIssues = 0;
-        $totalHtmlIssues        = 0;
-        $totalLengthWarnings    = 0;
-        $placeholderIssueKeys   = [];
+        $totalHtmlIssues = 0;
+        $totalLengthWarnings = 0;
+        $placeholderIssueKeys = [];
 
         foreach ($targetLanguages as $lang) {
             $this->line("--- Checking [{$lang}] ---");
 
             $targetTranslations = $this->loadTranslations($lang);
-            $missing            = $this->checkMissingTranslations($sourceTranslations, $targetTranslations);
+            $missing = $this->checkMissingTranslations($sourceTranslations, $targetTranslations);
 
             $keyCount = count($sourceTranslations);
             if (empty($missing)) {
                 // Both "All" and "keys present" are in this string
                 $this->line("All {$keyCount} keys present for [{$lang}].");
             } else {
-                $this->line(count($missing) . ' keys missing for [' . $lang . ']:');
+                $this->line(count($missing).' keys missing for ['.$lang.']:');
                 foreach ($missing as $key) {
                     $this->line("  - {$key}");
                 }
@@ -62,9 +63,9 @@ class ValidateTranslationsCommand extends Command
             if (empty($placeholderIssues)) {
                 $this->line("All placeholders preserved for [{$lang}].");
             } else {
-                $this->line(count($placeholderIssues) . ' placeholder mismatch(es) for [' . $lang . ']:');
+                $this->line(count($placeholderIssues).' placeholder mismatch(es) for ['.$lang.']:');
                 foreach ($placeholderIssues as $issue) {
-                    $this->line("  - {$issue['key']}: Missing " . implode(', ', $issue['missing']) . ' placeholder(s)');
+                    $this->line("  - {$issue['key']}: Missing ".implode(', ', $issue['missing']).' placeholder(s)');
                     $placeholderIssueKeys[] = $issue['key'];
                 }
                 $totalPlaceholderIssues += count($placeholderIssues);
@@ -74,9 +75,9 @@ class ValidateTranslationsCommand extends Command
             if (empty($htmlIssues)) {
                 $this->line("All HTML tags preserved for [{$lang}].");
             } else {
-                $this->line(count($htmlIssues) . ' HTML tag mismatch(es) for [' . $lang . ']:');
+                $this->line(count($htmlIssues).' HTML tag mismatch(es) for ['.$lang.']:');
                 foreach ($htmlIssues as $issue) {
-                    $this->line("  - {$issue['key']}: Missing " . implode(', ', $issue['missing']) . ' tag(s)');
+                    $this->line("  - {$issue['key']}: Missing ".implode(', ', $issue['missing']).' tag(s)');
                 }
                 $totalHtmlIssues += count($htmlIssues);
             }
@@ -85,7 +86,7 @@ class ValidateTranslationsCommand extends Command
             if (empty($lengthWarnings)) {
                 $this->line("All lengths acceptable for [{$lang}].");
             } else {
-                $this->line(count($lengthWarnings) . ' length warning(s) for [' . $lang . ']:');
+                $this->line(count($lengthWarnings).' length warning(s) for ['.$lang.']:');
                 foreach ($lengthWarnings as $w) {
                     $this->line("  - {$w['key']}: {$w['ratio']}x longer than source");
                 }
@@ -96,38 +97,40 @@ class ValidateTranslationsCommand extends Command
         // Summary
         $this->newLine();
         $this->info('Summary:');
-        $this->info('Total keys checked : ' . count($sourceTranslations));
-        $this->info('Languages checked  : ' . count($targetLanguages));
-        $this->info('Missing            : ' . $totalMissing);
-        $this->info('Placeholder issues : ' . $totalPlaceholderIssues);
-        $this->info('HTML issues        : ' . $totalHtmlIssues);
-        $this->info('Length warnings    : ' . $totalLengthWarnings);
+        $this->info('Total keys checked : '.count($sourceTranslations));
+        $this->info('Languages checked  : '.count($targetLanguages));
+        $this->info('Missing            : '.$totalMissing);
+        $this->info('Placeholder issues : '.$totalPlaceholderIssues);
+        $this->info('HTML issues        : '.$totalHtmlIssues);
+        $this->info('Length warnings    : '.$totalLengthWarnings);
 
-        if (!empty($placeholderIssueKeys)) {
-            $this->info('Placeholder issues in: ' . implode(', ', array_unique($placeholderIssueKeys)));
+        if (! empty($placeholderIssueKeys)) {
+            $this->info('Placeholder issues in: '.implode(', ', array_unique($placeholderIssueKeys)));
         }
 
-        $hasErrors   = $totalMissing > 0 || $totalPlaceholderIssues > 0 || $totalHtmlIssues > 0;
+        $hasErrors = $totalMissing > 0 || $totalPlaceholderIssues > 0 || $totalHtmlIssues > 0;
         $hasWarnings = $totalLengthWarnings > 0;
-        $strict      = $this->option('strict');
+        $strict = $this->option('strict');
 
         if ($hasErrors || ($strict && $hasWarnings)) {
             $this->error('Validation failed.');
+
             return self::FAILURE;
         }
 
         $this->info('All translations valid.');
         $this->info('All keys present.');
+
         return self::SUCCESS;
     }
 
     protected function loadTranslations(string $lang): array
     {
-        $sep      = DIRECTORY_SEPARATOR;
+        $sep = DIRECTORY_SEPARATOR;
         $langBase = rtrim(str_replace(['/', '\\'], $sep, lang_path()), '/\\');
-        $langPath = $langBase . $sep . $lang;
+        $langPath = $langBase.$sep.$lang;
 
-        if (!is_dir($langPath)) {
+        if (! is_dir($langPath)) {
             return [];
         }
 
@@ -136,13 +139,13 @@ class ValidateTranslationsCommand extends Command
         // glob() is more reliable than File::files() on Windows with mixed separators.
         // @include suppresses PHP warnings (e.g. path/encoding quirks) and returns
         // false on failure rather than emitting a warning that pollutes the output.
-        $phpFiles = glob($langPath . $sep . '*.php') ?: [];
+        $phpFiles = glob($langPath.$sep.'*.php') ?: [];
 
         foreach ($phpFiles as $filePath) {
             $group = pathinfo($filePath, PATHINFO_FILENAME);
-            $data  = @include $filePath;
+            $data = @include $filePath;
 
-            if (!is_array($data)) {
+            if (! is_array($data)) {
                 continue;
             }
 
@@ -165,6 +168,7 @@ class ValidateTranslationsCommand extends Command
                 $result[$fullKey] = $value;
             }
         }
+
         return $result;
     }
 
@@ -177,7 +181,7 @@ class ValidateTranslationsCommand extends Command
     {
         $issues = [];
         foreach ($source as $key => $sourceValue) {
-            if (!isset($target[$key]) || !is_string($sourceValue)) {
+            if (! isset($target[$key]) || ! is_string($sourceValue)) {
                 continue;
             }
             $sourcePh = $this->extractPlaceholders($sourceValue);
@@ -185,10 +189,11 @@ class ValidateTranslationsCommand extends Command
                 continue;
             }
             $missing = array_values(array_diff($sourcePh, $this->extractPlaceholders((string) $target[$key])));
-            if (!empty($missing)) {
+            if (! empty($missing)) {
                 $issues[] = ['key' => $key, 'missing' => $missing];
             }
         }
+
         return $issues;
     }
 
@@ -196,6 +201,7 @@ class ValidateTranslationsCommand extends Command
     {
         preg_match_all('/:[a-z_]+/i', $value, $named);
         preg_match_all('/\{[0-9]+\}/', $value, $indexed);
+
         return array_unique(array_merge($named[0], $indexed[0]));
     }
 
@@ -203,7 +209,7 @@ class ValidateTranslationsCommand extends Command
     {
         $issues = [];
         foreach ($source as $key => $sourceValue) {
-            if (!isset($target[$key]) || !is_string($sourceValue)) {
+            if (! isset($target[$key]) || ! is_string($sourceValue)) {
                 continue;
             }
             $sourceTags = $this->extractHtmlTags($sourceValue);
@@ -211,16 +217,18 @@ class ValidateTranslationsCommand extends Command
                 continue;
             }
             $missing = array_values(array_diff($sourceTags, $this->extractHtmlTags((string) $target[$key])));
-            if (!empty($missing)) {
+            if (! empty($missing)) {
                 $issues[] = ['key' => $key, 'missing' => $missing];
             }
         }
+
         return $issues;
     }
 
     protected function extractHtmlTags(string $value): array
     {
         preg_match_all('/<[^>]+>/', $value, $matches);
+
         return array_unique($matches[0]);
     }
 
@@ -228,7 +236,7 @@ class ValidateTranslationsCommand extends Command
     {
         $warnings = [];
         foreach ($source as $key => $sourceValue) {
-            if (!isset($target[$key]) || !is_string($sourceValue) || $sourceValue === '') {
+            if (! isset($target[$key]) || ! is_string($sourceValue) || $sourceValue === '') {
                 continue;
             }
             $sourceLen = mb_strlen($sourceValue);
@@ -237,6 +245,7 @@ class ValidateTranslationsCommand extends Command
                 $warnings[] = ['key' => $key, 'ratio' => round($targetLen / $sourceLen, 1)];
             }
         }
+
         return $warnings;
     }
 }

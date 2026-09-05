@@ -8,22 +8,16 @@ class ViewScanner
 {
     /**
      * Paths to scan for blade files.
-     *
-     * @var array
      */
     protected array $paths;
 
     /**
      * Patterns to exclude from scanning.
-     *
-     * @var array
      */
     protected array $excludePatterns;
 
     /**
      * Statistics about the scan.
-     *
-     * @var array
      */
     protected array $statistics = [
         'total_files' => 0,
@@ -33,23 +27,18 @@ class ViewScanner
 
     /**
      * Whether a scan has been performed.
-     *
-     * @var bool
      */
     protected bool $hasScanned = false;
 
     /**
      * Create a new ViewScanner instance.
-     *
-     * @param  array  $paths
-     * @param  array|null  $excludePatterns
      */
     public function __construct(array $paths = [], ?array $excludePatterns = null)
     {
-        $this->paths = empty($paths) 
-            ? config('ai-translator.scan_paths', [resource_path('views')]) 
+        $this->paths = empty($paths)
+            ? config('ai-translator.scan_paths', [resource_path('views')])
             : $paths;
-            
+
         // Only use config defaults if NO exclude patterns were explicitly passed
         // If empty array is passed, use that (allows disabling exclusions)
         if ($excludePatterns === null && empty($paths)) {
@@ -62,15 +51,13 @@ class ViewScanner
 
     /**
      * Scan for all blade files in configured paths.
-     *
-     * @return array
      */
     public function scanForBladeFiles(): array
     {
         $bladeFiles = [];
 
         foreach ($this->paths as $path) {
-            if (!File::exists($path)) {
+            if (! File::exists($path)) {
                 continue;
             }
 
@@ -79,6 +66,7 @@ class ViewScanner
                 if (str_ends_with($path, '.blade.php')) {
                     $bladeFiles[] = $path;
                 }
+
                 continue;
             }
 
@@ -105,13 +93,10 @@ class ViewScanner
 
     /**
      * Scan a single file for translation keys.
-     *
-     * @param  string  $filepath
-     * @return array
      */
     public function scanFile(string $filepath): array
     {
-        if (!File::exists($filepath)) {
+        if (! File::exists($filepath)) {
             return [];
         }
 
@@ -124,8 +109,6 @@ class ViewScanner
 
     /**
      * Scan all configured paths for translation keys.
-     *
-     * @return array
      */
     public function scanAll(): array
     {
@@ -150,22 +133,19 @@ class ViewScanner
     /**
      * Scan a specific directory path for translation keys.
      * This method is used by commands that need to scan custom paths.
-     *
-     * @param  string  $path
-     * @return array
      */
     public function scan(string $path): array
     {
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return [];
         }
 
         // Temporarily set path and scan
         $originalPaths = $this->paths;
         $this->paths = [$path];
-        
+
         $keys = $this->scanAll();
-        
+
         // Restore original paths
         $this->paths = $originalPaths;
 
@@ -175,13 +155,11 @@ class ViewScanner
     /**
      * Get statistics about the scan.
      * If no scan has been performed yet, automatically trigger one.
-     *
-     * @return array
      */
     public function getStatistics(): array
     {
         // Auto-scan if not scanned yet
-        if (!$this->hasScanned) {
+        if (! $this->hasScanned) {
             $this->scanAll();
         }
 
@@ -190,9 +168,6 @@ class ViewScanner
 
     /**
      * Check if a filepath should be excluded.
-     *
-     * @param  string  $filepath
-     * @return bool
      */
     protected function shouldExclude(string $filepath): bool
     {
@@ -207,7 +182,7 @@ class ViewScanner
         foreach ($this->excludePatterns as $pattern) {
             // Normalize pattern
             $pattern = str_replace('\\', '/', trim($pattern));
-            
+
             if (empty($pattern)) {
                 continue;
             }
@@ -218,7 +193,7 @@ class ViewScanner
             $simplePattern = trim($simplePattern, '/');
 
             // Check if the simple pattern appears anywhere in the path
-            if (!empty($simplePattern) && str_contains($filepath, $simplePattern)) {
+            if (! empty($simplePattern) && str_contains($filepath, $simplePattern)) {
                 return true;
             }
         }
@@ -228,9 +203,6 @@ class ViewScanner
 
     /**
      * Extract translation keys from file content.
-     *
-     * @param  string  $content
-     * @return array
      */
     protected function extractKeysFromContent(string $content): array
     {

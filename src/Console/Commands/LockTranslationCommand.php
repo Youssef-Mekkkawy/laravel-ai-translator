@@ -37,7 +37,7 @@ class LockTranslationCommand extends Command
         $all = $this->option('all');
 
         // Initialize lock manager
-        $storage = new LockStorage();
+        $storage = new LockStorage;
         $lockManager = new LockManager($storage);
 
         // Check if pattern mode (--all flag)
@@ -57,15 +57,15 @@ class LockTranslationCommand extends Command
         // Check if already locked
         if ($lockManager->isLocked($language, $key)) {
             $this->warn("⚠️  Translation already locked: {$language}/{$key}");
-            
+
             $lock = $lockManager->getLock($language, $key);
             $this->info("   Locked at: {$lock['locked_at']}");
             $this->info("   Locked by: {$lock['locked_by']}");
             if ($lock['reason']) {
                 $this->info("   Reason: {$lock['reason']}");
             }
-            
-            if (!$this->confirm('Do you want to update the lock?', false)) {
+
+            if (! $this->confirm('Do you want to update the lock?', false)) {
                 return self::SUCCESS;
             }
         }
@@ -73,19 +73,20 @@ class LockTranslationCommand extends Command
         // Lock the key
         if ($lockManager->lock($language, $key, $reason)) {
             $this->info("🔒 Locked: {$language}/{$key}");
-            
+
             if ($reason) {
                 $this->comment("   Reason: {$reason}");
             }
-            
+
             $this->newLine();
-            $this->info("✅ Translation is now protected from auto-updates.");
+            $this->info('✅ Translation is now protected from auto-updates.');
             $this->comment("💡 Use 'lang:unlock {$language} {$key}' to unlock it.");
-            
+
             return self::SUCCESS;
         }
 
-        $this->error("❌ Failed to lock translation.");
+        $this->error('❌ Failed to lock translation.');
+
         return self::FAILURE;
     }
 
@@ -95,24 +96,25 @@ class LockTranslationCommand extends Command
     protected function lockPattern(LockManager $lockManager, string $language, string $pattern, ?string $reason): int
     {
         $this->info("🔍 Searching for keys matching pattern: {$pattern}");
-        
+
         $count = $lockManager->lockPattern($language, $pattern, $reason);
-        
+
         if ($count === 0) {
             $this->warn("⚠️  No keys found matching pattern: {$pattern}");
+
             return self::SUCCESS;
         }
 
         $this->info("🔒 Locked {$count} translation(s) matching '{$pattern}'");
-        
+
         if ($reason) {
             $this->comment("   Reason: {$reason}");
         }
-        
+
         $this->newLine();
         $this->info("✅ {$count} translations are now protected from auto-updates.");
         $this->comment("💡 Use 'lang:unlock {$language} {$pattern} --all' to unlock them.");
-        
+
         return self::SUCCESS;
     }
 }

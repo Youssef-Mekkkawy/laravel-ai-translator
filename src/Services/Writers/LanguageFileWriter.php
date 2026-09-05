@@ -2,19 +2,20 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Services\Writers;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\File;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Backup\BackupService;
-use Carbon\Carbon;
 
 class LanguageFileWriter
 {
     protected BackupService $backupService;
+
     protected array $config;
 
     public function __construct(BackupService $backupService, array $config = [])
     {
         $this->backupService = $backupService;
-        $this->config        = $config;
+        $this->config = $config;
     }
 
     /**
@@ -28,7 +29,7 @@ class LanguageFileWriter
      */
     public function write(string $lang, string $file, array $translations, bool $merge = true): string
     {
-        $filePath    = $this->getFilePath($lang, $file);
+        $filePath = $this->getFilePath($lang, $file);
         $fileExisted = File::exists($filePath);
 
         // ── Pre-write backup (existing files only) ───────────────────────
@@ -40,7 +41,7 @@ class LanguageFileWriter
         $existingTranslations = [];
         if ($merge && $fileExisted) {
             $existingTranslations = include $filePath;
-            if (!is_array($existingTranslations)) {
+            if (! is_array($existingTranslations)) {
                 $existingTranslations = [];
             }
         }
@@ -56,7 +57,7 @@ class LanguageFileWriter
         // ── Post-write backup (brand-new files only) ──────────────────────
         // Ensures write #1 also produces a backup snapshot so that N writes
         // always yield N backups, matching test expectations.
-        if (!$fileExisted && $this->backupService->isEnabled()) {
+        if (! $fileExisted && $this->backupService->isEnabled()) {
             $this->backupService->backupFile($filePath);
         }
 
@@ -82,7 +83,7 @@ class LanguageFileWriter
      */
     protected function generateFileContent(array $translations): string
     {
-        $header      = $this->generateHeader();
+        $header = $this->generateHeader();
         $arrayContent = $this->arrayToPhp($translations);
 
         return "<?php\n\n{$header}\nreturn {$arrayContent};\n";
@@ -120,17 +121,17 @@ HEADER;
             return '[]';
         }
 
-        $indent     = str_repeat('    ', $depth);
+        $indent = str_repeat('    ', $depth);
         $nextIndent = str_repeat('    ', $depth + 1);
-        $lines      = ['['];
+        $lines = ['['];
 
         foreach ($array as $key => $value) {
             $formattedKey = $this->formatKey($key);
 
             if (is_array($value)) {
-                $lines[] = "{$nextIndent}{$formattedKey} => " . $this->arrayToPhp($value, $depth + 1) . ',';
+                $lines[] = "{$nextIndent}{$formattedKey} => ".$this->arrayToPhp($value, $depth + 1).',';
             } else {
-                $lines[] = "{$nextIndent}{$formattedKey} => " . $this->formatValue($value) . ',';
+                $lines[] = "{$nextIndent}{$formattedKey} => ".$this->formatValue($value).',';
             }
         }
 
@@ -141,15 +142,22 @@ HEADER;
 
     protected function formatKey($key): string
     {
-        return "'" . addslashes((string) $key) . "'";
+        return "'".addslashes((string) $key)."'";
     }
 
     protected function formatValue($value): string
     {
-        if ($value === null)      { return 'null'; }
-        if (is_bool($value))     { return $value ? 'true' : 'false'; }
-        if (is_numeric($value))  { return (string) $value; }
-        return "'" . addslashes($value) . "'";
+        if ($value === null) {
+            return 'null';
+        }
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+        if (is_numeric($value)) {
+            return (string) $value;
+        }
+
+        return "'".addslashes($value)."'";
     }
 
     protected function getLangPath(): string
@@ -160,13 +168,13 @@ HEADER;
     protected function getFilePath(string $lang, string $file): string
     {
         return $this->getLangPath()
-            . DIRECTORY_SEPARATOR . $lang
-            . DIRECTORY_SEPARATOR . $file . '.php';
+            .DIRECTORY_SEPARATOR.$lang
+            .DIRECTORY_SEPARATOR.$file.'.php';
     }
 
     protected function ensureDirectoryExists(string $path): void
     {
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             File::makeDirectory($path, 0755, true);
         }
     }
@@ -180,11 +188,12 @@ HEADER;
     {
         $filePath = $this->getFilePath($lang, $file);
 
-        if (!File::exists($filePath)) {
+        if (! File::exists($filePath)) {
             return [];
         }
 
         $translations = include $filePath;
+
         return is_array($translations) ? $translations : [];
     }
 
@@ -192,7 +201,7 @@ HEADER;
     {
         $filePath = $this->getFilePath($lang, $file);
 
-        if (!File::exists($filePath)) {
+        if (! File::exists($filePath)) {
             return false;
         }
 
@@ -205,9 +214,9 @@ HEADER;
 
     public function getFiles(string $lang): array
     {
-        $langPath = $this->getLangPath() . DIRECTORY_SEPARATOR . $lang;
+        $langPath = $this->getLangPath().DIRECTORY_SEPARATOR.$lang;
 
-        if (!File::exists($langPath)) {
+        if (! File::exists($langPath)) {
             return [];
         }
 
@@ -235,10 +244,10 @@ HEADER;
 
             if (count($parts) === 1) {
                 $file = 'auto';
-                $key  = $parts[0];
+                $key = $parts[0];
             } else {
                 $file = $parts[0];
-                $key  = $parts[1];
+                $key = $parts[1];
             }
 
             if (str_contains($key, '.')) {
@@ -253,14 +262,14 @@ HEADER;
 
     protected function setNestedValue(array $array, string $key, $value): array
     {
-        $keys    = explode('.', $key);
+        $keys = explode('.', $key);
         $current = &$array;
 
         foreach ($keys as $i => $k) {
             if ($i === count($keys) - 1) {
                 $current[$k] = $value;
             } else {
-                if (!isset($current[$k]) || !is_array($current[$k])) {
+                if (! isset($current[$k]) || ! is_array($current[$k])) {
                     $current[$k] = [];
                 }
                 $current = &$current[$k];

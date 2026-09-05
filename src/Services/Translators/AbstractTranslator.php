@@ -41,7 +41,7 @@ abstract class AbstractTranslator implements TranslatorInterface
      */
     public function isAvailable(): bool
     {
-        return !empty($this->config['api_key'] ?? null);
+        return ! empty($this->config['api_key'] ?? null);
     }
 
     /**
@@ -55,7 +55,7 @@ abstract class AbstractTranslator implements TranslatorInterface
     public function estimateCost(array $texts, array $targetLangs): array
     {
         $totalChars = 0;
-        
+
         foreach ($texts as $text) {
             $totalChars += mb_strlen($text);
         }
@@ -77,17 +77,17 @@ abstract class AbstractTranslator implements TranslatorInterface
     protected function preservePlaceholders(string $text): array
     {
         $placeholders = [];
-        
+
         // Find all Laravel placeholders
         // Pattern 1: :name, :count, :attribute
         preg_match_all('/(:\w+)/', $text, $matches1);
-        
+
         // Pattern 2: {0}, {1}, {2}
         preg_match_all('/(\{\d+\})/', $text, $matches2);
-        
+
         // Combine all matches
         $allMatches = array_merge($matches1[1] ?? [], $matches2[1] ?? []);
-        
+
         // Replace with unique markers
         foreach (array_unique($allMatches) as $index => $placeholder) {
             $marker = "___PLACEHOLDER_{$index}___";
@@ -116,10 +116,10 @@ abstract class AbstractTranslator implements TranslatorInterface
     protected function preserveHtmlTags(string $text): array
     {
         $tags = [];
-        
+
         // Find all HTML tags
         preg_match_all('/(<[^>]+>)/', $text, $matches);
-        
+
         // Replace with unique markers
         foreach ($matches[1] ?? [] as $index => $tag) {
             $marker = "___TAG_{$index}___";
@@ -150,7 +150,7 @@ abstract class AbstractTranslator implements TranslatorInterface
     {
         // First preserve placeholders
         [$text, $placeholders] = $this->preservePlaceholders($text);
-        
+
         // Then preserve HTML tags
         [$text, $tags] = $this->preserveHtmlTags($text);
 

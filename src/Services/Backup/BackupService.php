@@ -2,8 +2,8 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Services\Backup;
 
-use Illuminate\Support\Facades\File;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\File;
 
 class BackupService
 {
@@ -33,15 +33,16 @@ class BackupService
     protected function makeTimestamp(): string
     {
         $base = Carbon::now()->format('Y-m-d_H-i-s');
-        $dir  = $this->getBackupPath() . DIRECTORY_SEPARATOR . $base;
+        $dir = $this->getBackupPath().DIRECTORY_SEPARATOR.$base;
 
-        if (!File::exists($dir)) {
+        if (! File::exists($dir)) {
             return $base;
         }
 
         // Collision — append microseconds to make it unique
         $micro = sprintf('%06d', (int) (fmod(microtime(true), 1) * 1_000_000));
-        return $base . '_' . $micro;
+
+        return $base.'_'.$micro;
     }
 
     /**
@@ -51,12 +52,12 @@ class BackupService
      */
     public function backup(): string
     {
-        $langPath   = $this->getLangPath();
+        $langPath = $this->getLangPath();
         $backupPath = $this->getBackupPath();
-        $timestamp  = $this->makeTimestamp();
-        $backupDir  = $backupPath . DIRECTORY_SEPARATOR . $timestamp;
+        $timestamp = $this->makeTimestamp();
+        $backupDir = $backupPath.DIRECTORY_SEPARATOR.$timestamp;
 
-        if (!File::exists($backupDir)) {
+        if (! File::exists($backupDir)) {
             File::makeDirectory($backupDir, 0755, true);
         }
 
@@ -65,12 +66,12 @@ class BackupService
 
             foreach (File::directories($langPath) as $dir) {
                 if (basename($dir) !== $backupDirName) {
-                    File::copyDirectory($dir, $backupDir . DIRECTORY_SEPARATOR . basename($dir));
+                    File::copyDirectory($dir, $backupDir.DIRECTORY_SEPARATOR.basename($dir));
                 }
             }
 
             foreach (File::files($langPath) as $file) {
-                File::copy($file->getPathname(), $backupDir . DIRECTORY_SEPARATOR . $file->getFilename());
+                File::copy($file->getPathname(), $backupDir.DIRECTORY_SEPARATOR.$file->getFilename());
             }
         }
 
@@ -84,22 +85,22 @@ class BackupService
      */
     public function backupFile(string $filePath): ?string
     {
-        if (!File::exists($filePath)) {
+        if (! File::exists($filePath)) {
             return null;
         }
 
-        $sep            = DIRECTORY_SEPARATOR;
-        $langPath       = rtrim(str_replace(['/', '\\'], $sep, $this->getLangPath()), $sep);
+        $sep = DIRECTORY_SEPARATOR;
+        $langPath = rtrim(str_replace(['/', '\\'], $sep, $this->getLangPath()), $sep);
         $normalizedFile = str_replace(['/', '\\'], $sep, $filePath);
-        $relativePath   = ltrim(str_replace($langPath . $sep, '', $normalizedFile), $sep);
+        $relativePath = ltrim(str_replace($langPath.$sep, '', $normalizedFile), $sep);
 
-        $backupPath    = $this->getBackupPath();
-        $timestamp     = $this->makeTimestamp();
-        $backupDir     = $backupPath . DIRECTORY_SEPARATOR . $timestamp;
-        $backupFile    = $backupDir . DIRECTORY_SEPARATOR . $relativePath;
+        $backupPath = $this->getBackupPath();
+        $timestamp = $this->makeTimestamp();
+        $backupDir = $backupPath.DIRECTORY_SEPARATOR.$timestamp;
+        $backupFile = $backupDir.DIRECTORY_SEPARATOR.$relativePath;
         $backupFileDir = dirname($backupFile);
 
-        if (!File::exists($backupFileDir)) {
+        if (! File::exists($backupFileDir)) {
             File::makeDirectory($backupFileDir, 0755, true);
         }
 
@@ -116,7 +117,7 @@ class BackupService
     {
         $backupPath = $this->getBackupPath();
 
-        if (!File::exists($backupPath)) {
+        if (! File::exists($backupPath)) {
             return [];
         }
 
@@ -126,9 +127,9 @@ class BackupService
             $timestamp = basename($dir);
             $backups[] = [
                 'timestamp' => $timestamp,
-                'path'      => $dir,
-                'date'      => $this->parseTimestamp($timestamp),
-                'size'      => $this->getDirectorySize($dir),
+                'path' => $dir,
+                'date' => $this->parseTimestamp($timestamp),
+                'size' => $this->getDirectorySize($dir),
             ];
         }
 
@@ -143,9 +144,9 @@ class BackupService
     public function restore(string $timestamp): bool
     {
         $backupPath = $this->getBackupPath();
-        $backupDir  = $backupPath . DIRECTORY_SEPARATOR . $timestamp;
+        $backupDir = $backupPath.DIRECTORY_SEPARATOR.$timestamp;
 
-        if (!File::exists($backupDir)) {
+        if (! File::exists($backupDir)) {
             throw new \RuntimeException("Backup not found: {$timestamp}");
         }
 
@@ -156,7 +157,7 @@ class BackupService
         // so the original backup is never overwritten.
         $this->backup();
 
-        if (!File::exists($backupDir)) {
+        if (! File::exists($backupDir)) {
             throw new \RuntimeException("Backup removed during safety-backup cleanup: {$timestamp}");
         }
 
@@ -180,7 +181,7 @@ class BackupService
 
     protected function cleanOldBackups(): void
     {
-        $keep    = $this->config['keep'] ?? 5;
+        $keep = $this->config['keep'] ?? 5;
         $backups = $this->listBackups();
 
         if (count($backups) <= $keep) {
@@ -205,6 +206,7 @@ class BackupService
                 // try next
             }
         }
+
         return null;
     }
 
@@ -214,6 +216,7 @@ class BackupService
         foreach (File::allFiles($path) as $file) {
             $size += $file->getSize();
         }
+
         return $size;
     }
 
@@ -221,7 +224,8 @@ class BackupService
     {
         $units = ['B', 'KB', 'MB', 'GB'];
         $power = $bytes > 0 ? (int) floor(log($bytes, 1024)) : 0;
-        return round($bytes / pow(1024, $power), 2) . ' ' . $units[$power];
+
+        return round($bytes / pow(1024, $power), 2).' '.$units[$power];
     }
 
     public function isEnabled(): bool
