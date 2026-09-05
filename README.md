@@ -1,45 +1,57 @@
-# Laravel AI Auto-Translator
+<div align="center">
+
+# 🌍 Laravel AI Translator
+
+**Automatic AI-powered translation for Laravel applications.**  
+Write your app once in English — translate everywhere automatically.
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/youssef-mekkkawy/laravel-ai-translator.svg?style=flat-square)](https://packagist.org/packages/youssef-mekkkawy/laravel-ai-translator)
 [![Total Downloads](https://img.shields.io/packagist/dt/youssef-mekkkawy/laravel-ai-translator.svg?style=flat-square)](https://packagist.org/packages/youssef-mekkkawy/laravel-ai-translator)
-[![GitHub Tests Action Status](https://img.shields.io/github/workflow/status/Youssef-Mekkkawy/laravel-ai-translator/run-tests?label=tests)](https://github.com/Youssef-Mekkkawy/laravel-ai-translator/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![Tests](https://img.shields.io/github/actions/workflow/status/Youssef-Mekkkawy/laravel-ai-translator/tests.yml?label=tests&style=flat-square)](https://github.com/Youssef-Mekkkawy/laravel-ai-translator/actions)
+[![PHP Version](https://img.shields.io/packagist/php-v/youssef-mekkkawy/laravel-ai-translator.svg?style=flat-square)](https://packagist.org/packages/youssef-mekkkawy/laravel-ai-translator)
+[![License](https://img.shields.io/github/license/Youssef-Mekkkawy/laravel-ai-translator?style=flat-square)](LICENSE)
 
-AI-powered automatic translation for Laravel applications. Write your app in one language, translate to many with a single command.
+</div>
+
+---
 
 ## The Problem
 
-Building multi-language Laravel apps traditionally requires:
+Building multi-language Laravel apps traditionally wastes **8+ hours per project**:
 
-- ❌ Creating duplicate inputs in admin panels for each language
+- ❌ Creating duplicate inputs in admin panels for every language
 - ❌ Manually copying content across language files
-- ❌ Running translation commands repeatedly
-- ❌ Lost manual edits when re-translating
-- ❌ Wasted time on busywork instead of features
-
-**8+ hours per project spent on translation admin.**
+- ❌ Re-translating everything when one string changes
+- ❌ Manual edits getting overwritten by automation
+- ❌ Paying $100–600/month for SaaS tools that are overkill
 
 ## The Solution
 
-Laravel AI Auto-Translator eliminates manual translation workflow:
+```bash
+composer require youssef-mekkkawy/laravel-ai-translator
+php artisan lang:translate
+```
 
-✅ Auto-scans Blade views for translation keys  
-✅ Detects new or changed translations  
-✅ Uses AI (DeepL, OpenAI, Claude) for high-quality translations  
-✅ Generates all language files automatically  
-✅ Protects manual edits with smart lock system  
-✅ Saves 70% on API costs with intelligent change tracking
+That's it. Your entire app is translated.
 
-**Write once. Translate everywhere. Automatically.**
+✅ Auto-scans all Blade views for `__()`, `@lang()`, and `trans()` keys  
+✅ Translates only what **changed** — saves 70%+ on API costs  
+✅ Protects manual edits with a **lock system**  
+✅ Works **offline and free** with [Ollama](https://ollama.com)  
+✅ Embedded dashboard at `/ai-translator` (like Laravel Telescope)  
+✅ Zero configuration required
 
-## Features
+---
 
-- 🔍 **Smart Scanning**: Automatically detects `__()`, `@lang()`, and `trans()` in your views
-- 🤖 **Multiple AI Providers**: DeepL, OpenAI, Claude (more coming soon)
-- 💰 **Cost Optimization**: Hash-based change tracking - only translate what changed
-- 🔒 **Manual Override Protection**: Lock translations to prevent overwrites
-- 💾 **Automatic Backups**: Every translation run creates a backup
-- ⚡ **Zero Configuration**: Works out of the box with sensible defaults
-- 🌍 **30+ Languages**: Support for all major languages
+## Requirements
+
+| Requirement | Version |
+|---|---|
+| PHP | 8.1+ |
+| Laravel | 10.x or 11.x |
+| Ollama *(optional)* | Any recent version |
+
+---
 
 ## Installation
 
@@ -47,340 +59,285 @@ Laravel AI Auto-Translator eliminates manual translation workflow:
 composer require youssef-mekkkawy/laravel-ai-translator
 ```
 
-Publish the configuration file (optional):
+Publish the config file (optional):
 
 ```bash
 php artisan vendor:publish --tag=ai-translator-config
 ```
 
+---
+
 ## Quick Start
 
-### 1. Configure Your AI Provider
+### 1. Choose your AI provider
 
-Add to your `.env`:
+**Option A — Ollama (free, local, no API key needed):**
 
 ```bash
-# Choose your provider (deepl, openai, or claude)
-AUTO_TRANSLATE_DRIVER=deepl
+# Install Ollama from https://ollama.com
+ollama pull llama3
+```
 
-# DeepL (recommended - free tier available)
-DEEPL_API_KEY=your-deepl-api-key
-DEEPL_PLAN=free  # or 'pro'
-
-# OR OpenAI
-OPENAI_API_KEY=sk-your-openai-key
-
-# OR Claude
-ANTHROPIC_API_KEY=sk-ant-your-claude-key
-
-# Your supported languages
+```env
+AUTO_TRANSLATE_DRIVER=ollama
+OLLAMA_MODEL=llama3
+OLLAMA_API_URL=http://localhost:11434
 SUPPORTED_LANGUAGES=en,ar,fr,es
 DEFAULT_LANGUAGE=en
 ```
 
-### 2. Run Translation
+**Option B — Cloud provider:**
+
+```env
+AUTO_TRANSLATE_DRIVER=deepl
+DEEPL_API_KEY=your-api-key
+SUPPORTED_LANGUAGES=en,ar,fr,es
+DEFAULT_LANGUAGE=en
+```
+
+### 2. Scan your views
 
 ```bash
-php artisan lang:sync
+php artisan lang:scan
 ```
 
-That's it! All your translation files are generated automatically.
+See all translation keys found in your Blade files, with their status.
 
-## Usage
-
-### Basic Workflow
-
-**1. Write your views in one language:**
-
-```blade
-<!-- resources/views/welcome.blade.php -->
-<h1>{{ __('welcome.title') }}</h1>
-<p>{{ __('welcome.description') }}</p>
-```
-
-**2. Create your English translations:**
-
-```php
-// lang/en/welcome.php
-return [
-    'title' => 'Welcome to Our Platform',
-    'description' => 'Start building amazing things today',
-];
-```
-
-**3. Run the sync command:**
+### 3. Translate
 
 ```bash
-php artisan lang:sync
+# Preview what would happen (no changes made)
+php artisan lang:translate --dry-run
+
+# Translate everything
+php artisan lang:translate
+
+# Translate to a specific language only
+php artisan lang:translate --lang=ar
+
+# Force re-translate all keys
+php artisan lang:translate --force
 ```
 
-**4. All language files generated automatically:**
+### 4. Result
 
 ```
 lang/
-├── en/welcome.php  (original)
-├── ar/welcome.php  (auto-generated: مرحبا في منصتنا)
-├── fr/welcome.php  (auto-generated: Bienvenue sur notre plateforme)
-└── es/welcome.php  (auto-generated: Bienvenido a nuestra plataforma)
+├── en/
+│   ├── auth.php         ← your original
+│   └── welcome.php      ← your original
+├── ar/
+│   ├── auth.php         ← auto-generated ✅
+│   └── welcome.php      ← auto-generated ✅
+├── fr/
+│   ├── auth.php         ← auto-generated ✅
+│   └── welcome.php      ← auto-generated ✅
+└── es/
+    ├── auth.php         ← auto-generated ✅
+    └── welcome.php      ← auto-generated ✅
 ```
 
-### Protecting Manual Edits
+---
 
-If you manually improve a translation, lock it to prevent overwrites:
+## AI Providers
+
+| Provider | Quality | Speed | Cost | Offline |
+|---|---|---|---|---|
+| **Ollama** | ⭐⭐⭐⭐ | ⭐⭐⭐ | Free | ✅ Yes |
+| **DeepL** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | $ | ❌ No |
+| **Claude** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | $$ | ❌ No |
+| **ChatGPT** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | $$ | ❌ No |
+| **Gemini** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | $ | ❌ No |
+
+> **Recommended for most developers:** Start with Ollama (free, private). Switch to DeepL or Claude for production.
+
+---
+
+## Commands
+
+### `lang:scan`
+Scan Blade views and show all translation keys.
 
 ```bash
-# Lock a specific translation
-php artisan lang:lock ar welcome.title
-
-# Lock all translations in a file
-php artisan lang:lock ar welcome.*
-
-# List all locked translations
-php artisan lang:locked
-
-# Unlock when needed
-php artisan lang:unlock ar welcome.title
+php artisan lang:scan
+php artisan lang:scan --missing-only        # Show only missing keys
+php artisan lang:scan --path=resources/views/admin  # Custom path
 ```
 
-### Backup & Restore
-
-Automatic backups are created before each translation:
+### `lang:translate`
+Translate all keys to all configured languages.
 
 ```bash
-# List available backups
-php artisan lang:backup:list
-
-# Restore from a backup
-php artisan lang:restore 2026-04-14_10-30-00
-
-# Restore latest backup
-php artisan lang:restore --latest
+php artisan lang:translate
+php artisan lang:translate --dry-run        # Preview only
+php artisan lang:translate --lang=ar        # One language
+php artisan lang:translate --force          # Re-translate everything
+php artisan lang:translate --no-backup      # Skip backup creation
 ```
+
+### `lang:validate`
+Validate translation quality — checks for missing keys, broken placeholders, missing HTML tags.
+
+```bash
+php artisan lang:validate
+php artisan lang:validate --lang=ar         # One language
+php artisan lang:validate --strict          # Fail on warnings too
+```
+
+### `lang:lock` / `lang:unlock`
+Protect manual translations from being overwritten.
+
+```bash
+php artisan lang:lock ar auth.login                 # Lock one key
+php artisan lang:lock ar auth.* --all               # Lock a pattern
+php artisan lang:lock ar auth.login --reason="Client preferred shorter translation"
+
+php artisan lang:unlock ar auth.login               # Unlock one key
+php artisan lang:locked                             # List all locked keys
+php artisan lang:locked --lang=ar                   # Filter by language
+```
+
+### `lang:backup:list` / `lang:restore`
+Manage translation backups (automatic before every sync).
+
+```bash
+php artisan lang:backup:list                        # Show available backups
+php artisan lang:restore 2026-04-14_10-30-00        # Restore specific backup
+php artisan lang:restore --latest                   # Restore most recent
+```
+
+---
 
 ## Configuration
 
-All configuration is optional. The package works with sensible defaults.
+All options are in `config/ai-translator.php` after publishing. The most important ones:
 
 ```php
-// config/ai-translator.php
-
 return [
-    // AI provider: 'deepl', 'openai', 'claude'
-    'driver' => env('AUTO_TRANSLATE_DRIVER', 'deepl'),
+    // Active AI driver: 'ollama', 'deepl', 'claude', 'openai', 'gemini'
+    'driver' => env('AUTO_TRANSLATE_DRIVER', 'ollama'),
 
-    // Supported languages (ISO 639-1 codes)
+    // Languages to translate into
     'languages' => explode(',', env('SUPPORTED_LANGUAGES', 'en,ar,fr,es')),
 
     // Source language
     'default_language' => env('DEFAULT_LANGUAGE', 'en'),
 
-    // Backup settings
-    'backup' => [
-        'enabled' => env('AUTO_TRANSLATE_BACKUP', true),
-        'keep' => env('AUTO_TRANSLATE_BACKUP_KEEP', 5),
-    ],
-
-    // ... more options
-];
-```
-
-## Commands
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `lang:scan` | Scan views for translation keys | `php artisan lang:scan` |
-| `lang:translate` | Translate to all configured languages | `php artisan lang:translate` |
-| `lang:lock` | Lock a translation to protect from overwrites | `php artisan lang:lock ar auth.login` |
-| `lang:unlock` | Remove a lock from a translation | `php artisan lang:unlock ar auth.login` |
-| `lang:locked` | List all currently locked translations | `php artisan lang:locked` |
-| `lang:validate` | Validate translation quality and detect issues | `php artisan lang:validate` |
-| `lang:restore` | Restore translations from a backup | `php artisan lang:restore` |
-| `lang:backup:list` | List all available backups | `php artisan lang:backup:list` |
-
-### Command Options
-
-**`lang:translate`**
-```bash
-php artisan lang:translate                # Translate all languages
-php artisan lang:translate --lang=ar      # Translate Arabic only
-php artisan lang:translate --force        # Re-translate all keys (ignore change tracking)
-php artisan lang:translate --dry-run      # Preview without writing any files
-php artisan lang:translate --no-backup    # Skip backup creation
-```
-
-**`lang:validate`**
-```bash
-php artisan lang:validate                 # Validate all languages
-php artisan lang:validate --lang=ar       # Validate Arabic only
-php artisan lang:validate --strict        # Exit with error code if warnings found
-```
-
-**`lang:restore`**
-```bash
-php artisan lang:restore                                # Interactive selection
-php artisan lang:restore 2026-04-16_14-30-00           # Restore specific backup
-php artisan lang:restore --latest                       # Restore most recent backup
-php artisan lang:restore --list                         # List backups without restoring
-```
-
-**`lang:backup:list`**
-```bash
-php artisan lang:backup:list              # Show backup summary table
-php artisan lang:backup:list --details    # Show file list per backup
-```
-
-## Examples
-
-### First-Time Setup
-
-```bash
-# 1. Install the package
-composer require youssef-mekkkawy/laravel-ai-translator
-
-# 2. Add your API key to .env
-DEEPL_API_KEY=your-key-here
-SUPPORTED_LANGUAGES=en,ar,fr,es
-
-# 3. Run translation
-php artisan lang:translate
-```
-
-### Daily Workflow
-
-```bash
-# 1. Add new translation keys to your Blade views
-{{ __('dashboard.new_feature') }}
-
-# 2. Add the English source value
-# lang/en/dashboard.php → 'new_feature' => 'New Feature'
-
-# 3. Translate — only new/changed keys are sent to the API
-php artisan lang:translate
-
-# 4. Review quality (optional)
-php artisan lang:validate
-
-# 5. Lock any translations you've manually improved
-php artisan lang:lock ar dashboard.new_feature
-```
-
-### Safe Deploy Workflow
-
-```bash
-# Before deploy: create a manual backup
-php artisan lang:backup:list
-
-# If something goes wrong: restore
-php artisan lang:restore --latest
-
-# Or pick a specific backup
-php artisan lang:restore 2026-04-16_14-30-00
-```
-
----
-
-## Configuration
-
-All configuration lives in `config/laravel-ai-translator.php`:
-
-```php
-return [
-    // AI provider: 'deepl', 'openai', 'claude'
-    'driver' => env('AUTO_TRANSLATE_DRIVER', 'deepl'),
-
-    // Languages to support (ISO 639-1 codes)
-    'languages' => explode(',', env('SUPPORTED_LANGUAGES', 'en,ar,fr,es')),
-
-    // Source language (never translated)
-    'default_language' => env('DEFAULT_LANGUAGE', 'en'),
-
-    // Blade view directories to scan
-    'scan_paths' => [
-        resource_path('views'),
-    ],
-
-    // Patterns to ignore during scanning
-    'exclude_files' => explode(',', env('AUTO_TRANSLATE_EXCLUDE_FILES', 'vendor/**,node_modules/**,tests/**')),
-
-    // Backup settings
-    'backup' => [
-        'enabled' => env('AUTO_TRANSLATE_BACKUP', true),
-        'path'    => base_path('lang/.backup'),
-        'keep'    => env('AUTO_TRANSLATE_BACKUP_KEEP', 5),   // Keep last N backups
-    ],
-
-    // Provider credentials
+    // Providers configuration
     'providers' => [
+        'ollama' => [
+            'model'   => env('OLLAMA_MODEL', 'llama3'),
+            'api_url' => env('OLLAMA_API_URL', 'http://localhost:11434'),
+        ],
         'deepl' => [
             'api_key' => env('DEEPL_API_KEY'),
-            'plan'    => env('DEEPL_PLAN', 'free'),          // 'free' or 'pro'
-        ],
-        'openai' => [
-            'api_key' => env('OPENAI_API_KEY'),
-            'model'   => env('OPENAI_MODEL', 'gpt-4o-mini'),
+            'plan'    => env('DEEPL_PLAN', 'free'),
         ],
         'claude' => [
             'api_key' => env('ANTHROPIC_API_KEY'),
             'model'   => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
         ],
+        // ...
+    ],
+
+    // Backup settings
+    'backup' => [
+        'enabled' => env('AUTO_TRANSLATE_BACKUP', true),
+        'keep'    => env('AUTO_TRANSLATE_BACKUP_KEEP', 5),
     ],
 ];
 ```
 
 ---
 
-## Troubleshooting
+## Dashboard
 
-### "DeepL API key not configured"
-**Solution:** Add `DEEPL_API_KEY=your-key` to your `.env` file and run `php artisan config:clear`.
+Access the embedded dashboard at `/ai-translator` in your application.
 
-### "No translation keys found"
-**Solution:** Make sure you're using the standard `{{ __('key') }}` syntax in your Blade views. The scanner supports `__()`, `@lang()`, and `trans()`.
+The dashboard provides:
 
-### "Translation files not created"
-**Solution:** Check that your `lang/` directory exists and is writable. Also ensure `scan_paths` in the config points to the correct views directory.
+- **Overview** — key counts, translation status, last sync info
+- **Languages** — enable/disable languages, per-language progress
+- **Settings** — switch providers, configure API keys, manage models
+- **Locked Keys** — view and unlock protected translations
+- **History** — sync logs, cost tracking, what changed each run
 
-### "Locked translation was overwritten"
-**Solution:** The lock wasn't applied before the last translation run. Re-apply it: `php artisan lang:lock <lang> <key>`, then translations will be protected on subsequent runs.
+> The dashboard supports both **Arabic (RTL)** and **English (LTR)** — switchable from within the UI.
 
-### "Validate shows placeholder issues"
-**Solution:** Your AI translation removed a placeholder like `:name` or `{0}`. Manually correct the affected translation, then lock it: `php artisan lang:lock <lang> <key> --reason="placeholder fix"`.
+---
 
-### Want to start fresh?
+## How Smart Change Tracking Works
+
+Every time you run `lang:translate`, the package:
+
+1. Scans your Blade views for translation keys
+2. Loads your English `lang/en/*.php` files
+3. Generates an MD5 hash of every value
+4. Compares against stored hashes in `lang/.translations-meta.json`
+5. **Only translates keys that actually changed**
+6. Saves new hashes for next run
+
+Result: if you have 500 keys and change 3, only 3 API calls are made.
+
+---
+
+## Protecting Manual Translations
+
+Sometimes the AI translation isn't quite right. Lock it:
+
 ```bash
-# See what backups exist
-php artisan lang:backup:list
+php artisan lang:lock ar auth.login --reason="Client prefers 'دخول' over 'تسجيل الدخول'"
+```
 
-# Restore a clean state
-php artisan lang:restore --latest
+That key will never be overwritten, even when you run `lang:translate --force`.
+
+To see what's locked:
+
+```bash
+php artisan lang:locked
+```
+
+To restore AI control:
+
+```bash
+php artisan lang:unlock ar auth.login
 ```
 
 ---
 
-## AI Provider Comparison
+## Placeholder & HTML Preservation
 
-| Provider   | Quality    | Speed      | Cost | Free Tier        |
-| ---------- | ---------- | ---------- | ---- | ---------------- |
-| **DeepL**  | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | $    | 500k chars/month |
-| **OpenAI** | ⭐⭐⭐⭐   | ⭐⭐⭐⭐   | $$   | No               |
-| **Claude** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐   | $$   | No               |
+The package automatically preserves:
 
-**Recommendation**: Start with DeepL for the free tier and excellent quality.
+- Laravel placeholders: `:name`, `:count`, `:attribute`
+- Numbered placeholders: `{0}`, `{1}`, `{2}`
+- HTML tags: `<strong>`, `<a href="#">`, `<br>`, etc.
 
-## How It Works
+Example:
 
-1. **Scanner** detects all translation keys in your Blade views
-2. **Tracker** compares current translations with stored hashes
-3. **AI Provider** translates only new/changed keys
-4. **Writer** generates language files with proper Laravel structure
-5. **Backup** saves previous version before changes
+```php
+// English
+'greeting' => 'Hello <strong>:name</strong>, you have :count messages.'
 
-**Smart optimization**: Only translates what changed, saving 70%+ on API costs.
+// Arabic (auto-generated — placeholders and HTML preserved)
+'greeting' => 'مرحبا <strong>:name</strong>، لديك :count رسائل.'
+```
 
-## Requirements
+---
 
-- PHP 8.1 or higher
-- Laravel 10.x or 11.x
+## Supported Translation Syntaxes
+
+The scanner detects all standard Laravel translation helpers:
+
+```blade
+{{ __('welcome.title') }}
+{{ __("auth.login") }}
+@lang('messages.success')
+{{ trans('errors.404') }}
+{{ __('user.greeting', ['name' => $user->name]) }}
+```
+
+---
 
 ## Testing
 
@@ -388,36 +345,42 @@ php artisan lang:restore --latest
 composer test
 ```
 
-## Changelog
+Run with coverage:
 
-Please see [CHANGELOG](CHANGELOG.md) for recent changes.
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
-
-## Security
-
-If you discover any security-related issues, please email your-email@example.com instead of using the issue tracker.
-
-## Credits
-
-- [Youssef Mekkkawy](https://github.com/Youssef-Mekkkawy) - Creator & Maintainer
-- Built by [aissp](https://aissp.com)
-- [All Contributors](../../contributors)
-
-## License
-
-The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
-
-## Support
-
-- **Documentation**: [Full documentation](https://github.com/Youssef-Mekkkawy/laravel-ai-translator/wiki)
-- **Issues**: [GitHub Issues](https://github.com/Youssef-Mekkkawy/laravel-ai-translator/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Youssef-Mekkkawy/laravel-ai-translator/discussions)
+```bash
+composer test-coverage
+```
 
 ---
 
-Built with ❤️ by developers, for developers.
+## Contributing
 
-**[Star this repo](https://github.com/Youssef-Mekkkawy/laravel-ai-translator)** if you find it useful!
+Contributions are very welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+
+---
+
+## Security
+
+If you discover a security vulnerability, please email **your-email@example.com** instead of using the issue tracker.
+
+---
+
+## Credits
+
+- [Youssef Mekkkawy](https://github.com/Youssef-Mekkkawy) — Creator & Maintainer
+
+---
+
+## License
+
+The MIT License (MIT). See [LICENSE](LICENSE) for details.
+
+---
+
+<div align="center">
+
+**Built with ❤️ by developers, for developers.**
+
+⭐ Star this repo if it saves you time!
+
+</div>
