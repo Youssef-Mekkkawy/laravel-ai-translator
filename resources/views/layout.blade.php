@@ -501,9 +501,16 @@ function dashboard() {
     },
     async confirmLock() {
       if (!this.lockKey.trim()) return;
-      const r = await this.api('lock', { lang: this.lockLang, key: this.lockKey.trim(), reason: this.lockReason.trim() });
+      const key = this.lockKey.trim();
+      const r = await this.api('lock', { lang: this.lockLang, key, reason: this.lockReason.trim() });
       this.lockOpen = false; this.lockKey = ''; this.lockReason = '';
-      this.toast(r.success ? (this.ar ? 'تم القفل' : 'Key locked') : r.message, this.lockKey, r.success ? 'ok' : 'err');
+      if (r.success) {
+        this.toast(this.ar ? 'تم القفل' : 'Key locked', this.lockLang + ' / ' + key);
+        // Reload after short delay so user sees the toast
+        setTimeout(() => window.location.reload(), 900);
+      } else {
+        this.toast(r.message || 'Failed to lock', '', 'err');
+      }
     },
     async pickLanguage(opt) {
       this.addOpen    = false;
