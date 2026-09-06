@@ -10,6 +10,7 @@ Write your app once in English — translate everywhere automatically.
 [![Tests](https://img.shields.io/github/actions/workflow/status/Youssef-Mekkkawy/laravel-ai-translator/tests.yml?label=tests&style=flat-square)](https://github.com/Youssef-Mekkkawy/laravel-ai-translator/actions)
 [![PHP Version](https://img.shields.io/packagist/php-v/youssef-mekkkawy/laravel-ai-translator.svg?style=flat-square)](https://packagist.org/packages/youssef-mekkkawy/laravel-ai-translator)
 [![License](https://img.shields.io/github/license/Youssef-Mekkkawy/laravel-ai-translator?style=flat-square)](LICENSE)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/youssef.mekkawy)
 
 </div>
 
@@ -362,6 +363,14 @@ Contributions are very welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) f
 ## Security
 
 If you discover a security vulnerability, please email **your-email@example.com** instead of using the issue tracker.
+
+---
+
+## Support
+
+This package is free and always will be. If it saved you time on a project, a coffee keeps me going ☕
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/youssef.mekkawy)
 
 ---
 

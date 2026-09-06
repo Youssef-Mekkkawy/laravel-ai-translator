@@ -207,6 +207,12 @@ html, body {
         <span style="width:7px;height:7px;flex:none;border-radius:50%;background:#6EE7B7;animation:pulse 2.4s infinite"></span>
         <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8B93A5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="providerLabel"></span>
       </div>
+      <a href="https://buymeacoffee.com/youssef.mekkawy" target="_blank"
+        style="display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;font-size:12px;color:#5C6678;text-decoration:none;transition:color .15s"
+        onmouseover="this.style.color='#FFDD00'" onmouseout="this.style.color='#5C6678'">
+        <span style="font-size:14px">☕</span>
+        <span x-show="expanded" style="white-space:nowrap">Buy me a coffee</span>
+      </a>
       <button @click="expanded = !expanded" class="nav-btn" style="justify-content:center">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex:none;transition:.2s" :style="expanded ? '' : 'transform:rotate(180deg)'"><path d="M15 18l-6-6 6-6"/></svg>
         <span x-show="expanded" x-text="t.collapse"></span>
