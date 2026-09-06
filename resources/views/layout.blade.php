@@ -295,15 +295,15 @@ html, body {
         <div style="width:38px;height:38px;flex:none;border-radius:11px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);display:grid;place-items:center;color:#FBBF24">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5"/><path d="M12 17h.01"/><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
         </div>
-        <div style="font-size:15px;font-weight:600" x-text="t.restoreTitle"></div>
+        <div style="font-size:15px;font-weight:600" {{ $_trans['restore_title'] ?? 'Restore Backup' }}></div>
       </div>
-      <div style="font-size:13px;color:#8B93A5;margin-bottom:14px" x-text="t.restoreWarn"></div>
+      <div style="font-size:13px;color:#8B93A5;margin-bottom:14px" {{ $_trans['restore_warn'] ?? 'This will replace all current language files.' }}></div>
       <div style="padding:12px 14px;border-radius:10px;background:#0D111A;border:1px solid #1B2130;margin-bottom:18px">
         <div style="font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#E6E9EF;direction:ltr" x-text="restoreTarget"></div>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button @click="restoreOpen=false" style="padding:9px 16px;border-radius:10px;border:1px solid #2B3446;background:transparent;color:#8B93A5;font-size:13px;cursor:pointer" x-text="t.cancel"></button>
-        <button @click="confirmRestore()" style="padding:9px 16px;border-radius:10px;border:1px solid #FBBF24;background:#FBBF24;color:#2A1D02;font-size:13px;font-weight:600;cursor:pointer" x-text="t.restoreConfirm"></button>
+        <button @click="restoreOpen=false" style="padding:9px 16px;border-radius:10px;border:1px solid #2B3446;background:transparent;color:#8B93A5;font-size:13px;cursor:pointer" {{ $_trans['cancel'] ?? 'Cancel' }}></button>
+        <button @click="confirmRestore()" style="padding:9px 16px;border-radius:10px;border:1px solid #FBBF24;background:#FBBF24;color:#2A1D02;font-size:13px;font-weight:600;cursor:pointer" {{ $_trans['restore_confirm'] ?? 'Yes, restore' }}></button>
       </div>
     </div>
   </div>
@@ -311,35 +311,36 @@ html, body {
   {{-- Lock key modal --}}
   <div class="modal-backdrop" x-show="lockOpen" x-cloak @click.self="lockOpen=false">
     <div class="modal-box">
-      <div style="display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid #1B2130">
-        <div style="font-size:14px;font-weight:600;flex:1" x-text="t.lockKeyTitle"></div>
-        <button @click="lockOpen=false" style="width:28px;height:28px;display:grid;place-items:center;border-radius:8px;border:1px solid #1B2130;background:transparent;color:#5C6678;cursor:pointer;font-size:15px">×</button>
+      <div style="display:flex;align-items:center;padding:18px 20px;border-bottom:1px solid #1B2130">
+        <div style="font-size:14px;font-weight:600;flex:1;color:#E6E9EF">{{ $_trans['lock_key_title'] ?? 'Lock a Key' }}</div>
+        <button @click="lockOpen=false" style="width:28px;height:28px;display:grid;place-items:center;border-radius:8px;border:1px solid #1B2130;background:transparent;color:#5C6678;cursor:pointer;font-size:18px;line-height:1">×</button>
       </div>
       <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <label>
-            <span style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px" x-text="t.language"></span>
+            <span style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $_trans['language'] ?? 'Language' }}</span>
             <select x-model="lockLang" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
-              <template x-for="l in configuredLangs" :key="l.code">
-                <option :value="l.code" x-text="l.label"></option>
-              </template>
+              @foreach(array_filter(config('ai-translator.languages', []), fn($l) => $l !== config('ai-translator.default_language','en')) as $l)
+              <option value="{{ $l }}">{{ strtoupper($l) }} — {{ ['ar'=>'Arabic','fr'=>'French','es'=>'Spanish','de'=>'German','zh'=>'Chinese','ja'=>'Japanese','tr'=>'Turkish','ru'=>'Russian','pt'=>'Portuguese','ko'=>'Korean','nl'=>'Dutch','it'=>'Italian','pl'=>'Polish','hi'=>'Hindi','sv'=>'Swedish','vi'=>'Vietnamese','id'=>'Indonesian'][$l] ?? strtoupper($l) }}</option>
+              @endforeach
             </select>
           </label>
           <label>
-            <span style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px" x-text="t.key"></span>
+            <span style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $_trans['key'] ?? 'Key' }}</span>
             <input x-model="lockKey" placeholder="auth.login" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;direction:ltr">
           </label>
         </div>
         <label>
-          <span style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px" x-text="t.reasonOptional"></span>
-          <input x-model="lockReason" :placeholder="t.reasonPlaceholder" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
+          <span style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $_trans['reason_optional'] ?? 'Reason (optional)' }}</span>
+          <input x-model="lockReason" placeholder="{{ $_trans['reason_placeholder'] ?? 'e.g. Client preferred term' }}" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
         </label>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;padding:0 20px 18px">
-        <button @click="lockOpen=false" style="padding:9px 16px;border-radius:10px;border:1px solid #2B3446;background:transparent;color:#8B93A5;font-size:13px;cursor:pointer" x-text="t.cancel"></button>
+        <button @click="lockOpen=false" style="padding:9px 16px;border-radius:10px;border:1px solid #2B3446;background:transparent;color:#8B93A5;font-size:13px;cursor:pointer">{{ $_trans['cancel'] ?? 'Cancel' }}</button>
         <button @click="confirmLock()" :disabled="!lockKey.trim()"
-          :style="lockKey.trim() ? 'padding:9px 16px;border-radius:10px;border:1px solid #6EE7B7;background:#6EE7B7;color:#062A20;font-size:13px;font-weight:600;cursor:pointer' : 'padding:9px 16px;border-radius:10px;border:1px solid #2B3446;background:#161C27;color:#5C6678;font-size:13px;font-weight:600;cursor:not-allowed'"
-          x-text="t.lockKeyConfirm"></button>
+          :style="lockKey.trim() ? 'padding:9px 16px;border-radius:10px;border:1px solid #6EE7B7;background:#6EE7B7;color:#062A20;font-size:13px;font-weight:600;cursor:pointer' : 'padding:9px 16px;border-radius:10px;border:1px solid #2B3446;background:#161C27;color:#5C6678;font-size:13px;cursor:not-allowed'">
+          {{ $_trans['lock_key_confirm'] ?? 'Lock Key' }}
+        </button>
       </div>
     </div>
   </div>
@@ -348,11 +349,11 @@ html, body {
   <div class="modal-backdrop" x-show="addOpen" x-cloak @click.self="addOpen=false">
     <div class="modal-box">
       <div style="display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid #1B2130">
-        <div style="font-size:14px;font-weight:600;flex:1" x-text="t.addLanguage"></div>
+        <div style="font-size:14px;font-weight:600;flex:1" {{ $_trans['add_language'] ?? 'Add language' }}></div>
         <button @click="addOpen=false" style="width:28px;height:28px;display:grid;place-items:center;border-radius:8px;border:1px solid #1B2130;background:transparent;color:#5C6678;cursor:pointer;font-size:15px">×</button>
       </div>
       <div style="padding:16px 20px 20px">
-        <input x-model="addQuery" :placeholder="t.searchLanguage" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none;margin-bottom:10px">
+        <input x-model="addQuery" placeholder="{{ $_trans['search_language'] ?? 'Search languages...' }}" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none;margin-bottom:10px">
         <div style="display:flex;flex-direction:column;gap:6px;max-height:230px;overflow-y:auto">
           <template x-for="opt in filteredAddOptions" :key="opt.code">
             <button @click="pickLanguage(opt)" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;cursor:pointer;text-align:start">

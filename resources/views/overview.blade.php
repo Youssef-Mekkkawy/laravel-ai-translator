@@ -24,7 +24,7 @@
       <span style="margin-inline-start:auto;font-family:'JetBrains Mono',monospace;font-size:12px;color:#8B93A5" x-text="progressPct + '%'"></span>
     </div>
     <div style="height:6px;border-radius:99px;background:#161C27;overflow:hidden">
-      <div style="height:100%;border-radius:99px;background:linear-gradient(90deg,#6EE7B7,#38bdf8);transition:width .3s ease" :style="'width:' + progressPct + '%'"></div>
+      <div :style="`height:100%;border-radius:99px;background:linear-gradient(90deg,#6EE7B7,#38bdf8);transition:width .3s ease;width:${progressPct}%`"></div>
     </div>
   </div>
 
@@ -169,8 +169,8 @@ function overviewPage() {
     },
 
     async doTranslate(dryRun = false) {
-      this.running = !dryRun;
-      this.progressPct = 10;
+      this.running = true;
+      this.progressPct = 5;
       this.statusMsg = dryRun ? '{{ addslashes($tr["dry_run"] ?? "Dry run") }}...' : '{{ addslashes($tr["translate"] ?? "Translating") }}...';
       const ticker = setInterval(() => { if (this.progressPct < 85) this.progressPct += 5; }, 800);
       try {

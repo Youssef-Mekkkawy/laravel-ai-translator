@@ -22,6 +22,18 @@ class OverviewController extends DashboardController
         $allKeys   = $scanner->scanAll();
         $totalKeys = count($allKeys);
 
+        // Load locked keys to exclude from missing count
+        $storage      = new LockStorage();
+        $lockManager  = new LockManager($storage);
+        $lockedCount  = 0;
+        $lockedByLang = [];
+        foreach ($lockManager->getAll() as $lLang => $langLocks) {
+            if (is_array($langLocks)) {
+                $lockedCount += count($langLocks);
+                $lockedByLang[$lLang] = array_keys($langLocks);
+            }
+        }
+
         // Count translated vs missing per language
         $translatedCount = 0;
         $missingCount    = 0;
@@ -31,23 +43,24 @@ class OverviewController extends DashboardController
         foreach ($languages as $lang) {
             $langPath    = lang_path($lang);
             $langKeys    = $this->loadLangKeys($langPath);
-            $missing     = count(array_diff($allKeys, array_keys($langKeys)));
-            $translated  = $totalKeys - $missing;
-            $pct         = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
+            $lockedKeys  = $lockedByLang[$lang] ?? [];
 
-            $coverage[] = compact('lang', 'translated', 'missing', 'pct');
+            // Missing = not in lang files AND not locked
+            $missingKeys = array_filter(
+                array_diff($allKeys, array_keys($langKeys)),
+                fn($k) => !in_array($k, $lockedKeys)
+            );
+            $missing    = count($missingKeys);
+            $translated = $totalKeys - $missing;
+            $pct        = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
+
+            $coverage[]    = compact('lang', 'translated', 'missing', 'pct');
             $missingCount += $missing;
         }
 
-        // Average translated count across all languages
         $translatedCount = $langCount > 0
-            ? (int) round(array_sum(array_column($coverage, 'translated')) / $langCount)
+            ? (int) round(array_sum(array_column($coverage, 'translated')) / max($langCount, 1))
             : 0;
-
-        // Locked keys count
-        $storage     = new LockStorage();
-        $lockManager = new LockManager($storage);
-        $lockedCount = $lockManager->count();
 
         // Last sync info from metadata
         $metaFile    = $config['storage']['metadata_file'] ?? base_path('lang/.translations-meta.json');

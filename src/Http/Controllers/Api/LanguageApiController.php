@@ -128,10 +128,20 @@ class LanguageApiController extends DashboardController
             $coverage        = [];
             $langCount       = count($languages);
 
+            // Get locked keys per language
+            $lockedByLang = [];
+            foreach ($lockManager->getAll() as $lLang => $llocks) {
+                if (is_array($llocks)) $lockedByLang[$lLang] = array_keys($llocks);
+            }
+
             foreach ($languages as $lang) {
                 $langPath   = lang_path($lang);
                 $langKeys   = $this->loadLangKeys($langPath);
-                $missing    = count(array_diff($allKeys, array_keys($langKeys)));
+                $lockedKeys = $lockedByLang[$lang] ?? [];
+                $missing    = count(array_filter(
+                    array_diff($allKeys, array_keys($langKeys)),
+                    fn($k) => !in_array($k, $lockedKeys)
+                ));
                 $translated = $totalKeys - $missing;
                 $pct        = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
 
