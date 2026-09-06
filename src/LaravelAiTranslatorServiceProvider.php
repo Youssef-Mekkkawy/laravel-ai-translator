@@ -11,7 +11,7 @@ use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\ScanTranslationsCommand
 use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\TranslateCommand;
 use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\UnlockTranslationCommand;
 use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\ValidateTranslationsCommand;
-
+use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\InstallCommand;
 class LaravelAiTranslatorServiceProvider extends ServiceProvider
 {
     /**
@@ -74,6 +74,7 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
             ValidateTranslationsCommand::class,
             RestoreCommand::class,
             ListBackupsCommand::class,
+            InstallCommand::class,
         ]);
     }
 }
