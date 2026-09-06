@@ -32,22 +32,22 @@
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
     <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:18px">
       <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.9px;color:#5C6678;margin-bottom:10px">{{ $tr['total_keys'] ?? 'Total Keys' }}</div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px">{{ number_format($totalKeys) }}</div>
-      <div style="font-size:12px;color:#5C6678;margin-top:6px">{{ $tr['files'] ?? 'across lang files' }}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px" x-text="totalKeys.toLocaleString()"></div>
+      <div style="font-size:12px;color:#5C6678;margin-top:6px" x-text="totalKeys + ' {{ addslashes($tr["keys"] ?? "keys") }}'"></div>
     </div>
     <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:18px">
       <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.9px;color:#5C6678;margin-bottom:10px">{{ $tr['translated'] ?? 'Translated' }}</div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px;color:#6EE7B7">{{ number_format($translatedCount) }}</div>
-      <div style="font-size:12px;color:#5C6678;margin-top:6px">{{ $totalKeys > 0 ? round(($translatedCount / max($totalKeys,1)) * 100) : 0 }}%</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px;color:#6EE7B7" x-text="translatedCount.toLocaleString()"></div>
+      <div style="font-size:12px;color:#5C6678;margin-top:6px" x-text="(totalKeys > 0 ? Math.round((translatedCount / Math.max(totalKeys,1)) * 100) : 0) + '%'"></div>
     </div>
     <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:18px">
       <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.9px;color:#5C6678;margin-bottom:10px">{{ $tr['missing'] ?? 'Missing' }}</div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px;color:#FBBF24">{{ number_format($missingCount) }}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px;color:#FBBF24" x-text="missingCount.toLocaleString()"></div>
       <div style="font-size:12px;color:#5C6678;margin-top:6px">{{ $tr['keys'] ?? 'keys' }}</div>
     </div>
     <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:18px">
       <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.9px;color:#5C6678;margin-bottom:10px">{{ $tr['locked_keys'] ?? 'Locked' }}</div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px;color:#C4B5FD">{{ number_format($lockedCount) }}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px;color:#C4B5FD" x-text="lockedCount.toLocaleString()"></div>
       <div style="font-size:12px;color:#5C6678;margin-top:6px">{{ $tr['keys'] ?? 'keys' }}</div>
     </div>
   </div>
@@ -130,6 +130,26 @@ function overviewPage() {
     progressPct: 0,
     statusMsg: '',
 
+    // Live stats — updated after scan/translate
+    totalKeys:       {{ $totalKeys }},
+    translatedCount: {{ $translatedCount }},
+    missingCount:    {{ $missingCount }},
+    lockedCount:     {{ $lockedCount }},
+    coverage:        @json($coverage),
+
+    async refreshStats() {
+      try {
+        const r = await fetch('{{ url("ai-translator/api/stats") }}').then(r => r.json());
+        if (r.success) {
+          this.totalKeys       = r.data.totalKeys;
+          this.translatedCount = r.data.translatedCount;
+          this.missingCount    = r.data.missingCount;
+          this.lockedCount     = r.data.lockedCount;
+          this.coverage        = r.data.coverage;
+        }
+      } catch {}
+    },
+
     async doScan() {
       this.statusMsg = '{{ addslashes($tr["scan"] ?? "Scanning") }}...';
       try {
@@ -140,6 +160,7 @@ function overviewPage() {
         }).then(r => r.json());
         if (r.success) {
           this.statusMsg = r.data.total + ' {{ addslashes($tr["keys"] ?? "keys") }}';
+          await this.refreshStats();
           setTimeout(() => { this.statusMsg = ''; }, 4000);
         } else {
           this.statusMsg = 'Error: ' + (r.message || 'Failed');

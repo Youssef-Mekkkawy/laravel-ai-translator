@@ -392,7 +392,7 @@ function dashboard() {
     toasts:       [],
     restoreOpen:  false, restoreTarget: '',
     lockOpen:     false, lockLang: '{{ $cfgLangsJs[0]["code"] ?? "ar" }}', lockKey: '', lockReason: '',
-    addOpen:      false, addQuery: '',
+    addOpen:      false, addQuery: '', addingLang: '',
     activeProvider: '{{ $cfgDriver }}',
     configuredLangs: @json($cfgLangsJs),
 
@@ -504,9 +504,29 @@ function dashboard() {
       this.lockOpen = false; this.lockKey = ''; this.lockReason = '';
       this.toast(r.success ? (this.ar ? 'تم القفل' : 'Key locked') : r.message, this.lockKey, r.success ? 'ok' : 'err');
     },
-    pickLanguage(opt) {
-      this.addOpen = false;
-      this.toast(this.ar ? 'تمت الإضافة' : 'Language added', opt.name);
+    async pickLanguage(opt) {
+      this.addOpen    = false;
+      this.addingLang = opt.code;
+      this.toast(this.ar ? 'جاري الإضافة...' : 'Adding ' + opt.name + '...', '');
+
+      try {
+        const r = await this.api('languages/add', { locale: opt.code });
+
+        if (r.success) {
+          this.toast(
+            this.ar ? 'تمت الإضافة' : opt.name + ' added',
+            this.ar ? 'اضغط ترجمة لتوليد الملفات' : 'Click Translate to generate files'
+          );
+          // Reload languages page to show new language
+          setTimeout(() => { window.location.href = '{{ route("ai-translator.languages") }}'; }, 1200);
+        } else {
+          this.toast(r.message || 'Failed', '', 'err');
+        }
+      } catch (e) {
+        this.toast('Error: ' + e.message, '', 'err');
+      }
+
+      this.addingLang = '';
     },
     toast(title, body = '', kind = 'ok') {
       const id = Date.now() + Math.random();

@@ -30,11 +30,14 @@ class LanguagesController extends DashboardController
             $translated = $totalKeys - $missing;
             $pct        = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
 
+            // "enabled" = in the config languages list (always true here since we iterate config)
+            // "exists" = lang files have been generated
             $languages[] = [
                 'code'       => $lang,
                 'name'       => $this->languageName($lang),
                 'nativeName' => $this->nativeName($lang),
-                'enabled'    => $exists,
+                'enabled'    => true, // all languages in config are enabled
+                'exists'     => $exists,
                 'totalKeys'  => $totalKeys,
                 'translated' => $translated,
                 'missing'    => $missing,

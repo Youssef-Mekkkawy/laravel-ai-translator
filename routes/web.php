@@ -14,6 +14,7 @@ use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\ApiSettingsControll
 use YoussefMekkkawy\LaravelAiTranslator\Http\Middleware\DashboardEnabled;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\OllamaController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\DashboardLangController;
+use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\LanguageApiController;
 
 Route::prefix(config('ai-translator.dashboard.path', 'ai-translator'))
     ->name('ai-translator.')
@@ -25,6 +26,9 @@ Route::prefix(config('ai-translator.dashboard.path', 'ai-translator'))
         // ── lang ──────────────────────────────────────────────────
         Route::post('/api/dashboard-lang', [DashboardLangController::class, 'generate']);
         Route::get('/set-lang/{locale}', [DashboardLangController::class, 'setLang'])->name('ai-translator.set-lang');
+        Route::post('/api/languages/add', [LanguageApiController::class, 'add']);
+        Route::get('/api/stats',          [LanguageApiController::class, 'stats']);
+        Route::post('/api/languages/toggle', [LanguageApiController::class, 'toggle']);
 
         // ── Pages ──────────────────────────────────────────────────
         Route::get('/',          [OverviewController::class,    'index'])->name('overview');

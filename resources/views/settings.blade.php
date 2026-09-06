@@ -17,11 +17,14 @@
     <div style="font-size:12px;color:#5C6678;margin-bottom:16px">{{ $tr['settings_sub'] ?? 'Provider, models and behaviour' }}</div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
-      @foreach(['ollama'=>['Ollama','local · free'],'deepl'=>['DeepL','classic MT'],'claude'=>['Claude','anthropic'],'openai'=>['ChatGPT','openai'],'gemini'=>['Gemini','google']] as $id=>[$name,$sub])
+      @foreach(['ollama'=>['Ollama','local · free', false],'deepl'=>['DeepL','classic MT', true],'claude'=>['Claude','anthropic', true],'openai'=>['ChatGPT','openai', true],'gemini'=>['Gemini','google', true]] as $id=>[$name,$sub,$soon])
       <button @click="switchProvider('{{ $id }}')"
-        :style="provider==='{{ $id }}' ? 'padding:13px 14px;border-radius:11px;cursor:pointer;border:1px solid #6EE7B7;background:rgba(110,231,183,.07);text-align:start;min-width:110px' : 'padding:13px 14px;border-radius:11px;cursor:pointer;border:1px solid #1B2130;background:#0D111A;text-align:start;min-width:110px'">
+        :style="provider==='{{ $id }}' ? 'padding:13px 14px;border-radius:11px;cursor:pointer;border:1px solid #6EE7B7;background:rgba(110,231,183,.07);text-align:start;min-width:110px;position:relative' : 'padding:13px 14px;border-radius:11px;cursor:pointer;border:1px solid #1B2130;background:#0D111A;text-align:start;min-width:110px;position:relative'">
         <div style="font-weight:600;font-size:13px;color:#E6E9EF">{{ $name }}</div>
         <div style="font-size:11px;color:#5C6678;margin-top:2px">{{ $sub }}</div>
+        @if($soon)
+        <span style="position:absolute;top:6px;right:6px;padding:2px 6px;border-radius:4px;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);color:#FBBF24;font-size:9px;font-weight:700;letter-spacing:.5px">SOON</span>
+        @endif
       </button>
       @endforeach
     </div>
@@ -30,8 +33,8 @@
     <div x-show="provider === 'ollama'" style="display:flex;flex-direction:column;gap:14px">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span :style="ollamaUp ? 'display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;color:#6EE7B7;background:rgba(110,231,183,.1);border:1px solid rgba(110,231,183,.25)' : 'display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;color:#F87171;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25)'">
-          <span :style="'width:6px;height:6px;border-radius:50%;background:' + (ollamaUp ? '#6EE7B7' : '#F87171')"></span>
-          <span x-text="ollamaTesting ? '{{ addslashes($tr['saving'] ?? 'Testing...') }}' : (ollamaUp ? '{{ addslashes($tr['connected'] ?? 'Connected') }}' : '{{ addslashes($tr['not_running'] ?? 'Not running') }}')"></span>
+          <span :style="'width:6px;height:6px;border-radius:50%;background:' + (ollamaTesting ? '#FBBF24' : (ollamaUp ? '#6EE7B7' : '#F87171'))"></span>
+          <span x-text="ollamaTesting ? 'Checking...' : (ollamaUp ? '{{ addslashes($tr['connected'] ?? 'Connected') }}' : 'Not running')"></span>
         </span>
         <button @click="testOllama()" style="display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:9px;border:1px solid #2B3446;background:#161C27;color:#8B93A5;font-size:12px;cursor:pointer">
           {{ $tr['test_connection'] ?? 'Test connection' }}
@@ -56,7 +59,12 @@
     </div>
 
     {{-- Cloud provider --}}
-    <div x-show="provider !== 'ollama'" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+    <div x-show="provider !== 'ollama'" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round"><path d="M12 8v5"/><path d="M12 17h.01"/><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <span style="font-size:12.5px;color:#FBBF24">{{ $tr['coming_soon_provider'] ?? 'This provider is coming soon. You can save your API key now and it will be used when support is added.' }}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
       <div>
         <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $tr['api_key'] ?? 'API key' }}</label>
         <input type="password" x-model="apiKey" placeholder="••••••••••••••••••••"
@@ -69,6 +77,7 @@
           <template x-for="m in availableModels" :key="m"><option :value="m" x-text="m"></option></template>
         </select>
       </div>
+    </div>
     </div>
   </div>
 
@@ -132,12 +141,21 @@ function settingsPage() {
       return m[this.provider] || [];
     },
 
-    async init() { if (this.provider === 'ollama') await this.fetchOllamaModels(); },
+    async init() {
+      if (this.provider === 'ollama') {
+        await this.fetchOllamaModels();
+        await this.testOllama();
+      }
+    },
 
     switchProvider(p) {
       this.provider = p;
-      if (p === 'ollama') this.fetchOllamaModels();
-      else if (this.availableModels.length) this.model = this.availableModels[0];
+      if (p === 'ollama') {
+        this.fetchOllamaModels();
+        this.testOllama();
+      } else if (this.availableModels.length) {
+        this.model = this.availableModels[0];
+      }
     },
 
     async testOllama() {

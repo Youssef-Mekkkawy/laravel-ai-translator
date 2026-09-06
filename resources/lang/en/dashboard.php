@@ -104,4 +104,5 @@ return [
     'source_language' => 'Source language',
     'context' => 'Context prompt',
     'context_hint' => 'e.g. This is an e-commerce app. Keep translations formal.',
+    'coming_soon_provider' => 'This provider is coming soon. Save your API key now and it will be used when support is added.',
 ];
