@@ -1,39 +1,60 @@
 {
   "name": "youssef-mekkkawy/laravel-ai-translator",
-  "description": "AI-powered automatic translation for Laravel applications. Scan views, detect keys, and translate to multiple languages using DeepL, OpenAI, or Claude.",
+  "description": "AI-powered automatic translation for Laravel — scan Blade views, translate to any language using Ollama, DeepL, Claude, ChatGPT or Gemini, with smart change tracking, lock system, backup/restore, and an embedded dashboard.",
   "keywords": [
     "laravel",
+    "laravel-package",
+    "laravel-framework",
     "translation",
-    "i18n",
     "localization",
-    "ai",
-    "deepl",
+    "i18n",
+    "multi-language",
+    "translation-tool",
+    "translation-management",
+    "artisan",
+    "artisan-command",
+    "blade",
+    "blade-template",
+    "ollama",
+    "ollama-api",
     "openai",
-    "claude",
-    "multi-language"
+    "php",
+    "php8",
+    "developer-tools",
+    "open-source"
   ],
   "type": "library",
   "license": "MIT",
   "authors": [
     {
       "name": "Youssef Mekkkawy",
-      "email": "your-email@example.com",
+      "email": "youssef.mekkawy@example.com",
+      "homepage": "https://github.com/Youssef-Mekkkawy",
       "role": "Developer"
     }
   ],
   "homepage": "https://github.com/Youssef-Mekkkawy/laravel-ai-translator",
   "support": {
     "issues": "https://github.com/Youssef-Mekkkawy/laravel-ai-translator/issues",
-    "source": "https://github.com/Youssef-Mekkkawy/laravel-ai-translator"
+    "source": "https://github.com/Youssef-Mekkkawy/laravel-ai-translator",
+    "docs": "https://github.com/Youssef-Mekkkawy/laravel-ai-translator#readme"
   },
+  "funding": [
+    {
+      "type": "custom",
+      "url": "https://buymeacoffee.com/youssef.mekkawy"
+    }
+  ],
   "require": {
-    "php": "^8.4",
-    "illuminate/support": "^10.0|^11.0",
-    "illuminate/console": "^10.0|^11.0",
-    "illuminate/filesystem": "^10.0|^11.0",
+    "php": "^8.1",
+    "illuminate/support": "^10.0|^11.0|^12.0",
+    "illuminate/console": "^10.0|^11.0|^12.0",
+    "illuminate/filesystem": "^10.0|^11.0|^12.0",
+    "illuminate/routing": "^10.0|^11.0|^12.0",
+    "illuminate/http": "^10.0|^11.0|^12.0",
     "guzzlehttp/guzzle": "^7.8",
     "deeplcom/deepl-php": "^1.18",
-    "nesbot/carbon": "^3.11"
+    "nesbot/carbon": "^2.0|^3.0"
   },
   "require-dev": {
     "orchestra/testbench": "^8.0|^9.0",
@@ -57,6 +78,7 @@
     "test": "vendor/bin/pest",
     "test-coverage": "vendor/bin/pest --coverage",
     "format": "vendor/bin/pint",
+    "format-test": "vendor/bin/pint --test",
     "analyse": "vendor/bin/phpstan analyse"
   },
   "extra": {
@@ -69,15 +91,12 @@
       }
     }
   },
-  "minimum-stability": "dev",
+  "minimum-stability": "stable",
   "prefer-stable": true,
   "config": {
     "allow-plugins": {
       "pestphp/pest-plugin": true,
       "php-http/discovery": true
-    },
-    "platform": {
-      "php": "8.4.24"
     }
   }
 }

@@ -53,11 +53,27 @@ abstract class DashboardController extends Controller
      */
     protected function sharedData(): array
     {
+        // Resolve dashboard UI language from cookie
+        $dashLang = request()->cookie('dashboard_lang', 'en');
+        $pkgPath  = app('ai-translator.package_path');
+        $langFile = $pkgPath . '/resources/lang/' . $dashLang . '/dashboard.php';
+        $enFile   = $pkgPath . '/resources/lang/en/dashboard.php';
+
+        $trans = [];
+        if (file_exists($langFile)) {
+            $trans = include $langFile;
+        } elseif (file_exists($enFile)) {
+            $trans = include $enFile;
+        }
+
         return [
             'activeProvider' => $this->config('driver', 'ollama'),
             'sourceLang'     => $this->config('default_language', 'en'),
             'dashboardPath'  => $this->config('dashboard.path', 'ai-translator'),
             'version'        => '1.0.0',
+            '_trans'         => $trans,      // ← available in ALL page views
+            '_dashLang'      => $dashLang,
+            '_isRtl'         => in_array($dashLang, ['ar', 'he', 'fa', 'ur']),
         ];
     }
 }

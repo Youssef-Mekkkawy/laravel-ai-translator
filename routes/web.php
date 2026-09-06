@@ -13,10 +13,18 @@ use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\LockController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\ApiSettingsController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Middleware\DashboardEnabled;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\OllamaController;
+use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\DashboardLangController;
+
 Route::prefix(config('ai-translator.dashboard.path', 'ai-translator'))
     ->name('ai-translator.')
     ->middleware(['web', DashboardEnabled::class])
     ->group(function () {
+
+
+
+        // ── lang ──────────────────────────────────────────────────
+        Route::post('/api/dashboard-lang', [DashboardLangController::class, 'generate']);
+        Route::get('/set-lang/{locale}', [DashboardLangController::class, 'setLang'])->name('ai-translator.set-lang');
 
         // ── Pages ──────────────────────────────────────────────────
         Route::get('/',          [OverviewController::class,    'index'])->name('overview');

@@ -1,3 +1,32 @@
+@php
+    $_dashLang = session('dashboard_lang', request()->cookie('dashboard_lang', 'en'));
+    $_preTranslated = ['en','ar','fr','es','de','zh','ja','tr','ru','pt'];
+    $_pkgPath  = app('ai-translator.package_path');
+    $_langFile = $_pkgPath.'/resources/lang/'.$_dashLang.'/dashboard.php';
+    $_enFile   = $_pkgPath.'/resources/lang/en/dashboard.php';
+    $_trans    = file_exists($_langFile) ? include $_langFile : (file_exists($_enFile) ? include $_enFile : []);
+    $_rtlLangs = ['ar', 'he', 'fa', 'ur'];
+    $_isRtl    = in_array($_dashLang, $_rtlLangs);
+    $_allLangs = [
+        'en'=>['English','English'], 'ar'=>['Arabic','العربية'],
+        'fr'=>['French','Français'], 'es'=>['Spanish','Español'],
+        'de'=>['German','Deutsch'],  'zh'=>['Chinese','中文'],
+        'ja'=>['Japanese','日本語'], 'tr'=>['Turkish','Türkçe'],
+        'ru'=>['Russian','Русский'], 'pt'=>['Portuguese','Português'],
+        'ko'=>['Korean','한국어'],   'it'=>['Italian','Italiano'],
+        'nl'=>['Dutch','Nederlands'],'pl'=>['Polish','Polski'],
+        'hi'=>['Hindi','हिन्दी'],   'sv'=>['Swedish','Svenska'],
+        'vi'=>['Vietnamese','Tiếng Việt'], 'id'=>['Indonesian','Bahasa Indonesia'],
+    ];
+    $cfgLangs   = config('ai-translator.languages', []);
+    $cfgSource  = config('ai-translator.default_language', 'en');
+    $cfgDriver  = config('ai-translator.driver', 'ollama');
+    $cfgLangsJs = array_values(array_map(
+        fn($l) => ['code' => $l, 'label' => strtoupper($l)],
+        array_filter($cfgLangs, fn($l) => $l !== $cfgSource)
+    ));
+@endphp
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -230,9 +259,18 @@ html, body {
         <div style="font-size:12px;color:#5C6678;white-space:nowrap" x-text="pageSub"></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap">
-        <div class="pill-wrap">
-          <button class="pill-btn" :class="!ar ? 'active' : ''" @click="ar = false">EN · LTR</button>
-          <button class="pill-btn" :class=" ar ? 'active' : ''" @click="ar = true">AR · RTL</button>
+        {{-- Dashboard language selector (simple HTML select) --}}
+        <div style="position:relative;display:inline-block">
+          <select onchange="window.location.href='{{ url('') }}/ai-translator/set-lang/' + this.value"
+            style="padding:8px 30px 8px 12px;border-radius:10px;border:1px solid #1B2130;background:#10141C;color:#E6E9EF;font-size:12px;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none">
+            @foreach($_allLangs as $code => [$name, $native])
+            <option value="{{ $code }}" {{ $code === $_dashLang ? 'selected' : '' }} style="background:#101420;color:#E6E9EF">
+              {{ $native }} ({{ strtoupper($code) }}){{ !in_array($code, $_preTranslated) ? ' ✦ AI' : '' }}
+            </option>
+            @endforeach
+          </select>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#5C6678" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none"><path d="M6 9l6 6 6-6"/></svg>
         </div>
         <a href="https://github.com/Youssef-Mekkkawy/laravel-ai-translator" target="_blank"
           style="display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:10px;border:1px solid #1B2130;background:#10141C;color:#8B93A5;font-size:12px;white-space:nowrap;text-decoration:none">
@@ -343,21 +381,13 @@ html, body {
 
 </div>{{-- /#app-shell --}}
 
+
 <script>
-@php
-  $cfgLangs   = config('ai-translator.languages', []);
-  $cfgSource  = config('ai-translator.default_language', 'en');
-  $cfgDriver  = config('ai-translator.driver', 'ollama');
-  $cfgLangsJs = array_values(array_map(
-      fn($l) => ['code' => $l, 'label' => strtoupper($l)],
-      array_filter($cfgLangs, fn($l) => $l !== $cfgSource)
-  ));
-@endphp
 
 function dashboard() {
   return {
     page:         '{{ request()->segment(2) ?: "overview" }}',
-    ar:           false,
+    ar:           {{ $_isRtl ? 'true' : 'false' }},
     expanded:     true,
     toasts:       [],
     restoreOpen:  false, restoreTarget: '',
@@ -366,7 +396,11 @@ function dashboard() {
     activeProvider: '{{ $cfgDriver }}',
     configuredLangs: @json($cfgLangsJs),
 
-    get t() {
+    // PHP-driven translations (switches on page reload via cookie)
+    t: @json($_trans),
+
+    // Keep the getter for backwards compatibility but use PHP data
+    _tBak() {
       const en = {
         overview:'Overview', languages:'Languages', locked:'Locked Keys',
         history:'History', backups:'Backups', settings:'Settings', collapse:'Collapse',
@@ -478,6 +512,72 @@ function dashboard() {
       const id = Date.now() + Math.random();
       this.toasts.push({ id, title, body, kind });
       setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 3500);
+    },
+  };
+}
+
+function langSelector() {
+  const preTranslated = @json($_preTranslated);
+  const allLangsMap   = @json($_allLangs);
+
+  const allLangs = Object.entries(allLangsMap).map(([code, names]) => ({
+    code,
+    name:          names[0],
+    native:        names[1],
+    preTranslated: preTranslated.includes(code),
+  }));
+
+  return {
+    open:           false,
+    generating:     false,
+    generatingCode: '',
+    currentCode:    '{{ $_dashLang }}',
+    allLangs,
+
+    get currentLabel() {
+      const lang = this.allLangs.find(l => l.code === this.currentCode);
+      return lang ? lang.native + ' (' + lang.code.toUpperCase() + ')' : 'EN';
+    },
+
+    async selectLang(lang) {
+      this.open = false;
+      if (lang.code === this.currentCode) return;
+
+      if (lang.preTranslated) {
+        this.setCookieAndReload(lang.code);
+        return;
+      }
+
+      // On-demand generation via Ollama
+      this.generating     = true;
+      this.generatingCode = lang.code;
+
+      try {
+        const r = await fetch('{{ url("ai-translator/api/dashboard-lang") }}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+          },
+          body: JSON.stringify({ locale: lang.code }),
+        }).then(r => r.json());
+
+        if (r.success) {
+          this.setCookieAndReload(lang.code);
+        } else {
+          alert('Could not generate translations: ' + (r.message || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Network error: ' + e.message);
+      }
+
+      this.generating     = false;
+      this.generatingCode = '';
+    },
+
+    setCookieAndReload(code) {
+      document.cookie = 'dashboard_lang=' + code + ';path=/;max-age=31536000';
+      window.location.reload();
     },
   };
 }
