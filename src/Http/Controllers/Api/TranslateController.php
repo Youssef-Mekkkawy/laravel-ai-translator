@@ -23,13 +23,13 @@ class TranslateController extends DashboardController
                 $options['--lang'] = $lang;
             }
 
+            $options['--no-interaction'] = true;
             $exitCode = Artisan::call('lang:translate', $options);
             $output   = Artisan::output();
 
             return $exitCode === 0
                 ? $this->success(['output' => $output], 'Translation complete.')
                 : $this->error('Translation failed: ' . $output);
-
         } catch (\Throwable $e) {
             return $this->error('Translation error: ' . $e->getMessage());
         }

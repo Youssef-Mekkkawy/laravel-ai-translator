@@ -26,6 +26,7 @@ class OverviewController extends DashboardController
         $translatedCount = 0;
         $missingCount    = 0;
         $coverage        = [];
+        $langCount       = count($languages);
 
         foreach ($languages as $lang) {
             $langPath    = lang_path($lang);
@@ -34,10 +35,14 @@ class OverviewController extends DashboardController
             $translated  = $totalKeys - $missing;
             $pct         = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
 
-            $coverage[]       = compact('lang', 'translated', 'missing', 'pct');
-            $translatedCount  += $translated;
-            $missingCount     += $missing;
+            $coverage[] = compact('lang', 'translated', 'missing', 'pct');
+            $missingCount += $missing;
         }
+
+        // Average translated count across all languages
+        $translatedCount = $langCount > 0
+            ? (int) round(array_sum(array_column($coverage, 'translated')) / $langCount)
+            : 0;
 
         // Locked keys count
         $storage     = new LockStorage();

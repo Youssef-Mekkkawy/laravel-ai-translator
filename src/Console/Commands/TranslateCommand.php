@@ -35,7 +35,7 @@ class TranslateCommand extends Command
         try {
             $this->initializeServices();
         } catch (\Throwable $e) {
-            $this->error('Failed to initialise services: '.$e->getMessage());
+            $this->error('Failed to initialise services: ' . $e->getMessage());
 
             return self::FAILURE;
         }
@@ -63,12 +63,12 @@ class TranslateCommand extends Command
         }
 
         $this->line("  Total Characters : <fg=cyan>{$totalChars}</>");
-        $this->line('  Estimated Cost   : <fg=cyan>$'.number_format($estimatedCost, 4).'</>');
+        $this->line('  Estimated Cost   : <fg=cyan>$' . number_format($estimatedCost, 4) . '</>');
         $this->newLine();
 
         // Target languages summary
         if (! empty($targetLanguages)) {
-            $this->line('  Target languages : '.implode(', ', $targetLanguages));
+            $this->line('  Target languages : ' . implode(', ', $targetLanguages));
             $this->newLine();
         }
 
@@ -95,8 +95,63 @@ class TranslateCommand extends Command
 
         try {
             $results = $this->translationService->translateAll($targetLanguages, $force, false);
+            $results = $this->translationService->translateAll($targetLanguages, $force, false);
+
+
+            // ── Record history ────────────────────────────────────────────
+            try {
+                $metaFile = config(
+                    'ai-translator.storage.metadata_file',
+                    base_path('lang/.translations-meta.json')
+                );
+
+                // Build individual key changes by comparing lang files
+                $changes = [];
+                foreach ($targetLanguages as $lang) {
+                    $langPath = lang_path($lang);
+                    if (!is_dir($langPath)) continue;
+                    foreach (glob($langPath . DIRECTORY_SEPARATOR . '*.php') ?: [] as $file) {
+                        $group = pathinfo($file, PATHINFO_FILENAME);
+                        $data  = @include $file;
+                        if (!is_array($data)) continue;
+                        foreach ($data as $key => $value) {
+                            $fullKey = $group . '.' . $key;
+                            $changes[] = [
+                                'lang'  => strtoupper($lang),
+                                'key'   => $fullKey,
+                                'value' => is_string($value) ? $value : '',
+                                'tag'   => 'new',
+                            ];
+                        }
+                    }
+                }
+
+                // Limit to 50 changes per run (avoid huge JSON)
+                $changes = array_slice($changes, 0, 50);
+
+                $meta = new \YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\MetadataManager($metaFile);
+                $meta->recordRun([
+                    'started_at'      => date('Y-m-d\TH:i:s', (int) LARAVEL_START),
+                    'status'          => empty($results['errors']) ? 'success' : (empty($results['files_written']) ? 'failed' : 'partial'),
+                    'keys_translated' => count($results['files_written'] ?? []),
+                    'total_keys'      => $results['total_keys'] ?? 0,
+                    'skipped'         => $results['skipped_unchanged'] ?? 0,
+                    'locked'          => $results['locked_keys'] ?? 0,
+                    'files_written'   => array_map(
+                        fn($f) => str_replace(base_path() . DIRECTORY_SEPARATOR, '', $f),
+                        $results['files_written'] ?? []
+                    ),
+                    'changes'         => $changes,
+                    'languages'       => array_map('strtoupper', $targetLanguages),
+                    'duration_ms'     => (int)(($results['duration'] ?? 0) * 1000),
+                    'errors'          => $results['errors'] ?? [],
+                ]);
+            } catch (\Throwable $e) {
+                // Never let history break the translation
+            }
+            
         } catch (\Throwable $e) {
-            $this->error('Translation failed: '.$e->getMessage());
+            $this->error('Translation failed: ' . $e->getMessage());
 
             return self::FAILURE;
         }
@@ -107,16 +162,16 @@ class TranslateCommand extends Command
         $this->info('═══════════════════════════════════════');
         $this->newLine();
 
-        $this->line('  Total keys       : '.($results['total_keys'] ?? 0));
-        $this->line('  Languages done   : '.($results['languages_processed'] ?? 0));
-        $this->line('  Skipped (exist)  : '.($results['skipped_unchanged'] ?? 0));
-        $this->line('  Locked (skipped) : '.($results['locked_keys'] ?? 0));
+        $this->line('  Total keys       : ' . ($results['total_keys'] ?? 0));
+        $this->line('  Languages done   : ' . ($results['languages_processed'] ?? 0));
+        $this->line('  Skipped (exist)  : ' . ($results['skipped_unchanged'] ?? 0));
+        $this->line('  Locked (skipped) : ' . ($results['locked_keys'] ?? 0));
 
         if (! empty($results['files_written'])) {
             $this->newLine();
             $this->info('📁 Files written:');
             foreach ($results['files_written'] as $file) {
-                $this->line('  ✔ '.str_replace(base_path().DIRECTORY_SEPARATOR, '', $file));
+                $this->line('  ✔ ' . str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file));
             }
         }
 
@@ -131,7 +186,7 @@ class TranslateCommand extends Command
         $this->newLine();
 
         if (($results['skipped_unchanged'] ?? 0) > 0) {
-            $this->info('💰 Change tracking saved API costs by skipping '.$results['skipped_unchanged'].' unchanged key(s)!');
+            $this->info('💰 Change tracking saved API costs by skipping ' . $results['skipped_unchanged'] . ' unchanged key(s)!');
         }
 
         $this->info("💡 Run 'php artisan lang:scan' to review your translations.");
@@ -204,6 +259,6 @@ class TranslateCommand extends Command
             return [$specificLang];
         }
 
-        return array_values(array_filter($all, fn ($lang) => $lang !== $sourceLang));
+        return array_values(array_filter($all, fn($lang) => $lang !== $sourceLang));
     }
 }

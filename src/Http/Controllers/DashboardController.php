@@ -55,7 +55,6 @@ abstract class DashboardController extends Controller
     {
         return [
             'activeProvider' => $this->config('driver', 'ollama'),
-            'languages'      => $this->config('languages', []),
             'sourceLang'     => $this->config('default_language', 'en'),
             'dashboardPath'  => $this->config('dashboard.path', 'ai-translator'),
             'version'        => '1.0.0',

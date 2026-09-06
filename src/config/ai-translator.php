@@ -5,7 +5,6 @@ return [
     |--------------------------------------------------------------------------
     | Translation Driver
     |--------------------------------------------------------------------------
-    | Supported: "deepl", "openai", "claude"
     */
     'driver' => env('AUTO_TRANSLATE_DRIVER', 'deepl'),
 
@@ -13,7 +12,6 @@ return [
     |--------------------------------------------------------------------------
     | Supported Languages
     |--------------------------------------------------------------------------
-    | List all languages you want to support (ISO 639-1 codes)
     */
     'languages' => explode(',', env('SUPPORTED_LANGUAGES', 'en,ar,fr,es')),
 
@@ -21,7 +19,6 @@ return [
     |--------------------------------------------------------------------------
     | Default Language
     |--------------------------------------------------------------------------
-    | The source language for translations (usually English)
     */
     'default_language' => env('DEFAULT_LANGUAGE', 'en'),
 
@@ -29,7 +26,6 @@ return [
     |--------------------------------------------------------------------------
     | Scan Paths
     |--------------------------------------------------------------------------
-    | Directories to scan for translation keys
     */
     'scan_paths' => [
         resource_path('views'),
@@ -39,7 +35,6 @@ return [
     |--------------------------------------------------------------------------
     | Exclude Patterns
     |--------------------------------------------------------------------------
-    | Files/directories to ignore during scanning
     */
     'exclude_files' => explode(',', env('AUTO_TRANSLATE_EXCLUDE_FILES', 'vendor/**,node_modules/**,tests/**')),
 
@@ -49,24 +44,27 @@ return [
     |--------------------------------------------------------------------------
     */
     'providers' => [
+        'ollama' => [
+            'model'   => env('OLLAMA_MODEL', 'llama3.2'),
+            'api_url' => env('OLLAMA_API_URL', 'http://localhost:11434'),
+        ],
         'deepl' => [
             'api_key' => env('DEEPL_API_KEY'),
-            'plan' => env('DEEPL_PLAN', 'free'), // 'free' or 'pro'
+            'plan'    => env('DEEPL_PLAN', 'free'),
         ],
-
-        'openai' => [
-            'api_key' => env('OPENAI_API_KEY'),
-            'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
-            'temperature' => 0.3,
-            'max_tokens' => 2000,
-        ],
-
         'claude' => [
             'api_key' => env('ANTHROPIC_API_KEY'),
-            'model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
-            'max_tokens' => 2000,
+            'model'   => env('ANTHROPIC_MODEL', 'claude-sonnet-4-5'),
         ],
-    ],
+        'openai' => [
+            'api_key' => env('OPENAI_API_KEY'),
+            'model'   => env('OPENAI_MODEL', 'gpt-4o-mini'),
+        ],
+        'gemini' => [
+            'api_key' => env('GEMINI_API_KEY'),
+            'model'   => env('GEMINI_MODEL', 'gemini-1.5-flash'),
+        ],
+    ], // ← closes 'providers'
 
     /*
     |--------------------------------------------------------------------------
@@ -74,11 +72,11 @@ return [
     |--------------------------------------------------------------------------
     */
     'options' => [
-        'context' => env('AUTO_TRANSLATE_CONTEXT', ''),
-        'exclude_words' => explode(',', env('AUTO_TRANSLATE_EXCLUDE_WORDS', 'Laravel,PHP,API')),
-        'preserve_html' => env('AUTO_TRANSLATE_PRESERVE_HTML', true),
-        'preserve_placeholders' => env('AUTO_TRANSLATE_PRESERVE_PLACEHOLDERS', true),
-        'chunk_size' => env('AUTO_TRANSLATE_CHUNK_SIZE', 100),
+        'context'                  => env('AUTO_TRANSLATE_CONTEXT', ''),
+        'exclude_words'            => explode(',', env('AUTO_TRANSLATE_EXCLUDE_WORDS', 'Laravel,PHP,API')),
+        'preserve_html'            => env('AUTO_TRANSLATE_PRESERVE_HTML', true),
+        'preserve_placeholders'    => env('AUTO_TRANSLATE_PRESERVE_PLACEHOLDERS', true),
+        'chunk_size'               => env('AUTO_TRANSLATE_CHUNK_SIZE', 20),
     ],
 
     /*
@@ -87,11 +85,11 @@ return [
     |--------------------------------------------------------------------------
     */
     'backup' => [
-        'enabled' => env('AUTO_TRANSLATE_BACKUP', true),
-        'path' => base_path('lang/.backup'),
-        'keep' => env('AUTO_TRANSLATE_BACKUP_KEEP', 5),
-        'cleanup' => env('AUTO_TRANSLATE_BACKUP_CLEANUP', true),
-        'restore_confirm' => env('AUTO_TRANSLATE_RESTORE_CONFIRM', true),
+        'enabled'               => env('AUTO_TRANSLATE_BACKUP', true),
+        'path'                  => base_path('lang/.backup'),
+        'keep'                  => env('AUTO_TRANSLATE_BACKUP_KEEP', 5),
+        'lang_path'             => null, // resolved at runtime
+        'cleanup'               => env('AUTO_TRANSLATE_BACKUP_CLEANUP', true),
         'auto_restore_on_error' => env('AUTO_TRANSLATE_AUTO_RESTORE_ON_ERROR', false),
     ],
 
@@ -102,7 +100,7 @@ return [
     */
     'storage' => [
         'metadata_file' => base_path('lang/.translations-meta.json'),
-        'lock_file' => base_path('lang/.locked-translations.json'),
+        'lock_file'     => base_path('lang/.locked-translations.json'),
     ],
 
     /*

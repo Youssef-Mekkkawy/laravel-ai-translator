@@ -6,332 +6,108 @@ use Illuminate\Support\Facades\File;
 
 class MetadataManager
 {
-    protected string $metadataPath;
+    protected string $metaFile;
 
-    protected string $backupPath;
-
-    protected int $lockTimeout = 5; // seconds
-
-    public function __construct(?string $metadataPath = null)
+    public function __construct(string $metaFile)
     {
-        // Default to lang/.translations-meta.json
-        $this->metadataPath = $metadataPath ?? lang_path('.translations-meta.json');
-        $this->backupPath = $this->metadataPath.'.backup';
+        $this->metaFile = $metaFile;
+    }
+
+    // ── Hash tracking ─────────────────────────────────────────────
+
+    public function getHashes(): array
+    {
+        return $this->read()['hashes'] ?? [];
+    }
+
+    public function saveHashes(array $hashes): void
+    {
+        $data = $this->read();
+        $data['hashes'] = $hashes;
+        $this->write($data);
+    }
+
+    public function getHash(string $key): ?string
+    {
+        return $this->getHashes()[$key] ?? null;
+    }
+
+    public function hasChanged(string $key, string $value): bool
+    {
+        return $this->getHash($key) !== md5($value);
+    }
+
+    public function updateHash(string $key, string $value): void
+    {
+        $data = $this->read();
+        $data['hashes'][$key] = md5($value);
+        $this->write($data);
+    }
+
+    // ── Run history ───────────────────────────────────────────────
+
+    /**
+     * Record a completed translation run.
+     */
+    public function recordRun(array $runData): void
+    {
+        $data = $this->read();
+
+        if (!isset($data['runs'])) {
+            $data['runs'] = [];
+        }
+
+        // Add new run at the start (newest first)
+        array_unshift($data['runs'], array_merge([
+            'started_at'      => now()->toISOString(),
+            'status'          => 'success',
+            'keys_translated' => 0,
+            'languages'       => [],
+            'provider'        => config('ai-translator.driver', 'ollama'),
+            'model'           => config('ai-translator.providers.'.config('ai-translator.driver','ollama').'.model', ''),
+            'cost'            => 0.0,
+            'duration_ms'     => 0,
+        ], $runData));
+
+        // Keep only last 50 runs
+        $data['runs'] = array_slice($data['runs'], 0, 50);
+        $data['last_full_sync'] = now()->toISOString();
+
+        $this->write($data);
     }
 
     /**
-     * Load metadata from JSON file
-     *
-     * @return array Metadata structure
+     * Get all recorded runs, newest first.
      */
-    public function load(): array
+    public function getRuns(): array
     {
-        // If file doesn't exist, return empty structure
-        if (! File::exists($this->metadataPath)) {
-            return $this->getEmptyStructure();
+        return $this->read()['runs'] ?? [];
+    }
+
+    // ── Internal ──────────────────────────────────────────────────
+
+    protected function read(): array
+    {
+        if (!File::exists($this->metaFile)) {
+            return [];
         }
 
         try {
-            // Read file with shared lock
-            $handle = fopen($this->metadataPath, 'r');
-
-            if ($handle === false) {
-                return $this->getEmptyStructure();
-            }
-
-            // Acquire shared lock (allows multiple readers)
-            if (! flock($handle, LOCK_SH, $wouldBlock)) {
-                fclose($handle);
-
-                return $this->getEmptyStructure();
-            }
-
-            // Read content
-            $content = stream_get_contents($handle);
-
-            // Release lock and close
-            flock($handle, LOCK_UN);
-            fclose($handle);
-
-            // Parse JSON
-            $data = json_decode($content, true);
-
-            // Validate structure
-            if (! $this->validateStructure($data)) {
-                // If invalid, backup and return empty
-                $this->backupCorrupted();
-
-                return $this->getEmptyStructure();
-            }
-
-            return $data;
-
-        } catch (\Exception $e) {
-            // On any error, return empty structure
-            return $this->getEmptyStructure();
+            $data = json_decode(File::get($this->metaFile), true);
+            return is_array($data) ? $data : [];
+        } catch (\Throwable $e) {
+            return [];
         }
     }
 
-    /**
-     * Save metadata to JSON file
-     *
-     * @param  array  $data  Metadata to save
-     * @return bool Success status
-     */
-    public function save(array $data): bool
+    protected function write(array $data): void
     {
-        try {
-            // Validate before saving
-            if (! $this->validateStructure($data)) {
-                throw new \InvalidArgumentException('Invalid metadata structure');
-            }
+        $dir = dirname($this->metaFile);
 
-            // Create directory if doesn't exist
-            $directory = dirname($this->metadataPath);
-            if (! File::exists($directory)) {
-                File::makeDirectory($directory, 0755, true);
-            }
-
-            // Backup existing file
-            if (File::exists($this->metadataPath)) {
-                $this->backup();
-            }
-
-            // Open file for writing
-            $handle = fopen($this->metadataPath, 'w');
-
-            if ($handle === false) {
-                return false;
-            }
-
-            // Acquire exclusive lock (blocks all other access)
-            if (! flock($handle, LOCK_EX, $wouldBlock)) {
-                fclose($handle);
-
-                return false;
-            }
-
-            // Write JSON with pretty print
-            $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-            fwrite($handle, $json);
-
-            // Release lock and close
-            flock($handle, LOCK_UN);
-            fclose($handle);
-
-            return true;
-
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Check if metadata file exists
-     *
-     * @return bool True if exists
-     */
-    public function exists(): bool
-    {
-        return File::exists($this->metadataPath);
-    }
-
-    /**
-     * Delete metadata file (reset tracking)
-     *
-     * @return bool Success status
-     */
-    public function reset(): bool
-    {
-        try {
-            if (File::exists($this->metadataPath)) {
-                // Backup before deleting
-                $this->backup();
-                File::delete($this->metadataPath);
-            }
-
-            return true;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Create backup of current metadata
-     *
-     * @return bool Success status
-     */
-    public function backup(): bool
-    {
-        try {
-            if (File::exists($this->metadataPath)) {
-                File::copy($this->metadataPath, $this->backupPath);
-
-                return true;
-            }
-
-            return false;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Restore from backup
-     *
-     * @return bool Success status
-     */
-    public function restore(): bool
-    {
-        try {
-            if (File::exists($this->backupPath)) {
-                File::copy($this->backupPath, $this->metadataPath);
-
-                return true;
-            }
-
-            return false;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Backup corrupted file
-     */
-    protected function backupCorrupted(): void
-    {
-        try {
-            if (File::exists($this->metadataPath)) {
-                $corruptedPath = $this->metadataPath.'.corrupted.'.time();
-                File::copy($this->metadataPath, $corruptedPath);
-            }
-        } catch (\Exception $e) {
-            // Ignore errors
-        }
-    }
-
-    /**
-     * Get empty metadata structure
-     *
-     * @return array Empty structure
-     */
-    protected function getEmptyStructure(): array
-    {
-        return [
-            'version' => '1.0',
-            'last_full_sync' => null,
-            'hashes' => [],
-        ];
-    }
-
-    /**
-     * Validate metadata structure
-     *
-     * @param  mixed  $data  Data to validate
-     * @return bool True if valid
-     */
-    protected function validateStructure($data): bool
-    {
-        // Must be array
-        if (! is_array($data)) {
-            return false;
+        if (!File::exists($dir)) {
+            File::makeDirectory($dir, 0755, true);
         }
 
-        // Must have required keys
-        if (! isset($data['version']) || ! isset($data['hashes'])) {
-            return false;
-        }
-
-        // Hashes must be array
-        if (! is_array($data['hashes'])) {
-            return false;
-        }
-
-        // Each language must be array of string keys
-        foreach ($data['hashes'] as $language => $hashes) {
-            if (! is_string($language) || ! is_array($hashes)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Get metadata file path
-     *
-     * @return string File path
-     */
-    public function getPath(): string
-    {
-        return $this->metadataPath;
-    }
-
-    /**
-     * Get backup file path
-     *
-     * @return string Backup path
-     */
-    public function getBackupPath(): string
-    {
-        return $this->backupPath;
-    }
-
-    /**
-     * Get metadata file size
-     *
-     * @return int File size in bytes, 0 if doesn't exist
-     */
-    public function getSize(): int
-    {
-        if (! File::exists($this->metadataPath)) {
-            return 0;
-        }
-
-        return File::size($this->metadataPath);
-    }
-
-    /**
-     * Get last modified timestamp
-     *
-     * @return int|null Unix timestamp or null if doesn't exist
-     */
-    public function getLastModified(): ?int
-    {
-        if (! File::exists($this->metadataPath)) {
-            return null;
-        }
-
-        return File::lastModified($this->metadataPath);
-    }
-
-    /**
-     * Get metadata statistics
-     *
-     * @return array Statistics
-     */
-    public function getStatistics(): array
-    {
-        $data = $this->load();
-
-        $totalKeys = 0;
-        $languages = [];
-
-        foreach ($data['hashes'] as $language => $hashes) {
-            $languages[$language] = count($hashes);
-            $totalKeys += count($hashes);
-        }
-
-        return [
-            'version' => $data['version'],
-            'last_sync' => $data['last_full_sync'] ?? 'Never',
-            'file_exists' => $this->exists(),
-            'file_size' => $this->getSize(),
-            'last_modified' => $this->getLastModified(),
-            'total_keys' => $totalKeys,
-            'languages' => $languages,
-            'language_count' => count($languages),
-        ];
+        File::put($this->metaFile, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     }
 }

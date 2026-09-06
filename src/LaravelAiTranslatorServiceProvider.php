@@ -62,17 +62,15 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'views', 'ai-translator');
         // ──────────────────────
         // Register all commands
-        if ($this->app->runningInConsole()) {
-            $this->commands([
-                ScanTranslationsCommand::class,
-                TranslateCommand::class,
-                LockTranslationCommand::class,
-                UnlockTranslationCommand::class,
-                ListLockedCommand::class,
-                ValidateTranslationsCommand::class,
-                RestoreCommand::class,
-                ListBackupsCommand::class,
-            ]);
-        }
+        $this->commands([
+            ScanTranslationsCommand::class,
+            TranslateCommand::class,
+            LockTranslationCommand::class,
+            UnlockTranslationCommand::class,
+            ListLockedCommand::class,
+            ValidateTranslationsCommand::class,
+            RestoreCommand::class,
+            ListBackupsCommand::class,
+        ]);
     }
 }

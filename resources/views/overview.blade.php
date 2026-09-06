@@ -1,0 +1,196 @@
+@extends('ai-translator::layout')
+@section('title', 'Overview')
+
+@section('content')
+@php
+    $_d     = config('ai-translator.driver', 'ollama');
+    $_prov  = config('ai-translator.providers.'.$_d, []);
+    $_model = '';
+    if (is_array($_prov)) {
+        $_model = is_string($_prov['model'] ?? null) ? $_prov['model']
+                : (is_string($_prov['plan']  ?? null) ? $_prov['plan'] : '');
+    }
+    $_providerName = ucfirst($_d);
+    $_providerInit = strtoupper(substr($_d, 0, 1));
+@endphp
+<div x-data="overviewPage()" style="display:flex;flex-direction:column;gap:20px">
+
+  {{-- Running banner --}}
+  <div x-show="running" style="border:1px solid #1E3A34;border-radius:14px;background:linear-gradient(180deg,rgba(110,231,183,.07),rgba(110,231,183,.02));padding:18px 20px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <span style="width:15px;height:15px;border-radius:50%;border:2px solid rgba(110,231,183,.25);border-top-color:#6EE7B7;animation:spin .8s linear infinite;display:inline-block"></span>
+      <span style="font-weight:600;font-size:13.5px" x-text="ar ? 'جاري الترجمة...' : 'Translating now...'"></span>
+      <span style="margin-inline-start:auto;font-family:'JetBrains Mono',monospace;font-size:12px;color:#8B93A5" x-text="progressPct + '%'"></span>
+    </div>
+    <div style="height:6px;border-radius:99px;background:#161C27;overflow:hidden">
+      <div style="height:100%;border-radius:99px;background:linear-gradient(90deg,#6EE7B7,#38bdf8);transition:width .3s ease" :style="'width:' + progressPct + '%'"></div>
+    </div>
+  </div>
+
+  {{-- Stats cards --}}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+    <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:18px">
+      <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.9px;color:#5C6678;margin-bottom:10px" x-text="t.totalKeys"></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px">{{ number_format($totalKeys) }}</div>
+      <div style="font-size:12px;color:#5C6678;margin-top:6px">across lang files</div>
+    </div>
+    <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:18px">
+      <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.9px;color:#5C6678;margin-bottom:10px" x-text="t.translated"></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px;color:#6EE7B7">{{ number_format($translatedCount) }}</div>
+      <div style="font-size:12px;color:#5C6678;margin-top:6px">{{ $totalKeys > 0 ? round(($translatedCount / max($totalKeys,1)) * 100) : 0 }}% coverage</div>
+    </div>
+    <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:18px">
+      <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.9px;color:#5C6678;margin-bottom:10px" x-text="t.missing"></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px;color:#FBBF24">{{ number_format($missingCount) }}</div>
+      <div style="font-size:12px;color:#5C6678;margin-top:6px">needs a translate run</div>
+    </div>
+    <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:18px">
+      <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.9px;color:#5C6678;margin-bottom:10px" x-text="t.lockedKeys"></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;letter-spacing:-1px;color:#C4B5FD">{{ number_format($lockedCount) }}</div>
+      <div style="font-size:12px;color:#5C6678;margin-top:6px">protected manual edits</div>
+    </div>
+  </div>
+
+  {{-- Quick actions + Active provider --}}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+    <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:20px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:14px" x-text="t.quickActions"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <button @click="doScan()" :disabled="running"
+          style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1px solid #2B3446;background:#161C27;color:#E6E9EF;font-size:13px;cursor:pointer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <span x-text="t.scan"></span>
+        </button>
+        <button @click="doTranslate(false)" :disabled="running"
+          style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1px solid #6EE7B7;background:#6EE7B7;color:#062A20;font-size:13px;font-weight:600;cursor:pointer">
+          <span x-show="running" style="width:12px;height:12px;border-radius:50%;border:2px solid rgba(6,42,32,.3);border-top-color:#062A20;animation:spin .8s linear infinite;display:inline-block"></span>
+          <span x-text="t.translate"></span>
+        </button>
+        <button @click="doTranslate(true)" :disabled="running"
+          style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1px solid #2B3446;background:transparent;color:#8B93A5;font-size:13px;cursor:pointer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span x-text="t.dryRun"></span>
+        </button>
+      </div>
+      <div x-show="statusMsg" style="font-size:12px;color:#6EE7B7;padding:6px 0" x-text="statusMsg"></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#3A4761;padding:10px 12px;border-radius:8px;background:#0D111A;border:1px solid #161C27">$ php artisan lang:translate</div>
+    </div>
+
+    <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:20px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:14px" x-text="t.activeProvider"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="width:36px;height:36px;border-radius:10px;background:#161C27;border:1px solid #2B3446;display:grid;place-items:center;font-weight:700;font-size:14px;color:#6EE7B7">{{ $_providerInit }}</div>
+        <div>
+          <div style="font-weight:600;font-size:13.5px">{{ $_providerName }}</div>
+          <div style="font-size:12px;color:#5C6678">{{ $_model }}</div>
+        </div>
+        <span style="margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;background:rgba(110,231,183,.1);border:1px solid rgba(110,231,183,.25);color:#6EE7B7;font-size:11.5px;font-weight:600">
+          <span style="width:6px;height:6px;border-radius:50%;background:#6EE7B7;animation:pulse 2s infinite"></span>
+          Connected
+        </span>
+      </div>
+      @if($lastSync)
+      <div style="display:flex;gap:24px;padding-top:14px;border-top:1px solid #1B2130">
+        <div>
+          <div style="font-size:11.5px;color:#5C6678;margin-bottom:4px" x-text="t.lastSync"></div>
+          <div style="font-weight:600;font-size:13px">{{ \Carbon\Carbon::parse($lastSync)->diffForHumans() }}</div>
+        </div>
+      </div>
+      @endif
+    </div>
+  </div>
+
+  {{-- Coverage by language --}}
+  @if(count($coverage) > 0)
+  <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:20px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:16px" x-text="t.coverageByLang"></div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      @foreach($coverage as $coverageItem)
+      <div style="display:flex;align-items:center;gap:14px">
+        <span style="width:28px;height:20px;flex:none;border-radius:4px;background:#161C27;border:1px solid #2B3446;display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:9px;color:#8B93A5">{{ strtoupper($coverageItem['lang']) }}</span>
+        <span style="width:80px;font-size:13px">{{ ucfirst($coverageItem['lang']) }}</span>
+        <div style="flex:1;height:6px;border-radius:99px;background:#161C27;overflow:hidden">
+          <div style="height:100%;border-radius:99px;background:{{ $coverageItem['pct'] >= 95 ? '#6EE7B7' : ($coverageItem['pct'] >= 70 ? '#38bdf8' : '#FBBF24') }};width:{{ $coverageItem['pct'] }}%"></div>
+        </div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#8B93A5;width:36px;text-align:end">{{ $coverageItem['pct'] }}%</span>
+      </div>
+      @endforeach
+    </div>
+  </div>
+  @endif
+
+</div>
+
+<script>
+function overviewPage() {
+  return {
+    running: false,
+    progressPct: 0,
+    statusMsg: '',
+
+    async doScan() {
+      this.statusMsg = 'Scanning...';
+      try {
+        const r = await fetch('{{ url("ai-translator/api/scan") }}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+          },
+          body: JSON.stringify({})
+        }).then(r => r.json());
+
+        if (r.success) {
+          this.statusMsg = 'Found ' + r.data.total + ' keys';
+          setTimeout(() => { this.statusMsg = ''; }, 4000);
+        } else {
+          this.statusMsg = 'Error: ' + (r.message || 'Scan failed');
+        }
+      } catch (e) {
+        this.statusMsg = 'Error: ' + e.message;
+      }
+    },
+
+    async doTranslate(dryRun = false) {
+      this.running = true;
+      this.progressPct = 10;
+      this.statusMsg = dryRun ? 'Running dry run...' : 'Translating...';
+
+      // Fake progress while waiting
+      const ticker = setInterval(() => {
+        if (this.progressPct < 85) this.progressPct += 5;
+      }, 800);
+
+      try {
+        const r = await fetch('{{ url("ai-translator/api/translate") }}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+          },
+          body: JSON.stringify({ dry_run: dryRun })
+        }).then(r => r.json());
+
+        clearInterval(ticker);
+        this.progressPct = 100;
+
+        setTimeout(() => {
+          this.running = false;
+          this.progressPct = 0;
+          this.statusMsg = r.success
+            ? (dryRun ? 'Dry run complete' : 'Translation complete')
+            : 'Error: ' + (r.message || 'Failed');
+          setTimeout(() => { this.statusMsg = ''; }, 5000);
+        }, 400);
+
+      } catch (e) {
+        clearInterval(ticker);
+        this.running = false;
+        this.progressPct = 0;
+        this.statusMsg = 'Error: ' + e.message;
+      }
+    },
+  }
+}
+</script>
+@endsection
