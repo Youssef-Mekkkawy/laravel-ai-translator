@@ -85,20 +85,8 @@
       "pestphp/pest-plugin": true,
       "php-http/discovery": true,
       "phpstan/extension-installer": true
-    },
-    "policy": {
-      "advisories": {
-        "ignore-id": {
-          "PKSA-m5cs-t1y6-qpcs": "Path confusion in Laravel signed temporary URLs — package doesn't use signed URLs",
-          "PKSA-3r5d-mb8f-1qw9": "CRLF injection in Laravel's email validation rule — package doesn't use it",
-          "PKSA-mdq4-51ck-6kdq": "CVE-2026-48019, same root cause as PKSA-3r5d-mb8f-1qw9",
-          "PKSA-8qx3-n5y5-vvnd": "File validation bypass — package doesn't handle file uploads",
-          "PKSA-q46n-4fdk-zjr4": "XSS via route param on debug-mode error page — not applicable",
-          "PKSA-qzrn-rnz3-85w1": "XSS via request param on debug-mode error page — not applicable",
-          "PKSA-w7xr-vk7n-rstm": "Env manipulation via query string — package doesn't read env from request"
-        }
-      }
     }
+    
   },
   "extra": {
     "laravel": {
