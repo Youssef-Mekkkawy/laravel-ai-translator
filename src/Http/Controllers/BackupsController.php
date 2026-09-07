@@ -2,14 +2,15 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Http\Controllers;
 
-use YoussefMekkkawy\LaravelAiTranslator\Services\Backup\BackupService;
 use Illuminate\Http\Request;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Backup\BackupService;
 
 class BackupsController extends DashboardController
 {
     private function backupService(): BackupService
     {
         $config = config('ai-translator.backup', []);
+
         return new BackupService($config);
     }
 
@@ -19,9 +20,9 @@ class BackupsController extends DashboardController
         $backups = $service->isEnabled() ? $service->listBackups() : [];
 
         return $this->view('backups', [
-            'backups'         => $backups,
-            'backupEnabled'   => $service->isEnabled(),
-            'keepCount'       => config('ai-translator.backup.keep', 5),
+            'backups' => $backups,
+            'backupEnabled' => $service->isEnabled(),
+            'keepCount' => config('ai-translator.backup.keep', 5),
         ]);
     }
 
@@ -29,9 +30,10 @@ class BackupsController extends DashboardController
     {
         try {
             $path = $this->backupService()->backup();
+
             return $this->success(['path' => $path], 'Backup created successfully.');
         } catch (\Throwable $e) {
-            return $this->error('Failed to create backup: ' . $e->getMessage());
+            return $this->error('Failed to create backup: '.$e->getMessage());
         }
     }
 
@@ -39,15 +41,16 @@ class BackupsController extends DashboardController
     {
         $timestamp = $request->input('timestamp');
 
-        if (!$timestamp) {
+        if (! $timestamp) {
             return $this->error('Timestamp is required.');
         }
 
         try {
             $this->backupService()->restore($timestamp);
+
             return $this->success([], 'Backup restored successfully.');
         } catch (\Throwable $e) {
-            return $this->error('Failed to restore: ' . $e->getMessage());
+            return $this->error('Failed to restore: '.$e->getMessage());
         }
     }
 }

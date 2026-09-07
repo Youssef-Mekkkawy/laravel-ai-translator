@@ -1,12 +1,8 @@
-﻿includes:
-    - vendor/larastan/larastan/extension.neon
-
-parameters:
+﻿parameters:
+    level: 5
     paths:
         - src
-    level: 5
-    ignoreErrors:
-        -
-            identifier: missingType.iterableValue
-    excludePaths:
-        - vendor
+        - config
+    tmpDir: build/phpstan
+    checkOctaneCompatibility: true
+    checkModelProperties: true

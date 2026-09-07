@@ -20,7 +20,7 @@ class OllamaTranslator extends AbstractTranslator
     public function isAvailable(): bool
     {
         try {
-            $response = Http::timeout(3)->get($this->baseUrl() . '/api/tags');
+            $response = Http::timeout(3)->get($this->baseUrl().'/api/tags');
 
             return $response->successful();
         } catch (\Throwable $e) {
@@ -124,7 +124,7 @@ class OllamaTranslator extends AbstractTranslator
     private function translateChunk(array $chunk, string $targetLang, string $sourceLang): array
     {
         // Filter out empty strings — translate non-empty ones as a JSON object
-        $toTranslate = array_filter($chunk, fn($t) => trim($t) !== '');
+        $toTranslate = array_filter($chunk, fn ($t) => trim($t) !== '');
 
         if (empty($toTranslate)) {
             return $chunk; // all empty, return as-is
@@ -175,7 +175,7 @@ class OllamaTranslator extends AbstractTranslator
         $timeout = (int) $this->getConfig('timeout', 120);
 
         $response = Http::timeout($timeout)
-            ->post($this->baseUrl() . '/v1/chat/completions', [
+            ->post($this->baseUrl().'/v1/chat/completions', [
                 'model' => $this->model(),
                 'messages' => [
                     [
@@ -193,7 +193,7 @@ class OllamaTranslator extends AbstractTranslator
 
         if (! $response->successful()) {
             throw new \RuntimeException(
-                "Ollama API error [{$response->status()}]: " . $response->body()
+                "Ollama API error [{$response->status()}]: ".$response->body()
             );
         }
 

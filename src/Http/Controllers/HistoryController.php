@@ -8,7 +8,7 @@ class HistoryController extends DashboardController
 {
     public function index()
     {
-        $config   = config('ai-translator', []);
+        $config = config('ai-translator', []);
         $metaFile = $config['storage']['metadata_file']
             ?? base_path('lang/.translations-meta.json');
 

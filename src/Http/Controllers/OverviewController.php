@@ -2,30 +2,29 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Http\Controllers;
 
-use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
+use Illuminate\Support\Facades\File;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockManager;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockStorage;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\MetadataManager;
-use Illuminate\Support\Facades\File;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
 
 class OverviewController extends DashboardController
 {
     public function index()
     {
-        $config     = config('ai-translator', []);
+        $config = config('ai-translator', []);
         $sourceLang = $config['default_language'] ?? 'en';
-        $languages  = array_filter($config['languages'] ?? [], fn ($l) => $l !== $sourceLang);
+        $languages = array_filter($config['languages'] ?? [], fn ($l) => $l !== $sourceLang);
 
         // Scan for total keys
         $scanPaths = $config['scan_paths'] ?? [resource_path('views')];
-        $scanner   = new ViewScanner(array_filter($scanPaths, fn ($p) => is_dir($p)));
-        $allKeys   = $scanner->scanAll();
+        $scanner = new ViewScanner(array_filter($scanPaths, fn ($p) => is_dir($p)));
+        $allKeys = $scanner->scanAll();
         $totalKeys = count($allKeys);
 
         // Load locked keys to exclude from missing count
-        $storage      = new LockStorage();
-        $lockManager  = new LockManager($storage);
-        $lockedCount  = 0;
+        $storage = new LockStorage;
+        $lockManager = new LockManager($storage);
+        $lockedCount = 0;
         $lockedByLang = [];
         foreach ($lockManager->getAll() as $lLang => $langLocks) {
             if (is_array($langLocks)) {
@@ -36,25 +35,25 @@ class OverviewController extends DashboardController
 
         // Count translated vs missing per language
         $translatedCount = 0;
-        $missingCount    = 0;
-        $coverage        = [];
-        $langCount       = count($languages);
+        $missingCount = 0;
+        $coverage = [];
+        $langCount = count($languages);
 
         foreach ($languages as $lang) {
-            $langPath    = lang_path($lang);
-            $langKeys    = $this->loadLangKeys($langPath);
-            $lockedKeys  = $lockedByLang[$lang] ?? [];
+            $langPath = lang_path($lang);
+            $langKeys = $this->loadLangKeys($langPath);
+            $lockedKeys = $lockedByLang[$lang] ?? [];
 
             // Missing = not in lang files AND not locked
             $missingKeys = array_filter(
                 array_diff($allKeys, array_keys($langKeys)),
-                fn($k) => !in_array($k, $lockedKeys)
+                fn ($k) => ! in_array($k, $lockedKeys)
             );
-            $missing    = count($missingKeys);
+            $missing = count($missingKeys);
             $translated = $totalKeys - $missing;
-            $pct        = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
+            $pct = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
 
-            $coverage[]    = compact('lang', 'translated', 'missing', 'pct');
+            $coverage[] = compact('lang', 'translated', 'missing', 'pct');
             $missingCount += $missing;
         }
 
@@ -63,38 +62,38 @@ class OverviewController extends DashboardController
             : 0;
 
         // Last sync info from metadata
-        $metaFile    = $config['storage']['metadata_file'] ?? base_path('lang/.translations-meta.json');
-        $lastSync    = null;
+        $metaFile = $config['storage']['metadata_file'] ?? base_path('lang/.translations-meta.json');
+        $lastSync = null;
         $lastDuration = null;
 
         if (File::exists($metaFile)) {
-            $meta      = json_decode(File::get($metaFile), true) ?? [];
-            $lastSync  = $meta['last_full_sync'] ?? null;
+            $meta = json_decode(File::get($metaFile), true) ?? [];
+            $lastSync = $meta['last_full_sync'] ?? null;
         }
 
         return $this->view('overview', [
-            'totalKeys'       => $totalKeys,
+            'totalKeys' => $totalKeys,
             'translatedCount' => $translatedCount,
-            'missingCount'    => $missingCount,
-            'lockedCount'     => $lockedCount,
-            'coverage'        => $coverage,
-            'lastSync'        => $lastSync,
-            'lastDuration'    => $lastDuration,
+            'missingCount' => $missingCount,
+            'lockedCount' => $lockedCount,
+            'coverage' => $coverage,
+            'lastSync' => $lastSync,
+            'lastDuration' => $lastDuration,
         ]);
     }
 
     private function loadLangKeys(string $langPath): array
     {
-        if (!is_dir($langPath)) {
+        if (! is_dir($langPath)) {
             return [];
         }
 
-        $keys  = [];
-        $files = glob($langPath . DIRECTORY_SEPARATOR . '*.php') ?: [];
+        $keys = [];
+        $files = glob($langPath.DIRECTORY_SEPARATOR.'*.php') ?: [];
 
         foreach ($files as $file) {
             $group = pathinfo($file, PATHINFO_FILENAME);
-            $data  = @include $file;
+            $data = @include $file;
             if (is_array($data)) {
                 foreach (array_keys($this->flatten($data, $group)) as $key) {
                     $keys[$key] = true;
@@ -116,6 +115,7 @@ class OverviewController extends DashboardController
                 $result[$fk] = $v;
             }
         }
+
         return $result;
     }
 }

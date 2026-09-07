@@ -2,9 +2,9 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api;
 
-use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\DashboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\DashboardController;
 
 class TranslateController extends DashboardController
 {
@@ -25,13 +25,13 @@ class TranslateController extends DashboardController
 
             $options['--no-interaction'] = true;
             $exitCode = Artisan::call('lang:translate', $options);
-            $output   = Artisan::output();
+            $output = Artisan::output();
 
             return $exitCode === 0
                 ? $this->success(['output' => $output], 'Translation complete.')
-                : $this->error('Translation failed: ' . $output);
+                : $this->error('Translation failed: '.$output);
         } catch (\Throwable $e) {
-            return $this->error('Translation error: ' . $e->getMessage());
+            return $this->error('Translation error: '.$e->getMessage());
         }
     }
 }

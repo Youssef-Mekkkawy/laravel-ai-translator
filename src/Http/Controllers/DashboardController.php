@@ -2,8 +2,9 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Http\Controllers;
 
-use Illuminate\Routing\Controller;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Routing\Controller;
+use Illuminate\View\View;
 
 abstract class DashboardController extends Controller
 {
@@ -13,6 +14,7 @@ abstract class DashboardController extends Controller
     protected function config(?string $key = null, mixed $default = null): mixed
     {
         $base = 'ai-translator';
+
         return $key ? config("{$base}.{$key}", $default) : config($base, $default);
     }
 
@@ -20,7 +22,7 @@ abstract class DashboardController extends Controller
      * Render a dashboard Blade view.
      * Views live in resources/views/ and are namespaced as ai-translator::*.
      */
-    protected function view(string $view, array $data = []): \Illuminate\View\View
+    protected function view(string $view, array $data = []): View
     {
         return view("ai-translator::{$view}", array_merge($this->sharedData(), $data));
     }
@@ -33,7 +35,7 @@ abstract class DashboardController extends Controller
         return response()->json([
             'success' => true,
             'message' => $message,
-            'data'    => $data,
+            'data' => $data,
         ]);
     }
 
@@ -55,9 +57,9 @@ abstract class DashboardController extends Controller
     {
         // Resolve dashboard UI language from cookie
         $dashLang = request()->cookie('dashboard_lang', 'en');
-        $pkgPath  = app('ai-translator.package_path');
-        $langFile = $pkgPath . '/resources/lang/' . $dashLang . '/dashboard.php';
-        $enFile   = $pkgPath . '/resources/lang/en/dashboard.php';
+        $pkgPath = app('ai-translator.package_path');
+        $langFile = $pkgPath.'/resources/lang/'.$dashLang.'/dashboard.php';
+        $enFile = $pkgPath.'/resources/lang/en/dashboard.php';
 
         $trans = [];
         if (file_exists($langFile)) {
@@ -68,12 +70,12 @@ abstract class DashboardController extends Controller
 
         return [
             'activeProvider' => $this->config('driver', 'ollama'),
-            'sourceLang'     => $this->config('default_language', 'en'),
-            'dashboardPath'  => $this->config('dashboard.path', 'ai-translator'),
-            'version'        => '1.0.0',
-            '_trans'         => $trans,      // ← available in ALL page views
-            '_dashLang'      => $dashLang,
-            '_isRtl'         => in_array($dashLang, ['ar', 'he', 'fa', 'ur']),
+            'sourceLang' => $this->config('default_language', 'en'),
+            'dashboardPath' => $this->config('dashboard.path', 'ai-translator'),
+            'version' => '1.0.0',
+            '_trans' => $trans,      // ← available in ALL page views
+            '_dashLang' => $dashLang,
+            '_isRtl' => in_array($dashLang, ['ar', 'he', 'fa', 'ur']),
         ];
     }
 }

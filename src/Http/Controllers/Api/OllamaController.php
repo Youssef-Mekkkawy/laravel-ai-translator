@@ -2,8 +2,8 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api;
 
-use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Http;
+use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\DashboardController;
 
 class OllamaController extends DashboardController
 {
@@ -16,9 +16,9 @@ class OllamaController extends DashboardController
         $url = rtrim(str_replace('/v1', '', $url), '/');
 
         try {
-            $response = Http::timeout(4)->get($url . '/api/tags');
+            $response = Http::timeout(4)->get($url.'/api/tags');
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return $this->error('Ollama not reachable.', 503);
             }
 
@@ -31,7 +31,7 @@ class OllamaController extends DashboardController
             return $this->success(['models' => $models]);
 
         } catch (\Throwable $e) {
-            return $this->error('Ollama not running: ' . $e->getMessage(), 503);
+            return $this->error('Ollama not running: '.$e->getMessage(), 503);
         }
     }
 }

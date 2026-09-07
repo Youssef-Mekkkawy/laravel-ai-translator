@@ -2,13 +2,13 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api;
 
-use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\DashboardController;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockManager;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\DashboardController;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockManager;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockStorage;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
 
 class LanguageApiController extends DashboardController
 {
@@ -17,30 +17,30 @@ class LanguageApiController extends DashboardController
      */
     public function toggle(Request $request)
     {
-        $locale  = preg_replace('/[^a-z\-]/', '', strtolower($request->input('locale', '')));
+        $locale = preg_replace('/[^a-z\-]/', '', strtolower($request->input('locale', '')));
         $enabled = $request->boolean('enabled');
 
-        if (!$locale) {
+        if (! $locale) {
             return $this->error('Invalid locale code.');
         }
 
-        $source  = config('ai-translator.default_language', 'en');
+        $source = config('ai-translator.default_language', 'en');
         $current = config('ai-translator.languages', []);
 
         if ($locale === $source) {
             return $this->error("Cannot disable the source language '{$source}'.");
         }
 
-        if ($enabled && !in_array($locale, $current)) {
+        if ($enabled && ! in_array($locale, $current)) {
             $current[] = $locale;
-        } elseif (!$enabled) {
+        } elseif (! $enabled) {
             $current = array_values(array_filter($current, fn ($l) => $l !== $locale));
         }
 
         $newLangList = implode(',', $current);
-        $envPath     = base_path('.env');
+        $envPath = base_path('.env');
 
-        if (!File::exists($envPath)) {
+        if (! File::exists($envPath)) {
             return $this->error('.env file not found.');
         }
 
@@ -55,10 +55,10 @@ class LanguageApiController extends DashboardController
         Artisan::call('config:clear');
 
         return $this->success([
-            'locale'    => $locale,
-            'enabled'   => $enabled,
+            'locale' => $locale,
+            'enabled' => $enabled,
             'languages' => $current,
-        ], "Language '{$locale}' " . ($enabled ? 'enabled' : 'disabled') . '.');
+        ], "Language '{$locale}' ".($enabled ? 'enabled' : 'disabled').'.');
     }
 
     /**
@@ -69,7 +69,7 @@ class LanguageApiController extends DashboardController
     {
         $locale = preg_replace('/[^a-z\-]/', '', strtolower($request->input('locale', '')));
 
-        if (!$locale) {
+        if (! $locale) {
             return $this->error('Invalid locale code.');
         }
 
@@ -81,12 +81,12 @@ class LanguageApiController extends DashboardController
         }
 
         // Add to list
-        $current[]   = $locale;
+        $current[] = $locale;
         $newLangList = implode(',', $current);
 
         // Update .env
         $envPath = base_path('.env');
-        if (!File::exists($envPath)) {
+        if (! File::exists($envPath)) {
             return $this->error('.env file not found.');
         }
 
@@ -102,7 +102,7 @@ class LanguageApiController extends DashboardController
         Artisan::call('config:clear');
 
         return $this->success([
-            'locale'    => $locale,
+            'locale' => $locale,
             'languages' => $current,
             'translate' => $request->boolean('translate', true),
         ], "Language '{$locale}' added. Run translate to generate the files.");
@@ -114,62 +114,66 @@ class LanguageApiController extends DashboardController
     public function stats()
     {
         try {
-            $config     = config('ai-translator', []);
+            $config = config('ai-translator', []);
             $sourceLang = $config['default_language'] ?? 'en';
-            $languages  = array_filter($config['languages'] ?? [], fn ($l) => $l !== $sourceLang);
-            $scanPaths  = array_filter($config['scan_paths'] ?? [resource_path('views')], fn ($p) => is_dir($p));
+            $languages = array_filter($config['languages'] ?? [], fn ($l) => $l !== $sourceLang);
+            $scanPaths = array_filter($config['scan_paths'] ?? [resource_path('views')], fn ($p) => is_dir($p));
 
-            $scanner   = new ViewScanner(array_values($scanPaths));
-            $allKeys   = $scanner->scanAll();
+            $scanner = new ViewScanner(array_values($scanPaths));
+            $allKeys = $scanner->scanAll();
             $totalKeys = count($allKeys);
 
             $translatedCount = 0;
-            $missingCount    = 0;
-            $coverage        = [];
-            $langCount       = count($languages);
+            $missingCount = 0;
+            $coverage = [];
+            $langCount = count($languages);
 
             // Get locked keys per language
             $lockedByLang = [];
             foreach ($lockManager->getAll() as $lLang => $llocks) {
-                if (is_array($llocks)) $lockedByLang[$lLang] = array_keys($llocks);
+                if (is_array($llocks)) {
+                    $lockedByLang[$lLang] = array_keys($llocks);
+                }
             }
 
             foreach ($languages as $lang) {
-                $langPath   = lang_path($lang);
-                $langKeys   = $this->loadLangKeys($langPath);
+                $langPath = lang_path($lang);
+                $langKeys = $this->loadLangKeys($langPath);
                 $lockedKeys = $lockedByLang[$lang] ?? [];
-                $missing    = count(array_filter(
+                $missing = count(array_filter(
                     array_diff($allKeys, array_keys($langKeys)),
-                    fn($k) => !in_array($k, $lockedKeys)
+                    fn ($k) => ! in_array($k, $lockedKeys)
                 ));
                 $translated = $totalKeys - $missing;
-                $pct        = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
+                $pct = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
 
-                $coverage[]       = compact('lang', 'translated', 'missing', 'pct');
-                $missingCount    += $missing;
+                $coverage[] = compact('lang', 'translated', 'missing', 'pct');
+                $missingCount += $missing;
             }
 
             $translatedCount = $langCount > 0
                 ? (int) round(array_sum(array_column($coverage, 'translated')) / max($langCount, 1))
                 : 0;
 
-            $storage     = new LockStorage();
+            $storage = new LockStorage;
             $lockManager = new LockManager($storage);
             $lockedCount = 0;
             foreach ($lockManager->getAll() as $langLocks) {
-                if (is_array($langLocks)) $lockedCount += count($langLocks);
+                if (is_array($langLocks)) {
+                    $lockedCount += count($langLocks);
+                }
             }
 
             return $this->success([
-                'totalKeys'       => $totalKeys,
+                'totalKeys' => $totalKeys,
                 'translatedCount' => $translatedCount,
-                'missingCount'    => $missingCount,
-                'lockedCount'     => $lockedCount,
-                'coverage'        => $coverage,
+                'missingCount' => $missingCount,
+                'lockedCount' => $lockedCount,
+                'coverage' => $coverage,
             ]);
 
         } catch (\Throwable $e) {
-            return $this->error('Stats failed: ' . $e->getMessage());
+            return $this->error('Stats failed: '.$e->getMessage());
         }
     }
 
@@ -177,18 +181,21 @@ class LanguageApiController extends DashboardController
 
     private function loadLangKeys(string $langPath): array
     {
-        if (!is_dir($langPath)) return [];
-        $keys  = [];
-        $files = glob($langPath . DIRECTORY_SEPARATOR . '*.php') ?: [];
+        if (! is_dir($langPath)) {
+            return [];
+        }
+        $keys = [];
+        $files = glob($langPath.DIRECTORY_SEPARATOR.'*.php') ?: [];
         foreach ($files as $file) {
             $group = pathinfo($file, PATHINFO_FILENAME);
-            $data  = @include $file;
+            $data = @include $file;
             if (is_array($data)) {
                 foreach ($this->flatten($data, $group) as $key => $_) {
                     $keys[$key] = true;
                 }
             }
         }
+
         return $keys;
     }
 
@@ -197,9 +204,13 @@ class LanguageApiController extends DashboardController
         $result = [];
         foreach ($array as $k => $v) {
             $fk = $prefix ? "{$prefix}.{$k}" : $k;
-            if (is_array($v)) $result = array_merge($result, $this->flatten($v, $fk));
-            else $result[$fk] = $v;
+            if (is_array($v)) {
+                $result = array_merge($result, $this->flatten($v, $fk));
+            } else {
+                $result[$fk] = $v;
+            }
         }
+
         return $result;
     }
 }

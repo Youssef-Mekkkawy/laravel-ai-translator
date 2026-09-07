@@ -1,100 +1,113 @@
 {
-    "name": "youssef-mekkkawy/laravel-ai-translator",
-    "description": "AI-powered automatic translation for Laravel — scan Blade views, translate to any language using Ollama, DeepL, Claude, ChatGPT or Gemini, with smart change tracking, lock system, backup/restore, and an embedded dashboard.",
-    "keywords": [
-        "laravel",
-        "laravel-package",
-        "laravel-framework",
-        "translation",
-        "localization",
-        "i18n",
-        "multi-language",
-        "translation-tool",
-        "translation-management",
-        "artisan",
-        "artisan-command",
-        "blade",
-        "blade-template",
-        "ollama",
-        "ollama-api",
-        "openai",
-        "php",
-        "developer-tools",
-        "open-source"
-    ],
-    "homepage": "https://github.com/Youssef-Mekkkawy/laravel-ai-translator",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Youssef Mekkkawy",
-            "email": "youssef.mekkawy@example.com",
-            "role": "Developer"
+  "name": "youssef-mekkkawy/laravel-ai-translator",
+  "description": "AI-powered automatic translation for Laravel — scan Blade views, translate to any language using Ollama, DeepL, Claude, ChatGPT or Gemini, with smart change tracking, lock system, backup/restore, and an embedded dashboard.",
+  "keywords": [
+    "laravel",
+    "laravel-package",
+    "laravel-framework",
+    "translation",
+    "localization",
+    "i18n",
+    "multi-language",
+    "translation-tool",
+    "translation-management",
+    "artisan",
+    "artisan-command",
+    "blade",
+    "blade-template",
+    "ollama",
+    "ollama-api",
+    "openai",
+    "php",
+    "developer-tools",
+    "open-source"
+  ],
+  "homepage": "https://github.com/Youssef-Mekkkawy/laravel-ai-translator",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Youssef Mekkkawy",
+      "email": "youssef.mekkawy@example.com",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": "^8.2|^8.3|^8.4",
+    "spatie/laravel-package-tools": "^1.16",
+    "illuminate/contracts": "^10.0||^11.0||^12.0",
+    "illuminate/support": "^10.0||^11.0||^12.0",
+    "illuminate/console": "^10.0||^11.0||^12.0",
+    "illuminate/filesystem": "^10.0||^11.0||^12.0",
+    "illuminate/routing": "^10.0||^11.0||^12.0",
+    "illuminate/http": "^10.0||^11.0||^12.0",
+    "guzzlehttp/guzzle": "^7.8",
+    "deeplcom/deepl-php": "^1.18",
+    "nesbot/carbon": "^2.0|^3.0"
+  },
+  "require-dev": {
+    "larastan/larastan": "^3.0",
+    "laravel/pint": "^1.14",
+    "nunomaduro/collision": "^8.8",
+    "orchestra/testbench": "^9.0||^10.0||^11.0",
+    "pestphp/pest": "^3.0||^4.0",
+    "pestphp/pest-plugin-arch": "^3.0||^4.0",
+    "pestphp/pest-plugin-laravel": "^3.0||^4.0",
+    "phpstan/extension-installer": "^1.4",
+    "phpstan/phpstan-deprecation-rules": "^2.0",
+    "phpstan/phpstan-phpunit": "^2.0",
+    "spatie/laravel-ray": "^1.35"
+  },
+  "autoload": {
+    "psr-4": {
+      "YoussefMekkkawy\\LaravelAiTranslator\\": "src/",
+      "YoussefMekkkawy\\LaravelAiTranslator\\Database\\Factories\\": "database/factories/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "YoussefMekkkawy\\LaravelAiTranslator\\Tests\\": "tests/",
+      "Workbench\\App\\": "workbench/app/"
+    }
+  },
+  "scripts": {
+    "post-autoload-dump": "@composer run prepare",
+    "prepare": "@php vendor/bin/testbench package:discover --ansi",
+    "analyse": "vendor/bin/phpstan analyse",
+    "test": "vendor/bin/pest",
+    "test-coverage": "vendor/bin/pest --coverage",
+    "format": "vendor/bin/pint"
+  },
+  "config": {
+    "sort-packages": true,
+    "allow-plugins": {
+      "pestphp/pest-plugin": true,
+      "php-http/discovery": true,
+      "phpstan/extension-installer": true
+    },
+    "policy": {
+      "advisories": {
+        "ignore-id": {
+          "PKSA-m5cs-t1y6-qpcs": "Path confusion in Laravel signed temporary URLs — package doesn't use signed URLs",
+          "PKSA-3r5d-mb8f-1qw9": "CRLF injection in Laravel's email validation rule — package doesn't use it",
+          "PKSA-mdq4-51ck-6kdq": "CVE-2026-48019, same root cause as PKSA-3r5d-mb8f-1qw9",
+          "PKSA-8qx3-n5y5-vvnd": "File validation bypass — package doesn't handle file uploads",
+          "PKSA-q46n-4fdk-zjr4": "XSS via route param on debug-mode error page — not applicable",
+          "PKSA-qzrn-rnz3-85w1": "XSS via request param on debug-mode error page — not applicable",
+          "PKSA-w7xr-vk7n-rstm": "Env manipulation via query string — package doesn't read env from request"
         }
-    ],
-    "require": {
-        "php": "^8.2|^8.3|^8.4",
-        "spatie/laravel-package-tools": "^1.16",
-        "illuminate/contracts": "^10.0||^11.0||^12.0",
-        "illuminate/support": "^10.0||^11.0||^12.0",
-        "illuminate/console": "^10.0||^11.0||^12.0",
-        "illuminate/filesystem": "^10.0||^11.0||^12.0",
-        "illuminate/routing": "^10.0||^11.0||^12.0",
-        "illuminate/http": "^10.0||^11.0||^12.0",
-        "guzzlehttp/guzzle": "^7.8",
-        "deeplcom/deepl-php": "^1.18",
-        "nesbot/carbon": "^2.0|^3.0"
-    },
-    "require-dev": {
-        "larastan/larastan": "^3.0",
-        "laravel/pint": "^1.14",
-        "nunomaduro/collision": "^8.8",
-        "orchestra/testbench": "^9.0||^10.0||^11.0",
-        "pestphp/pest": "^3.0||^4.0",
-        "pestphp/pest-plugin-arch": "^3.0||^4.0",
-        "pestphp/pest-plugin-laravel": "^3.0||^4.0",
-        "phpstan/extension-installer": "^1.4",
-        "phpstan/phpstan-deprecation-rules": "^2.0",
-        "phpstan/phpstan-phpunit": "^2.0",
-        "spatie/laravel-ray": "^1.35"
-    },
-    "autoload": {
-        "psr-4": {
-            "YoussefMekkkawy\\LaravelAiTranslator\\": "src/",
-            "YoussefMekkkawy\\LaravelAiTranslator\\Database\\Factories\\": "database/factories/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "YoussefMekkkawy\\LaravelAiTranslator\\Tests\\": "tests/",
-            "Workbench\\App\\": "workbench/app/"
-        }
-    },
-    "scripts": {
-        "post-autoload-dump": "@composer run prepare",
-        "prepare": "@php vendor/bin/testbench package:discover --ansi",
-        "analyse": "vendor/bin/phpstan analyse",
-        "test": "vendor/bin/pest",
-        "test-coverage": "vendor/bin/pest --coverage",
-        "format": "vendor/bin/pint"
-    },
-    "config": {
-        "sort-packages": true,
-        "allow-plugins": {
-            "pestphp/pest-plugin": true,
-            "php-http/discovery": true,
-            "phpstan/extension-installer": true
-        }
-    },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "YoussefMekkkawy\\LaravelAiTranslator\\LaravelAiTranslatorServiceProvider"
-            ],
-            "aliases": {
-                "AITranslator": "YoussefMekkkawy\\LaravelAiTranslator\\Facades\\AITranslator"
-            }
-        }
-    },
-    "minimum-stability": "stable",
-    "prefer-stable": true
+      }
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "YoussefMekkkawy\\LaravelAiTranslator\\LaravelAiTranslatorServiceProvider"
+      ],
+      "aliases": {
+        "AITranslator": "YoussefMekkkawy\\LaravelAiTranslator\\Facades\\AITranslator"
+      }
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
 }
