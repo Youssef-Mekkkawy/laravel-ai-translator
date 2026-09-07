@@ -46,7 +46,12 @@
     }
   ],
   "require": {
+<<<<<<< Updated upstream
     "php": "^8.1",
+=======
+    "php": "^8.2|^8.3",
+    "laravel/framework": "^10.0|^11.0|^12.0",
+>>>>>>> Stashed changes
     "illuminate/support": "^10.0|^11.0|^12.0",
     "illuminate/console": "^10.0|^11.0|^12.0",
     "illuminate/filesystem": "^10.0|^11.0|^12.0",
@@ -57,9 +62,15 @@
     "nesbot/carbon": "^2.0|^3.0"
   },
   "require-dev": {
+<<<<<<< Updated upstream
     "orchestra/testbench": "^8.0|^9.0",
     "pestphp/pest": "^2.0",
     "pestphp/pest-plugin-laravel": "^2.0",
+=======
+    "orchestra/testbench": "^8.0|^9.0|^10.0",
+    "pestphp/pest": "^3.0",
+    "pestphp/pest-plugin-laravel": "^3.0",
+>>>>>>> Stashed changes
     "phpstan/phpstan": "^1.10",
     "laravel/pint": "^1.0",
     "larastan/larastan": "^2.11"
@@ -98,5 +109,10 @@
       "pestphp/pest-plugin": true,
       "php-http/discovery": true
     }
-  }
+  },
+  "policy": {
+        "advisories": {
+            "block": false
+        }
+    }
 }
