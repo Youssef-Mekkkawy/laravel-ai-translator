@@ -13,17 +13,11 @@ use YoussefMekkkawy\LaravelAiTranslator\Services\Writers\LanguageFileWriter;
 class TranslationService
 {
     protected ViewScanner $scanner;
-
     protected KeyExtractor $extractor;
-
     protected TranslatorManager $translatorManager;
-
     protected LanguageFileWriter $writer;
-
     protected ChangeTracker $changeTracker;
-
     protected LockManager $lockManager;
-
     protected array $config;
 
     public function __construct(
@@ -35,13 +29,13 @@ class TranslationService
         LockManager $lockManager,
         array $config = []
     ) {
-        $this->scanner = $scanner;
-        $this->extractor = $extractor;
+        $this->scanner           = $scanner;
+        $this->extractor         = $extractor;
         $this->translatorManager = $translatorManager;
-        $this->writer = $writer;
-        $this->changeTracker = $changeTracker;
-        $this->lockManager = $lockManager;
-        $this->config = $config;
+        $this->writer            = $writer;
+        $this->changeTracker     = $changeTracker;
+        $this->lockManager       = $lockManager;
+        $this->config            = $config;
     }
 
     /**
@@ -49,38 +43,36 @@ class TranslationService
      */
     public function translateAll(array $targetLanguages, bool $force = false, bool $dryRun = false): array
     {
-        $startTime = microtime(true);
+        $startTime  = microtime(true);
         $sourceLang = $this->config['default_language'] ?? 'en';
 
         // Step 1: Scan views for translation keys
         $allKeys = $this->scanner->scanAll();
 
         // Step 2: Extract and organise keys
-        $organized = $this->extractor->extractMultiple($allKeys);
+        $organized        = $this->extractor->extractMultiple($allKeys);
         $sourceTranslations = $this->loadSourceTranslations($sourceLang);
 
         // Step 3: Build the source-value map
         $keysToTranslate = [];
-
         foreach ($organized as $data) {
-            $key = $data['key'];
             $fullKey = $data['full_key'];
-
-            // FIX: was generateValue() — correct method is generateDefaultValue()
-            $sourceValue = $sourceTranslations[$fullKey]
+            $keysToTranslate[$fullKey] = $sourceTranslations[$fullKey]
                 ?? $this->extractor->generateDefaultValue($fullKey);
-
-            $keysToTranslate[$fullKey] = $sourceValue;
         }
 
-        // Step 4: Translate to each target language
+        // Step 4: Get keys whose source has changed (for hash-based skipping)
+        $changedKeys = $force ? $keysToTranslate
+            : $this->changeTracker->filterChanged($keysToTranslate, $sourceLang, false);
+
+        // Step 5: Translate to each target language
         $results = [
-            'total_keys' => count($keysToTranslate),
+            'total_keys'          => count($keysToTranslate),
             'languages_processed' => 0,
-            'files_written' => [],
-            'errors' => [],
-            'skipped_unchanged' => 0,
-            'locked_keys' => 0,
+            'files_written'       => [],
+            'errors'              => [],
+            'skipped_unchanged'   => 0,
+            'locked_keys'         => 0,
         ];
 
         foreach ($targetLanguages as $targetLang) {
@@ -90,21 +82,28 @@ class TranslationService
 
             try {
                 $langResult = $this->translateToLanguage(
-                    $keysToTranslate,
+                    $keysToTranslate,   // ALL source keys
                     $targetLang,
                     $sourceLang,
                     $force,
-                    $dryRun
+                    $dryRun,
+                    $changedKeys        // keys whose source changed
                 );
 
                 $results['languages_processed']++;
-                $results['files_written'] = array_merge($results['files_written'], $langResult['files']);
+                $results['files_written']    = array_merge($results['files_written'], $langResult['files']);
                 $results['skipped_unchanged'] += $langResult['skipped'] ?? 0;
-                $results['locked_keys'] += $langResult['locked'] ?? 0;
+                $results['total_keys']        = count($keysToTranslate);
+                $results['locked_keys']      += $langResult['locked'] ?? 0;
 
             } catch (\Exception $e) {
                 $results['errors'][$targetLang] = $e->getMessage();
             }
+        }
+
+        // Step 6: Save hashes after successful translation so next run skips unchanged keys
+        if (!$dryRun && !empty($keysNeedingTranslation)) {
+            $this->changeTracker->updateHashes($keysToTranslate, $sourceLang);
         }
 
         $results['duration'] = round(microtime(true) - $startTime, 2);
@@ -116,57 +115,57 @@ class TranslationService
      * Translate keys to a specific language.
      */
     protected function translateToLanguage(
-        array $keysToTranslate,
+        array $allSourceKeys,
         string $targetLang,
         string $sourceLang,
         bool $force = false,
-        bool $dryRun = false
+        bool $dryRun = false,
+        array $changedKeys = []
     ): array {
         $translated = [];
-        $skipped = 0;
-        $locked = 0;
+        $skipped    = 0;
+        $locked     = 0;
 
-        // Filter out locked keys
-        foreach ($keysToTranslate as $fullKey => $value) {
+        foreach ($allSourceKeys as $fullKey => $value) {
+            // Skip locked keys
             if ($this->lockManager->isLocked($targetLang, $fullKey)) {
                 $locked++;
-
                 continue;
             }
-            $translated[$fullKey] = $value;
-        }
 
-        // Skip keys that already have translations (unless --force)
-        if (! $force) {
-            $toTranslate = [];
-
-            foreach ($translated as $fullKey => $value) {
-                $parts = explode('.', $fullKey, 2);
-                $file = $parts[0];
-                $existingPath = lang_path("{$targetLang}/{$file}.php");
-
-                if (file_exists($existingPath)) {
-                    $existing = include $existingPath;
-                    $key = $parts[1] ?? $fullKey;
-
-                    if (isset($existing[$key])) {
-                        $skipped++;
-
-                        continue;
-                    }
-                }
-
-                $toTranslate[$fullKey] = $value;
+            if ($force) {
+                $translated[$fullKey] = $value;
+                continue;
             }
 
-            $translated = $toTranslate;
+            // Check if target already has this key
+            $parts          = explode('.', $fullKey, 2);
+            $file           = $parts[0];
+            $existingPath   = lang_path("{$targetLang}/{$file}.php");
+            $targetHasKey   = false;
+
+            if (file_exists($existingPath)) {
+                $existing     = @include $existingPath;
+                $key          = $parts[1] ?? $fullKey;
+                $targetHasKey = is_array($existing) && isset($existing[$key]);
+            }
+
+            if (!$targetHasKey) {
+                // Target missing this key → always translate
+                $translated[$fullKey] = $value;
+            } elseif (isset($changedKeys[$fullKey])) {
+                // Source changed → re-translate even if target has it
+                $translated[$fullKey] = $value;
+            } else {
+                // Target has it and source unchanged → skip
+                $skipped++;
+            }
         }
 
-        // Translate remaining texts
+        // Translate remaining texts via AI
         $translatedValues = [];
-
-        if (! empty($translated)) {
-            $translator = $this->translatorManager->translator();
+        if (!empty($translated)) {
+            $translator       = $this->translatorManager->translator();
             $translatedValues = $translator->translateBatch(
                 array_values($translated),
                 $targetLang,
@@ -177,7 +176,6 @@ class TranslationService
         // Map translated values back to keys
         $finalTranslations = [];
         $index = 0;
-
         foreach ($translated as $fullKey => $originalValue) {
             $finalTranslations[$fullKey] = $translatedValues[$index] ?? $originalValue;
             $index++;
@@ -185,9 +183,9 @@ class TranslationService
 
         // Organise by file and write
         $organizedByFile = $this->writer->organizeByFile($finalTranslations);
-        $writtenFiles = [];
+        $writtenFiles    = [];
 
-        if (! $dryRun) {
+        if (!$dryRun) {
             foreach ($organizedByFile as $file => $translations) {
                 $writtenFiles[] = $this->writer->write($targetLang, $file, $translations, true);
             }
@@ -195,9 +193,9 @@ class TranslationService
 
         return [
             'translated' => count($finalTranslations),
-            'skipped' => $skipped,
-            'locked' => $locked,
-            'files' => $writtenFiles,
+            'skipped'    => $skipped,
+            'locked'     => $locked,
+            'files'      => $writtenFiles,
         ];
     }
 
@@ -206,9 +204,9 @@ class TranslationService
      */
     protected function loadSourceTranslations(string $sourceLang): array
     {
-        $langPath = base_path('lang').DIRECTORY_SEPARATOR.$sourceLang;
+        $langPath = base_path('lang') . DIRECTORY_SEPARATOR . $sourceLang;
 
-        if (! File::exists($langPath)) {
+        if (!File::exists($langPath)) {
             return [];
         }
 
@@ -219,10 +217,10 @@ class TranslationService
                 continue;
             }
 
-            $fileName = $file->getBasename('.php');
+            $fileName         = $file->getBasename('.php');
             $fileTranslations = include $file->getPathname();
 
-            if (! is_array($fileTranslations)) {
+            if (!is_array($fileTranslations)) {
                 continue;
             }
 
@@ -256,26 +254,13 @@ class TranslationService
     }
 
     /**
-     * Get target languages (all configured languages minus the source language).
-     */
-    protected function getTargetLanguages(): array
-    {
-        $languages = $this->config['languages'] ?? ['en'];
-        $sourceLang = $this->config['default_language'] ?? 'en';
-
-        return array_values(array_filter($languages, fn ($lang) => $lang !== $sourceLang));
-    }
-
-    /**
      * Estimate translation cost without actually translating.
      */
     public function estimateCost(array $targetLanguages, bool $force = false): array
     {
-        $allKeys = $this->scanner->scanAll();
+        $allKeys   = $this->scanner->scanAll();
         $organized = $this->extractor->extractMultiple($allKeys);
-
-        $texts = array_column($organized, 'key');
-
+        $texts     = array_column($organized, 'key');
         $translator = $this->translatorManager->translator();
 
         return $translator->estimateCost($texts, $targetLanguages);
