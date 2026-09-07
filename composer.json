@@ -48,6 +48,7 @@
   "require": {
     "php": "^8.1|^8.2|^8.3",
     "laravel/framework": "^10.0|^11.0|^12.0",
+>>>>>>> develop
     "illuminate/support": "^10.0|^11.0|^12.0",
     "illuminate/console": "^10.0|^11.0|^12.0",
     "illuminate/filesystem": "^10.0|^11.0|^12.0",
@@ -61,6 +62,11 @@
     "orchestra/testbench": "^8.0|^9.0|^10.0",
     "pestphp/pest": "^2.0",
     "pestphp/pest-plugin-laravel": "^2.0",
+=======
+    "orchestra/testbench": "^8.0|^9.0|^10.0",
+    "pestphp/pest": "^3.0",
+    "pestphp/pest-plugin-laravel": "^3.0",
+>>>>>>> Stashed changes
     "phpstan/phpstan": "^1.10",
     "laravel/pint": "^1.0",
     "larastan/larastan": "^2.11"
@@ -99,5 +105,10 @@
       "pestphp/pest-plugin": true,
       "php-http/discovery": true
     }
-  }
+  },
+  "policy": {
+        "advisories": {
+            "block": false
+        }
+    }
 }
