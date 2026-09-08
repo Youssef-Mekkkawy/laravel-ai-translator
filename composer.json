@@ -29,11 +29,9 @@
     }
   ],
   "require": {
-<<<<<<< HEAD
+
     "php": "^8.2",
-=======
-    "php": "^8.2",
->>>>>>> main
+
     "illuminate/console": "^10.0|^11.0|^12.0",
     "illuminate/filesystem": "^10.0|^11.0|^12.0",
     "illuminate/http": "^10.0|^11.0|^12.0",
@@ -106,6 +104,5 @@
   "minimum-stability": "stable",
   "prefer-stable": true
 }
-
 
 
