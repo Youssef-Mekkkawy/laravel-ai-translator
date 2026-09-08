@@ -1,0 +1,130 @@
+You are an expert in Laravel Package Development. This project is an open-source Laravel package for AI-powered automatic translation.
+
+Package: youssef-mekkkawy/laravel-ai-translator
+Namespace: YoussefMekkkawy\LaravelAiTranslator
+GitHub: https://github.com/Youssef-Mekkkawy/laravel-ai-translator
+
+- Always write code and documentation in English. This is a public package for the global Laravel community.
+- Write code that is clean, maintainable, and well-documented.
+- Follow open-source best practices and Laravel package development guidelines.
+
+## Package Overview
+
+This package provides:
+- Automatic scanning of Blade views for translation keys
+- AI-powered translation using Ollama (local/free), DeepL, Claude, ChatGPT, Gemini
+- Hash-based change tracking to avoid re-translating unchanged keys
+- Lock system to protect manual translations from being overwritten
+- Backup and restore of language files
+- Translation history with key-level diff
+- Embedded dashboard at /ai-translator (Telescope-style)
+- Dashboard in 10 languages (EN, AR, FR, ES, DE, ZH, JA, TR, RU, PT)
+- 9 artisan commands
+
+## PHP/Laravel Rules
+
+- Use PHP 8.1+ features:
+  - Match expressions for clean control flow
+  - Named arguments for better API usability
+  - Union types for flexible method signatures
+  - Constructor property promotion
+  - Nullsafe operator for safe chaining
+  - str_contains, str_starts_with, str_ends_with
+  - Readonly properties for immutable data
+- Follow PSR-12 coding standards
+- One class per file
+- Use "{$variable}" for string interpolation
+
+## Package Structure
+
+```
+src/
+├── LaravelAiTranslatorServiceProvider.php
+├── Console/Commands/         # 9 artisan commands
+├── Http/Controllers/         # Dashboard controllers
+│   └── Api/                  # API controllers
+├── Services/
+│   ├── Scanner/              # ViewScanner, KeyExtractor
+│   ├── Translators/          # OllamaTranslator, DeepLTranslator, etc.
+│   ├── Tracking/             # ChangeTracker, HashGenerator, MetadataManager
+│   ├── Lock/                 # LockManager, LockStorage
+│   └── Writers/              # LanguageFileWriter
+├── config/ai-translator.php
+resources/
+├── views/                    # Dashboard blade views
+└── lang/                     # Dashboard UI translations (10 languages)
+routes/web.php
+```
+
+## Key Services
+
+- `TranslationService` — main orchestrator, uses filterChanged() before translate, updateHashes() after
+- `ChangeTracker` — hash-based change detection, reads/writes to lang/.translations-meta.json
+- `MetadataManager` — shared JSON store for hashes + run history
+- `LockManager` — protects keys from being overwritten
+- `ViewScanner` — scans Blade files for __() and @lang() calls
+- `BackupService` — creates/restores snapshots of lang/ directory
+
+## Dashboard
+
+- Route prefix: ai-translator
+- All pages use PHP $_trans variable (not Alpine t object) for translations
+- $_trans loaded from DashboardController::sharedData() based on cookie
+- Alpine.js for interactivity, no build step required
+- Dark theme with CSS variables, RTL support for Arabic
+
+## AI Providers
+
+- Ollama: local, free, default. API at localhost:11434
+- DeepL: cloud, 500k chars/month free tier
+- Claude: Anthropic API (coming soon)
+- ChatGPT: OpenAI API (coming soon)
+- Gemini: Google API (coming soon)
+
+## Commands
+
+- lang:scan — scan views for keys
+- lang:translate — translate all languages
+- lang:translate --force — bypass hash tracking
+- lang:translate --dry-run — preview without writing
+- lang:validate — validate translation quality
+- lang:lock — protect a key
+- lang:unlock — remove protection
+- lang:locked — list locked keys
+- lang:backup:list — list backups
+- lang:restore — restore from backup
+- ai-translator:install — interactive setup wizard
+
+## Testing
+
+- Framework: Pest v2
+- Run all: composer test
+- Run specific: vendor/bin/pest tests/Unit/ViewScannerTest.php
+- 120+ tests passing, 3 skipped (need real API keys)
+
+## Debugging
+
+```php
+dump($variable);
+Log::debug('Translation', ['key' => $key, 'result' => $result]);
+```
+
+Monitor logs:
+```bash
+tail -f storage/logs/laravel.log
+```
+
+## Code Style
+
+- Run formatter: composer format
+- Check only: composer format-test
+- Static analysis: composer analyse
+
+## Important Notes
+
+- NEVER use __DIR__ in Blade views — use app('ai-translator.package_path')
+- Hash tracking: filterChanged() before translate, updateHashes() after
+- Locked keys must be excluded from missing count (not counted as missing)
+- Dashboard @php block must be at TOP of layout.blade.php
+- Button vs div: use div for toggles, not button (CSS shape conflicts)
+- config/ai-translator.php is the source config — src/config/ai-translator.php in package

@@ -1,0 +1,139 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version segment to bump
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+# A newer push cancels the timer and starts a fresh ten-minute quiet period.
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Wait for a ten-minute quiet period
+        run: sleep 600
+
+      - name: Decide release version
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_BUMP: ${{ inputs.bump || 'patch' }}
+        run: |
+          set -euo pipefail
+
+          git fetch --force origin main --tags
+
+          head_sha="$(git rev-parse HEAD)"
+          remote_sha="$(git rev-parse origin/main)"
+          if [[ "${head_sha}" != "${remote_sha}" ]]; then
+            echo "A newer commit reached main; this release is cancelled."
+            echo "eligible=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          # Read version from composer.json
+          current_version="$(php -r '$composer = json_decode(file_get_contents("composer.json"), true, 512, JSON_THROW_ON_ERROR); echo $composer["version"];')"
+          if [[ ! "${current_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "composer.json version must use MAJOR.MINOR.PATCH: ${current_version}" >&2
+            exit 1
+          fi
+
+          if ! git rev-parse --verify --quiet "refs/tags/${current_version}" >/dev/null; then
+            echo "Missing tag for composer.json version: ${current_version}" >&2
+            exit 1
+          fi
+          if ! gh release view "${current_version}" >/dev/null 2>&1; then
+            echo "Missing GitHub Release for composer.json version: ${current_version}" >&2
+            exit 1
+          fi
+
+          IFS='.' read -r major minor patch <<< "${current_version}"
+          case "${REQUESTED_BUMP}" in
+            major) next_version="$((major + 1)).0.0" ;;
+            minor) next_version="${major}.$((minor + 1)).0" ;;
+            patch) next_version="${major}.${minor}.$((patch + 1))" ;;
+            *)
+              echo "Unsupported bump: ${REQUESTED_BUMP}" >&2
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "eligible=true"
+            echo "next_version=${next_version}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Setup PHP
+        if: steps.release.outputs.eligible == 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
+          coverage: none
+
+      - name: Bump composer version
+        if: steps.release.outputs.eligible == 'true'
+        env:
+          NEXT_VERSION: ${{ steps.release.outputs.next_version }}
+        run: composer config version "${NEXT_VERSION}"
+
+      - name: Install Composer dependencies
+        if: steps.release.outputs.eligible == 'true'
+        run: composer install --prefer-dist --no-interaction --no-progress --no-audit
+
+      - name: Validate and test package
+        if: steps.release.outputs.eligible == 'true'
+        run: |
+          composer validate
+          composer test
+          php -d memory_limit=512M vendor/bin/phpstan analyse --error-format=github
+
+      - name: Commit version and push tag
+        if: steps.release.outputs.eligible == 'true'
+        env:
+          NEXT_VERSION: ${{ steps.release.outputs.next_version }}
+        run: |
+          set -euo pipefail
+
+          git fetch origin main --tags
+          if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]]; then
+            echo "A newer commit reached main during validation; this release is cancelled."
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- composer.json
+          git commit -m "chore: release version ${NEXT_VERSION}"
+          git tag "${NEXT_VERSION}"
+          git push --atomic origin HEAD:main "refs/tags/${NEXT_VERSION}"
+
+      - name: Create GitHub release
+        if: steps.release.outputs.eligible == 'true'
+        env:
+          NEXT_VERSION: ${{ steps.release.outputs.next_version }}
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${NEXT_VERSION}" --verify-tag --generate-notes --latest
