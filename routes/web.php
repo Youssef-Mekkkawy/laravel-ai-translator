@@ -27,6 +27,7 @@ Route::prefix(config('ai-translator.dashboard.path', 'ai-translator'))
         Route::post('/api/languages/add', [LanguageApiController::class, 'add']);
         Route::get('/api/stats', [LanguageApiController::class, 'stats']);
         Route::post('/api/languages/toggle', [LanguageApiController::class, 'toggle']);
+        Route::post('/api/languages/remove', [LanguageApiController::class, 'remove']);
 
         // ── Pages ──────────────────────────────────────────────────
         Route::get('/', [OverviewController::class,    'index'])->name('overview');
