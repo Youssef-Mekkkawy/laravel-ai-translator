@@ -17,7 +17,7 @@
         "developer-tools",
         "open-source"
     ],
-    "version": "1.0.8",
+    "version": "1.0.9",
     "type": "library",
     "license": "MIT",
     "homepage": "https://github.com/Youssef-Mekkkawy/laravel-ai-translator",
@@ -112,3 +112,4 @@
     "minimum-stability": "stable",
     "prefer-stable": true
 }
+
