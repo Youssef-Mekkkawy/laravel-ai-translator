@@ -1,10 +1,12 @@
 includes:
-    - phpstan-baseline.neon
+    - vendor/larastan/larastan/extension.neon
 
 parameters:
-    level: 5
     paths:
         - src
-        - config
-        - database
-    tmpDir: build/phpstan
+    level: 5
+    ignoreErrors:
+        -
+            identifier: missingType.iterableValue
+    excludePaths:
+        - vendor
