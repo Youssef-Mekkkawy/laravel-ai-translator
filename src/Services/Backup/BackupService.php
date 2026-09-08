@@ -199,7 +199,7 @@ class BackupService
         foreach (['Y-m-d_H-i-s', 'Y-m-d_H-i-s_u'] as $format) {
             try {
                 $dt = Carbon::createFromFormat($format, $timestamp);
-                if ($dt !== false) {
+                if ($dt !== null) {
                     return $dt;
                 }
             } catch (\Exception $e) {
@@ -233,3 +233,5 @@ class BackupService
         return $this->config['enabled'] ?? true;
     }
 }
+
+

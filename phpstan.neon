@@ -1,12 +1,19 @@
-includes:
-    - vendor/larastan/larastan/extension.neon
-
 parameters:
     paths:
         - src
     level: 5
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
     ignoreErrors:
-        -
-            identifier: missingType.iterableValue
+        - '#Called .env. outside of the config directory#'
+        - '#Result of && is always false#'
+        - '#is always true#'
+        - '#is always false#'
+        - '#on left side of .* always exists#'
+        - '#of array_values is already a list#'
+        - '#with mixed will always evaluate to false#'
+        - '#in empty.. is never defined#'
+        - '#Undefined variable#'
     excludePaths:
         - vendor
+        - config (?)

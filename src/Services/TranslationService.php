@@ -108,7 +108,7 @@ class TranslationService
         }
 
         // Step 6: Save hashes after successful translation so next run skips unchanged keys
-        if (! $dryRun && ! empty($keysNeedingTranslation)) {
+        if (! $dryRun && ! empty($changedKeys)) {
             $this->changeTracker->updateHashes($keysToTranslate, $sourceLang);
         }
 
@@ -274,3 +274,4 @@ class TranslationService
         return $translator->estimateCost($texts, $targetLanguages);
     }
 }
+
