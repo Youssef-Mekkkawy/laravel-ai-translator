@@ -122,6 +122,8 @@ class LanguageApiController extends DashboardController
             $scanner = new ViewScanner(array_values($scanPaths));
             $allKeys = $scanner->scanAll();
             $totalKeys = count($allKeys);
+            $storage     = new \YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockStorage();
+            $lockManager = new \YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockManager($storage);
 
             $translatedCount = 0;
             $missingCount = 0;
@@ -214,3 +216,4 @@ class LanguageApiController extends DashboardController
         return $result;
     }
 }
+
