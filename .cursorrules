@@ -23,7 +23,7 @@ This package provides:
 
 ## PHP/Laravel Rules
 
-- Use PHP 8.1+ features:
+- Use PHP 8.2+ features:
   - Match expressions for clean control flow
   - Named arguments for better API usability
   - Union types for flexible method signatures
