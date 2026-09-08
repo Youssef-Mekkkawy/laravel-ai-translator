@@ -274,4 +274,3 @@ class TranslationService
         return $translator->estimateCost($texts, $targetLanguages);
     }
 }
-
