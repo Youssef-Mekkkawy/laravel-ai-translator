@@ -48,7 +48,7 @@ That's it. Your entire app is translated.
 
 | Requirement | Version |
 |---|---|
-| PHP | 8.1+ |
+| PHP | 8.2+ |
 | Laravel | 10.x or 11.x |
 | Ollama *(optional)* | Any recent version |
 

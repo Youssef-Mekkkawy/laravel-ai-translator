@@ -273,7 +273,7 @@ Add your provider to the providers table in `README.md`.
 
 - **PSR-12** code style (enforced by Laravel Pint)
 - **PHPDoc blocks** for all public methods
-- **Type hints** on all method parameters and return types (PHP 8.1+)
+- **Type hints** on all method parameters and return types (PHP 8.2+)
 - **No magic numbers** — use named constants or config values
 - **No hardcoded strings** that users might want to customize
 

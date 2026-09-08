@@ -17,7 +17,7 @@ This section walks you through translating a Laravel application from scratch.
 ### Prerequisites
 
 - Laravel 10.x or 11.x
-- PHP 8.1+
+- PHP 8.2+
 - A DeepL API key (free tier: 500,000 characters/month)
 
 ### Step 1 — Install the Package
