@@ -49,7 +49,7 @@ That's it. Your entire app is translated.
 | Requirement | Version |
 |---|---|
 | PHP | 8.2+ |
-| Laravel | 10.x or 11.x |
+| Laravel | 10.x , 11.x, 12.x and 13.x  |
 | Ollama *(optional)* | Any recent version |
 
 ---

@@ -45,6 +45,8 @@ return [
     */
     'providers' => [
         'ollama' => [
+            'auto_start' => env('OLLAMA_AUTO_START', false), // true, false, or 'ask'
+            'auto_pull'  => env('OLLAMA_AUTO_PULL', true),
             'model' => env('OLLAMA_MODEL', 'llama3.2'),
             'api_url' => env('OLLAMA_API_URL', 'http://localhost:11434'),
         ],

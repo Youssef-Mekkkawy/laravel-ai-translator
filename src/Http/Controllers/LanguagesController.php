@@ -3,6 +3,7 @@
 namespace YoussefMekkkawy\LaravelAiTranslator\Http\Controllers;
 
 use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
+use YoussefMekkkawy\LaravelAiTranslator\Services\RuntimeConfig;
 use Illuminate\Support\Facades\File;
 
 class LanguagesController extends DashboardController
@@ -11,7 +12,8 @@ class LanguagesController extends DashboardController
     {
         $config     = config('ai-translator', []);
         $sourceLang = $config['default_language'] ?? 'en';
-        $allLangs   = $config['languages'] ?? [];
+        $runtime    = new RuntimeConfig();
+        $allLangs   = $runtime->getSupportedLanguages();
 
         $scanPaths = $config['scan_paths'] ?? [resource_path('views')];
         $scanner   = new ViewScanner(array_filter($scanPaths, fn ($p) => is_dir($p)));
@@ -30,12 +32,8 @@ class LanguagesController extends DashboardController
             $translated = $totalKeys - $missing;
             $pct        = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
 
-            // "enabled" = in config AND not in DISABLED_LANGUAGES
-            $disabledLangs = array_filter(
-                explode(',', env('DISABLED_LANGUAGES', '')),
-                fn ($l) => !empty(trim($l))
-            );
-            $isEnabled = !in_array($lang, $disabledLangs);
+            // "enabled" = not in runtime disabled list
+            $isEnabled = !$runtime->isDisabled($lang);
             $languages[] = [
                 'code'       => $lang,
                 'name'       => $this->languageName($lang),

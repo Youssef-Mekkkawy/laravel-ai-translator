@@ -39,7 +39,20 @@
         <button @click="testOllama()" style="display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:9px;border:1px solid #2B3446;background:#161C27;color:#8B93A5;font-size:12px;cursor:pointer">
           {{ $tr['test_connection'] ?? 'Test connection' }}
         </button>
+        <button x-show="!ollamaUp" @click="startOllama()"
+          :disabled="ollamaStarting"
+          style="display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:9px;border:1px solid #6EE7B7;background:rgba(110,231,183,.1);color:#6EE7B7;font-size:12px;cursor:pointer;font-weight:600">
+          <span x-show="ollamaStarting" style="width:10px;height:10px;border-radius:50%;border:2px solid rgba(110,231,183,.3);border-top-color:#6EE7B7;animation:spin .8s linear infinite;display:inline-block"></span>
+          <span x-text="ollamaStarting ? 'Starting...' : 'Start Ollama'"></span>
+        </button>
       </div>
+
+      {{-- Model pull status --}}
+      <div x-show="ollamaPulling" style="padding:10px 14px;border-radius:10px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);font-size:12.5px;color:#FBBF24">
+        ⬇ Model is downloading in the background. This may take a few minutes. The page will refresh automatically when ready.
+      </div>
+
+      <div x-show="ollamaMsg" x-text="ollamaMsg" style="font-size:12.5px;color:#6EE7B7"></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
         <div>
           <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">API URL</label>
@@ -132,7 +145,7 @@ function settingsPage() {
     chunk:     {{ config("ai-translator.options.chunk_size", 20) }},
     context:   '{{ addslashes(config("ai-translator.options.context", "")) }}',
     ollamaUrl: '{{ config("ai-translator.providers.ollama.api_url", "http://localhost:11434") }}',
-    ollamaUp:  false, ollamaTesting: false,
+    ollamaUp:  false, ollamaTesting: false, ollamaStarting: false, ollamaPulling: false, ollamaMsg: '',
     saving: false, resultMsg: '', resultOk: true,
     ollamaModels: [], ollamaModelsLoading: false,
 
@@ -143,8 +156,14 @@ function settingsPage() {
 
     async init() {
       if (this.provider === 'ollama') {
-        await this.fetchOllamaModels();
         await this.testOllama();
+
+        @if(config('ai-translator.providers.ollama.auto_start', false))
+        // Auto-start if not running — non-blocking
+        if (!this.ollamaUp) {
+          this.startOllama(); // no await — fire and forget
+        }
+        @endif
       }
     },
 
@@ -158,12 +177,72 @@ function settingsPage() {
       }
     },
 
+    async startOllama() {
+      this.ollamaStarting = true;
+      this.ollamaMsg      = '';
+      try {
+        // Fire start — returns immediately
+        await fetch('{{ url("ai-translator/api/ollama/start") }}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+          },
+          body: JSON.stringify({}),
+        }).then(r => r.json());
+
+        this.ollamaMsg = 'Starting Ollama...';
+
+        // Poll every 2 seconds until running (max 30 seconds)
+        let attempts = 0;
+        const poll = setInterval(async () => {
+          attempts++;
+          const s = await fetch('{{ url("ai-translator/api/ollama/status") }}').then(r => r.json());
+
+          if (s.success && s.data?.running) {
+            clearInterval(poll);
+            this.ollamaUp      = true;
+            this.ollamaStarting = false;
+
+            if (!s.data?.hasModel) {
+              // Start model pull in background
+              await fetch('{{ url("ai-translator/api/ollama/pull") }}', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                },
+                body: JSON.stringify({ model: this.model }),
+              });
+              this.ollamaPulling = true;
+              this.ollamaMsg     = 'Ollama started! Model is downloading in background. Come back in a few minutes.';
+            } else {
+              this.ollamaMsg = 'Ollama started successfully!';
+              await this.fetchOllamaModels();
+              setTimeout(() => { this.ollamaMsg = ''; }, 4000);
+            }
+          } else if (attempts >= 15) {
+            clearInterval(poll);
+            this.ollamaStarting = false;
+            this.ollamaMsg = 'Could not start Ollama. Make sure it is installed at ollama.com';
+          }
+        }, 2000);
+
+      } catch (e) {
+        this.ollamaStarting = false;
+        this.ollamaMsg = 'Error: ' + e.message;
+      }
+    },
+
     async testOllama() {
       this.ollamaTesting = true;
       try {
-        const r = await fetch(this.ollamaUrl + '/api/tags', { signal: AbortSignal.timeout(3000) });
-        this.ollamaUp = r.ok;
-        if (r.ok) await this.fetchOllamaModels();
+        const r = await fetch('{{ url("ai-translator/api/ollama/status") }}').then(r => r.json());
+        this.ollamaUp = r.success && r.data?.running;
+        if (this.ollamaUp && r.data?.models?.length) {
+          this.ollamaModels = r.data.models;
+          if (!this.ollamaModels.includes(this.model)) this.model = this.ollamaModels[0];
+        }
       } catch { this.ollamaUp = false; }
       this.ollamaTesting = false;
     },
@@ -171,8 +250,8 @@ function settingsPage() {
     async fetchOllamaModels() {
       this.ollamaModelsLoading = true;
       try {
-        const r = await fetch('{{ url("ai-translator/api/ollama-models") }}').then(r => r.json());
-        if (r.success && r.data.models.length) {
+        const r = await fetch('{{ url("ai-translator/api/ollama/status") }}').then(r => r.json());
+        if (r.success && r.data?.models?.length) {
           this.ollamaModels = r.data.models;
           if (!this.ollamaModels.includes(this.model)) this.model = this.ollamaModels[0];
           this.ollamaUp = true;

@@ -23,7 +23,7 @@ What actually happened. Include the full error output.
 
 | | |
 |---|---|
-| Laravel version | e.g. 11.x |
+| Laravel version | e.g. 13.x |
 | PHP version | e.g. 8.2 |
 | Package version | e.g. 1.0.0 |
 | AI Provider | e.g. Ollama / DeepL |

@@ -15,6 +15,7 @@ use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\LockedKeysController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\OverviewController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\SettingsController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Middleware\DashboardEnabled;
+use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\OllamaStartController;
 
 Route::prefix(config('ai-translator.dashboard.path', 'ai-translator'))
     ->name('ai-translator.')
@@ -46,5 +47,10 @@ Route::prefix(config('ai-translator.dashboard.path', 'ai-translator'))
         Route::post('/api/backups/create', [BackupsController::class,     'create']);
         Route::post('/api/backups/restore', [BackupsController::class,     'restore']);
 
+
+        // ── Ollama API ───────────────────────────────────────────────────
+        
+        Route::post('/api/ollama/start',  [OllamaStartController::class, 'start']);
+        Route::get('/api/ollama/status',  [OllamaStartController::class, 'status']);
         Route::get('/api/ollama-models', [OllamaController::class, 'models']);
     });

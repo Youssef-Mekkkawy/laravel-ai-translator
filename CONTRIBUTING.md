@@ -30,7 +30,7 @@ Be respectful. Be constructive. Help each other. That's it.
 
 Open an issue and include:
 
-- **Laravel version** (e.g., 11.x)
+- **Laravel version** (e.g., 13.x)
 - **PHP version** (e.g., 8.2)
 - **Package version** (e.g., 1.0.3)
 - **AI provider** being used (Ollama, DeepL, etc.)

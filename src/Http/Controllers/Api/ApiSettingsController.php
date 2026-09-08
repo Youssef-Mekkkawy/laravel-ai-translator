@@ -2,76 +2,61 @@
 
 namespace YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\File;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\DashboardController;
+use YoussefMekkkawy\LaravelAiTranslator\Services\RuntimeConfig;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 
 class ApiSettingsController extends DashboardController
 {
     public function save(Request $request)
     {
-        $envPath = base_path('.env');
-
-        if (! File::exists($envPath)) {
-            return $this->error('.env file not found.');
-        }
-
-        // Build the updates map — keep null values out but allow empty strings
-        $updates = [];
-
-        $map = [
-            'AUTO_TRANSLATE_DRIVER' => $request->input('driver'),
-            'SUPPORTED_LANGUAGES' => $request->input('languages'),
-            'DEFAULT_LANGUAGE' => $request->input('source_lang'),
-            'AUTO_TRANSLATE_CHUNK_SIZE' => $request->input('chunk_size'),
-            'AUTO_TRANSLATE_CONTEXT' => $request->input('context'),
-            'OLLAMA_MODEL' => $request->input('ollama_model'),
-            'OLLAMA_API_URL' => $request->input('ollama_url'),
-            'DEEPL_API_KEY' => $request->input('deepl_key'),
-            'ANTHROPIC_API_KEY' => $request->input('claude_key'),
-            'OPENAI_API_KEY' => $request->input('openai_key'),
-            'GEMINI_API_KEY' => $request->input('gemini_key'),
-        ];
-
-        foreach ($map as $key => $value) {
-            if ($value !== null) {
-                $updates[$key] = $value;
-            }
-        }
-
-        if (empty($updates)) {
-            return $this->error('No settings to save.');
-        }
+        $runtime = new RuntimeConfig();
 
         try {
-            $env = File::get($envPath);
+            // Settings saved to runtime config — NO .env writes, NO server restarts
+            $updates = array_filter([
+                'driver'      => $request->input('driver'),
+                'source_lang' => $request->input('source_lang'),
+                'chunk_size'  => $request->input('chunk_size'),
+                'context'     => $request->input('context'),
+                'ollama_model'=> $request->input('ollama_model'),
+                'ollama_url'  => $request->input('ollama_url'),
+            ], fn ($v) => $v !== null);
 
-            foreach ($updates as $envKey => $value) {
-                // Wrap values containing spaces in quotes
-                $formatted = str_contains((string) $value, ' ')
-                    ? '"'.$value.'"'
-                    : (string) $value;
+            if (!empty($updates)) {
+                $runtime->merge($updates);
+            }
 
-                // Use anchored regex to avoid partial key matches
-                if (preg_match('/^'.preg_quote($envKey, '/').'=/m', $env)) {
-                    $env = preg_replace(
-                        '/^'.preg_quote($envKey, '/').'=.*/m',
-                        $envKey.'='.$formatted,
-                        $env
-                    );
-                } else {
-                    $env .= PHP_EOL.$envKey.'='.$formatted;
+            // API keys still go to .env (sensitive, should not be in lang/ folder)
+            // But we do it carefully — only if provided and non-empty
+            $apiKeyMap = [
+                'DEEPL_API_KEY'     => $request->input('deepl_key'),
+                'ANTHROPIC_API_KEY' => $request->input('claude_key'),
+                'OPENAI_API_KEY'    => $request->input('openai_key'),
+                'GEMINI_API_KEY'    => $request->input('gemini_key'),
+            ];
+
+            $envUpdates = array_filter($apiKeyMap, fn ($v) => !empty($v));
+
+            if (!empty($envUpdates)) {
+                $envPath = base_path('.env');
+                if (File::exists($envPath)) {
+                    $env = File::get($envPath);
+                    foreach ($envUpdates as $key => $value) {
+                        if (preg_match('/^' . preg_quote($key, '/') . '=/m', $env)) {
+                            $env = preg_replace('/^' . preg_quote($key, '/') . '=.*/m', "{$key}={$value}", $env);
+                        } else {
+                            $env .= PHP_EOL . "{$key}={$value}";
+                        }
+                    }
+                    File::put($envPath, $env);
+                    // Note: this may restart dev server, but only when saving API keys
                 }
             }
 
-            File::put($envPath, $env);
-
-            // Clear config cache so changes take effect immediately
-            Artisan::call('config:clear');
-
         } catch (\Throwable $e) {
-            return $this->error('Failed to save: '.$e->getMessage());
+            return $this->error('Failed to save: ' . $e->getMessage());
         }
 
         return $this->success([], 'Settings saved successfully.');

@@ -24,7 +24,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Placeholder preservation** — `:name`, `:count`, `{0}` always kept intact
 - **HTML tag preservation** — markup never broken by translation
 - **Embedded dashboard** at `/ai-translator`
-- Support for PHP 8.2+, Laravel 10.x and 11.x
+- Support for PHP 8.2+, Laravel 10.x , 11.x, 12.x and 13.x 
 - 120+ tests with full coverage of core functionality
 
 ---

@@ -3,6 +3,7 @@
 namespace YoussefMekkkawy\LaravelAiTranslator\Services\Translators;
 
 use Illuminate\Support\Facades\Http;
+use YoussefMekkkawy\LaravelAiTranslator\Services\RuntimeConfig;
 
 class OllamaTranslator extends AbstractTranslator
 {
@@ -174,21 +175,30 @@ class OllamaTranslator extends AbstractTranslator
     {
         $timeout = (int) $this->getConfig('timeout', 120);
 
+        // Build system message — include context prompt if set
+        $runtime   = new RuntimeConfig();
+        $context   = $runtime->get('context', '')
+            ?: config('ai-translator.options.context', '');
+        $sysMsg    = 'You are a professional translator. Follow all instructions exactly.';
+        if (!empty(trim((string) $context))) {
+            $sysMsg .= '\n\nContext about this application: ' . trim($context);
+        }
+
         $response = Http::timeout($timeout)
             ->post($this->baseUrl().'/v1/chat/completions', [
                 'model' => $this->model(),
                 'messages' => [
                     [
-                        'role' => 'system',
-                        'content' => 'You are a professional translator. Follow all instructions exactly.',
+                        'role'    => 'system',
+                        'content' => $sysMsg,
                     ],
                     [
-                        'role' => 'user',
+                        'role'    => 'user',
                         'content' => $userMessage,
                     ],
                 ],
-                'stream' => false,
-                'temperature' => 0.1, // Low temperature = more deterministic output
+                'stream'      => false,
+                'temperature' => 0.1,
             ]);
 
         if (! $response->successful()) {

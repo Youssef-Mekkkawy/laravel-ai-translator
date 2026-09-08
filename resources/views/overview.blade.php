@@ -62,18 +62,25 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           {{ $tr['scan'] ?? 'Scan' }}
         </button>
-        <button @click="doTranslate(false)" :disabled="running"
-          style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1px solid #6EE7B7;background:#6EE7B7;color:#062A20;font-size:13px;font-weight:600;cursor:pointer">
+        <button @click="doTranslate(false)" :disabled="running || !providerOk"
+          :title="!providerOk ? providerMsg : ''"
+          :style="!providerOk ? 'display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1px solid #2B3446;background:#161C27;color:#5C6678;font-size:13px;font-weight:600;cursor:not-allowed;opacity:.5' : 'display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1px solid #6EE7B7;background:#6EE7B7;color:#062A20;font-size:13px;font-weight:600;cursor:pointer'">
           <span x-show="running" style="width:12px;height:12px;border-radius:50%;border:2px solid rgba(6,42,32,.3);border-top-color:#062A20;animation:spin .8s linear infinite;display:inline-block"></span>
           {{ $tr['translate'] ?? 'Translate' }}
         </button>
-        <button @click="doTranslate(true)" :disabled="running"
-          style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1px solid #2B3446;background:transparent;color:#8B93A5;font-size:13px;cursor:pointer">
+        <button @click="doTranslate(true)" :disabled="running || !providerOk"
+          :style="!providerOk ? 'display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1px solid #2B3446;background:transparent;color:#5C6678;font-size:13px;cursor:not-allowed;opacity:.5' : 'display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1px solid #2B3446;background:transparent;color:#8B93A5;font-size:13px;cursor:pointer'">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           {{ $tr['dry_run'] ?? 'Dry run' }}
         </button>
       </div>
-      <div x-show="statusMsg" style="font-size:12px;color:#6EE7B7;padding:6px 0" x-text="statusMsg"></div>
+
+      {{-- Provider not connected warning --}}
+      <div x-show="!providerOk" style="font-size:12px;color:#FBBF24;padding:6px 0;display:flex;align-items:center;gap:6px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span x-text="providerMsg"></span>
+      </div>
+      <div x-show="statusMsg && providerOk" style="font-size:12px;color:#6EE7B7;padding:6px 0" x-text="statusMsg"></div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#3A4761;padding:10px 12px;border-radius:8px;background:#0D111A;border:1px solid #161C27">$ php artisan lang:translate</div>
     </div>
 
@@ -85,10 +92,18 @@
           <div style="font-weight:600;font-size:13.5px">{{ $_providerName }}</div>
           <div style="font-size:12px;color:#5C6678">{{ $_model }}</div>
         </div>
+        @if($_d === 'ollama')
+        {{-- Live Ollama status --}}
+        <span :style="ollamaOk ? 'margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;background:rgba(110,231,183,.1);border:1px solid rgba(110,231,183,.25);color:#6EE7B7;font-size:11.5px;font-weight:600' : 'margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:#F87171;font-size:11.5px;font-weight:600'">
+          <span :style="'width:6px;height:6px;border-radius:50%;animation:pulse 2s infinite;background:' + (ollamaOk ? '#6EE7B7' : '#F87171')"></span>
+          <span x-text="ollamaOk ? '{{ addslashes($tr['connected'] ?? 'Connected') }}' : 'Not running'"></span>
+        </span>
+        @else
         <span style="margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;background:rgba(110,231,183,.1);border:1px solid rgba(110,231,183,.25);color:#6EE7B7;font-size:11.5px;font-weight:600">
           <span style="width:6px;height:6px;border-radius:50%;background:#6EE7B7;animation:pulse 2s infinite"></span>
           {{ $tr['connected'] ?? 'Connected' }}
         </span>
+        @endif
       </div>
       @if($lastSync)
       <div style="display:flex;gap:24px;padding-top:14px;border-top:1px solid #1B2130">
@@ -129,6 +144,31 @@ function overviewPage() {
     running: false,
     progressPct: 0,
     statusMsg: '',
+    ollamaOk: false,
+    providerOk: true,
+    providerMsg: '',
+
+    // Check Ollama status on load — auto-start if configured
+    async init() {
+      @if($_d === 'ollama')
+      try {
+        const r = await fetch('{{ url("ai-translator/api/ollama/status") }}').then(r => r.json());
+        this.ollamaOk = r.success && r.data?.running === true;
+        this.providerOk = this.ollamaOk;
+        this.providerMsg = this.ollamaOk ? '' : 'Ollama is not running. Go to Settings to start it.';
+
+        @if(config('ai-translator.providers.ollama.auto_start', false))
+        // Auto-start is enabled — start Ollama if not running (non-blocking)
+        if (!this.ollamaOk) {
+          this.autoStartOllama();
+        }
+        @endif
+
+      } catch { this.ollamaOk = false; }
+      @else
+      this.ollamaOk = true;
+      @endif
+    },
 
     // Live stats — updated after scan/translate
     totalKeys:       {{ $totalKeys }},
@@ -136,6 +176,52 @@ function overviewPage() {
     missingCount:    {{ $missingCount }},
     lockedCount:     {{ $lockedCount }},
     coverage:        @json($coverage),
+
+    autoStartOllama() {
+      if (this._ollamaPolling) return; // prevent multiple polls
+      this._ollamaPolling = true;
+
+      // Fire start — don't wait
+      fetch('{{ url("ai-translator/api/ollama/start") }}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
+        },
+        body: JSON.stringify({}),
+      }).catch(() => {});
+
+      // Poll with setTimeout instead of setInterval — easier to control
+      let attempts = 0;
+      const self = this;
+
+      const checkStatus = () => {
+        if (attempts >= 15 || self.ollamaOk) {
+          self._ollamaPolling = false;
+          return;
+        }
+        attempts++;
+
+        fetch('{{ url("ai-translator/api/ollama/status") }}')
+          .then(r => r.json())
+          .then(s => {
+            if (s.data?.running) {
+              self.ollamaOk    = true;
+              self.providerOk  = true;
+              self.providerMsg = '';
+              self._ollamaPolling = false;
+            } else {
+              setTimeout(checkStatus, 2000);
+            }
+          })
+          .catch(() => { self._ollamaPolling = false; });
+      };
+
+      setTimeout(checkStatus, 2000);
+
+      // Stop on navigation
+      window.addEventListener('beforeunload', () => { self._ollamaPolling = false; }, { once: true });
+    },
 
     async refreshStats() {
       try {
