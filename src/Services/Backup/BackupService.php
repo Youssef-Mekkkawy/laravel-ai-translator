@@ -233,5 +233,3 @@ class BackupService
         return $this->config['enabled'] ?? true;
     }
 }
-
-
