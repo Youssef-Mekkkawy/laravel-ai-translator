@@ -1,44 +1,4 @@
 {
-<<<<<<< Updated upstream
-    "$schema": "https://getcomposer.org/schema.json",
-    "name": "youssef-mekkkawy/laravel-ai-translator",
-    "description": "AI-powered automatic translation for Laravel — scan Blade views, translate to any language using Ollama, DeepL, Claude, ChatGPT or Gemini, with smart change tracking, lock system, backup/restore, and an embedded dashboard.",
-    "keywords": [
-        "laravel",
-        "laravel-package",
-        "translation",
-        "localization",
-        "i18n",
-        "multi-language",
-        "ai",
-        "ollama",
-        "deepl",
-        "openai",
-        "claude",
-        "multi-language",
-        "developer-tools",
-        "open-source"
-    ],
-    "homepage": "https://github.com/Youssef-Mekkkawy/laravel-ai-translator",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Youssef Mekkkawy",
-            "email": "31347791+Youssef-Mekkkawy@users.noreply.github.com",
-            "role": "Developer"
-        }
-    ],
-    "require": {
-        "php": "^8.2",
-        "illuminate/console": "^10.0|^11.0|^12.0",
-        "illuminate/filesystem": "^10.0|^11.0|^12.0",
-        "illuminate/http": "^10.0|^11.0|^12.0",
-        "illuminate/routing": "^10.0|^11.0|^12.0",
-        "illuminate/support": "^10.0|^11.0|^12.0",
-        "guzzlehttp/guzzle": "^7.8",
-        "deeplcom/deepl-php": "^1.7",
-        "nesbot/carbon": "^2.0|^3.0"
-=======
   "$schema": "https://getcomposer.org/schema.json",
   "name": "youssef-mekkkawy/laravel-ai-translator",
   "version": "1.0.8",
@@ -69,7 +29,7 @@
     }
   ],
   "require": {
-    "php": "^8.2",
+    "php": "^8.1",
     "illuminate/console": "^10.0|^11.0|^12.0",
     "illuminate/filesystem": "^10.0|^11.0|^12.0",
     "illuminate/http": "^10.0|^11.0|^12.0",
@@ -126,69 +86,20 @@
       "pestphp/pest-plugin": true,
       "php-http/discovery": true,
       "phpstan/extension-installer": true
->>>>>>> Stashed changes
     },
-    "require-dev": {
-        "larastan/larastan": "^2.0|^3.0",
-        "laravel/pint": "^1.14",
-        "nunomaduro/collision": "^7.0|^8.8",
-        "orchestra/testbench": "^8.0|^9.0|^10.0|^11.0",
-        "pestphp/pest": "^2.0|^3.0|^4.0",
-        "pestphp/pest-plugin-arch": "^2.0|^3.0|^4.0",
-        "pestphp/pest-plugin-laravel": "^2.0|^3.0|^4.0",
-        "phpstan/extension-installer": "^1.4",
-        "phpstan/phpstan": "^1.10|^2.0",
-        "phpstan/phpstan-deprecation-rules": "^1.0|^2.0",
-        "phpstan/phpstan-phpunit": "^1.0|^2.0",
-        "spatie/laravel-ray": "^1.35"
-    },
-    "autoload": {
-        "psr-4": {
-            "YoussefMekkkawy\\LaravelAiTranslator\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "YoussefMekkkawy\\LaravelAiTranslator\\Tests\\": "tests/"
-        }
-    },
-    "scripts": {
-        "test": "vendor/bin/pest",
-        "test-coverage": "vendor/bin/pest --coverage",
-        "format": "vendor/bin/pint",
-        "format-test": "vendor/bin/pint --test",
-        "analyse": "vendor/bin/phpstan analyse"
-    },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "YoussefMekkkawy\\LaravelAiTranslator\\LaravelAiTranslatorServiceProvider"
-            ],
-            "aliases": {
-                "AITranslator": "YoussefMekkkawy\\LaravelAiTranslator\\Facades\\AITranslator"
-            }
-        }
-    },
-    "config": {
-        "sort-packages": true,
-        "allow-plugins": {
-            "pestphp/pest-plugin": true,
-            "php-http/discovery": true,
-            "phpstan/extension-installer": true
-        },
-        "audit": {
-            "ignore": {
-                "PKSA-m5cs-t1y6-qpcs": "Path confusion in signed URLs — package does not use signed URLs",
-                "PKSA-3r5d-mb8f-1qw9": "CRLF injection in email validation — package does not use email validation",
-                "PKSA-mdq4-51ck-6kdq": "Same root cause as PKSA-3r5d-mb8f-1qw9",
-                "PKSA-8qx3-n5y5-vvnd": "File validation bypass — package does not handle file uploads",
-                "PKSA-q46n-4fdk-zjr4": "XSS on debug error page — not applicable in production",
-                "PKSA-qzrn-rnz3-85w1": "XSS on debug error page — not applicable in production",
-                "PKSA-w7xr-vk7n-rstm": "Env manipulation via query string — package does not read env from request"
-            }
-        }
-    },
-    "minimum-stability": "stable",
-    "prefer-stable": true
+    "audit": {
+      "ignore": {
+        "PKSA-m5cs-t1y6-qpcs": "Path confusion in signed URLs — package does not use signed URLs",
+        "PKSA-3r5d-mb8f-1qw9": "CRLF injection in email validation — package does not use email validation",
+        "PKSA-mdq4-51ck-6kdq": "Same root cause as PKSA-3r5d-mb8f-1qw9",
+        "PKSA-8qx3-n5y5-vvnd": "File validation bypass — package does not handle file uploads",
+        "PKSA-q46n-4fdk-zjr4": "XSS on debug error page — not applicable in production",
+        "PKSA-qzrn-rnz3-85w1": "XSS on debug error page — not applicable in production",
+        "PKSA-w7xr-vk7n-rstm": "Env manipulation via query string — package does not read env from request"
+      }
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
 }
 
