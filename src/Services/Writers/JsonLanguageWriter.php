@@ -11,14 +11,15 @@ class JsonLanguageWriter
      */
     public function readJson(string $locale): array
     {
-        $path = lang_path($locale . '.json');
+        $path = lang_path($locale.'.json');
 
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return [];
         }
 
         try {
             $data = json_decode(File::get($path), true);
+
             return is_array($data) ? $data : [];
         } catch (\Throwable $e) {
             return [];
@@ -31,7 +32,7 @@ class JsonLanguageWriter
      */
     public function writeJson(string $locale, array $translations): string
     {
-        $path    = lang_path($locale . '.json');
+        $path = lang_path($locale.'.json');
         $existing = $this->readJson($locale);
 
         // Merge — translated values override existing
@@ -41,7 +42,7 @@ class JsonLanguageWriter
         ksort($merged);
 
         File::ensureDirectoryExists(lang_path());
-        File::put($path, json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL);
+        File::put($path, json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES).PHP_EOL);
 
         return $path;
     }
@@ -51,7 +52,7 @@ class JsonLanguageWriter
      */
     public function hasJsonSource(string $locale): bool
     {
-        return File::exists(lang_path($locale . '.json'));
+        return File::exists(lang_path($locale.'.json'));
     }
 
     /**

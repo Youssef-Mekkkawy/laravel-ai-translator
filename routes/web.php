@@ -6,6 +6,7 @@ use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\DashboardLangContro
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\LanguageApiController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\LockController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\OllamaController;
+use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\OllamaStartController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\ScanController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\TranslateController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\BackupsController;
@@ -15,7 +16,6 @@ use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\LockedKeysController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\OverviewController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\SettingsController;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Middleware\DashboardEnabled;
-use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api\OllamaStartController;
 
 Route::prefix(config('ai-translator.dashboard.path', 'ai-translator'))
     ->name('ai-translator.')
@@ -47,10 +47,9 @@ Route::prefix(config('ai-translator.dashboard.path', 'ai-translator'))
         Route::post('/api/backups/create', [BackupsController::class,     'create']);
         Route::post('/api/backups/restore', [BackupsController::class,     'restore']);
 
-
         // ── Ollama API ───────────────────────────────────────────────────
-        
-        Route::post('/api/ollama/start',  [OllamaStartController::class, 'start']);
-        Route::get('/api/ollama/status',  [OllamaStartController::class, 'status']);
+
+        Route::post('/api/ollama/start', [OllamaStartController::class, 'start']);
+        Route::get('/api/ollama/status', [OllamaStartController::class, 'status']);
         Route::get('/api/ollama-models', [OllamaController::class, 'models']);
     });

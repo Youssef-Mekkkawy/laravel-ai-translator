@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\File;
 class RuntimeConfig
 {
     protected string $path;
+
     protected array $data = [];
+
     protected bool $loaded = false;
 
     public function __construct()
@@ -20,12 +22,14 @@ class RuntimeConfig
     public function get(string $key, mixed $default = null): mixed
     {
         $this->load();
+
         return data_get($this->data, $key, $default);
     }
 
     public function all(): array
     {
         $this->load();
+
         return $this->data;
     }
 
@@ -68,7 +72,7 @@ class RuntimeConfig
     public function addLanguage(string $locale): void
     {
         $langs = $this->getSupportedLanguages();
-        if (!in_array($locale, $langs)) {
+        if (! in_array($locale, $langs)) {
             $langs[] = $locale;
             $this->setSupportedLanguages($langs);
         }
@@ -93,6 +97,7 @@ class RuntimeConfig
     public function getDisabledLanguages(): array
     {
         $disabled = $this->get('disabled_languages', []);
+
         return is_array($disabled) ? $disabled : explode(',', $disabled);
     }
 
@@ -105,9 +110,9 @@ class RuntimeConfig
     {
         $current = $this->getDisabledLanguages();
 
-        if ($disabled && !in_array($locale, $current)) {
+        if ($disabled && ! in_array($locale, $current)) {
             $current[] = $locale;
-        } elseif (!$disabled) {
+        } elseif (! $disabled) {
             $current = array_values(array_filter($current, fn ($l) => $l !== $locale));
         }
 
@@ -140,7 +145,9 @@ class RuntimeConfig
 
     protected function load(): void
     {
-        if ($this->loaded) return;
+        if ($this->loaded) {
+            return;
+        }
 
         if (File::exists($this->path)) {
             try {
@@ -157,13 +164,13 @@ class RuntimeConfig
     protected function save(): void
     {
         $dir = dirname($this->path);
-        if (!File::exists($dir)) {
+        if (! File::exists($dir)) {
             File::makeDirectory($dir, 0755, true);
         }
 
         File::put(
             $this->path,
-            json_encode($this->data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . PHP_EOL
+            json_encode($this->data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL
         );
     }
 

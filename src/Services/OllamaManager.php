@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 class OllamaManager
 {
     protected string $apiUrl;
+
     protected string $model;
 
     public function __construct()
@@ -26,7 +27,8 @@ class OllamaManager
     public function isRunning(): bool
     {
         try {
-            $response = Http::timeout(3)->get($this->apiUrl . '/api/tags');
+            $response = Http::timeout(3)->get($this->apiUrl.'/api/tags');
+
             return $response->successful();
         } catch (\Throwable $e) {
             return false;
@@ -41,10 +43,13 @@ class OllamaManager
         $model = $model ?? $this->model;
 
         try {
-            $response = Http::timeout(5)->get($this->apiUrl . '/api/tags');
-            if (!$response->successful()) return false;
+            $response = Http::timeout(5)->get($this->apiUrl.'/api/tags');
+            if (! $response->successful()) {
+                return false;
+            }
 
             $models = collect($response->json('models', []))->pluck('name');
+
             return $models->contains(fn ($m) => str_starts_with($m, $model));
         } catch (\Throwable $e) {
             return false;
@@ -57,8 +62,11 @@ class OllamaManager
     public function listModels(): array
     {
         try {
-            $response = Http::timeout(5)->get($this->apiUrl . '/api/tags');
-            if (!$response->successful()) return [];
+            $response = Http::timeout(5)->get($this->apiUrl.'/api/tags');
+            if (! $response->successful()) {
+                return [];
+            }
+
             return collect($response->json('models', []))->pluck('name')->toArray();
         } catch (\Throwable $e) {
             return [];
@@ -77,10 +85,10 @@ class OllamaManager
         }
 
         try {
-            $os          = PHP_OS_FAMILY;
-            $ollamaPath  = $this->findOllamaPath();
+            $os = PHP_OS_FAMILY;
+            $ollamaPath = $this->findOllamaPath();
 
-            if (!$ollamaPath) {
+            if (! $ollamaPath) {
                 return false;
             }
 
@@ -108,16 +116,16 @@ class OllamaManager
         }
 
         // Common locations
-        $os      = PHP_OS_FAMILY;
-        $paths   = $os === 'Windows' ? [
-            getenv('LOCALAPPDATA') . '\\Programs\\Ollama\\ollama.exe',
+        $os = PHP_OS_FAMILY;
+        $paths = $os === 'Windows' ? [
+            getenv('LOCALAPPDATA').'\\Programs\\Ollama\\ollama.exe',
             'C:\\Program Files\\Ollama\\ollama.exe',
             'C:\\ollama\\ollama.exe',
         ] : [
             '/usr/local/bin/ollama',
             '/usr/bin/ollama',
             '/opt/homebrew/bin/ollama',
-            getenv('HOME') . '/.ollama/ollama',
+            getenv('HOME').'/.ollama/ollama',
         ];
 
         foreach ($paths as $path) {
@@ -127,7 +135,7 @@ class OllamaManager
         }
 
         // Try which/where as fallback
-        $cmd    = $os === 'Windows' ? 'where ollama 2>NUL' : 'which ollama 2>/dev/null';
+        $cmd = $os === 'Windows' ? 'where ollama 2>NUL' : 'which ollama 2>/dev/null';
         $result = trim(shell_exec($cmd) ?? '');
 
         if ($result && file_exists($result)) {
@@ -161,9 +169,11 @@ class OllamaManager
      */
     public function pullModelBackground(?string $model = null): void
     {
-        $model      = $model ?? $this->model;
+        $model = $model ?? $this->model;
         $ollamaPath = $this->findOllamaPath();
-        if (!$ollamaPath) return;
+        if (! $ollamaPath) {
+            return;
+        }
 
         $os = PHP_OS_FAMILY;
         try {
@@ -172,7 +182,8 @@ class OllamaManager
             } else {
                 exec("\"{$ollamaPath}\" pull {$model} > /dev/null 2>&1 &");
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
     }
 
     /**
@@ -180,12 +191,15 @@ class OllamaManager
      */
     public function pullModelSync(?string $model = null): bool
     {
-        $model      = $model ?? $this->model;
+        $model = $model ?? $this->model;
         $ollamaPath = $this->findOllamaPath();
-        if (!$ollamaPath) return false;
+        if (! $ollamaPath) {
+            return false;
+        }
 
         $result = 0;
         system("\"{$ollamaPath}\" pull {$model}", $result);
+
         return $result === 0;
     }
 
@@ -197,18 +211,18 @@ class OllamaManager
      */
     public function ensureReady(?string $model = null): array
     {
-        $model   = $model ?? $this->model;
+        $model = $model ?? $this->model;
         $started = false;
         $pulling = false;
 
         // Check if running
-        if (!$this->isRunning()) {
+        if (! $this->isRunning()) {
             $this->start();
             $ready = $this->waitUntilReady(10);
 
-            if (!$ready) {
+            if (! $ready) {
                 return [
-                    'ok'      => false,
+                    'ok' => false,
                     'started' => false,
                     'pulling' => false,
                     'message' => 'Could not start Ollama. Make sure it is installed.',
@@ -219,13 +233,13 @@ class OllamaManager
         }
 
         // Check if model exists
-        if (!$this->hasModel($model)) {
+        if (! $this->hasModel($model)) {
             // Start pull in background
             $this->pullModelBackground($model);
             $pulling = true;
 
             return [
-                'ok'      => false,
+                'ok' => false,
                 'started' => $started,
                 'pulling' => true,
                 'message' => "Model '{$model}' is downloading in the background. This may take a few minutes. Try again shortly.",
@@ -233,13 +247,20 @@ class OllamaManager
         }
 
         return [
-            'ok'      => true,
+            'ok' => true,
             'started' => $started,
             'pulling' => false,
             'message' => $started ? 'Ollama started successfully.' : 'Ollama is ready.',
         ];
     }
 
-    public function getApiUrl(): string { return $this->apiUrl; }
-    public function getModel(): string  { return $this->model; }
+    public function getApiUrl(): string
+    {
+        return $this->apiUrl;
+    }
+
+    public function getModel(): string
+    {
+        return $this->model;
+    }
 }

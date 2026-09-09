@@ -125,8 +125,8 @@ class OllamaTranslator extends AbstractTranslator
      */
     private function translateChunk(array $chunk, string $targetLang, string $sourceLang): array
     {
-        $result      = [];
-        $shortChunk  = [];
+        $result = [];
+        $shortChunk = [];
 
         // Split: long strings translate individually, short ones batch together
         foreach ($chunk as $i => $text) {
@@ -149,7 +149,7 @@ class OllamaTranslator extends AbstractTranslator
         $prompt = $this->buildBatchPrompt($shortChunk, $targetLang, $sourceLang);
 
         try {
-            $raw  = $this->sendChatRequest($prompt);
+            $raw = $this->sendChatRequest($prompt);
             $json = $this->extractJson($raw);
 
             if (is_array($json)) {
@@ -185,12 +185,12 @@ class OllamaTranslator extends AbstractTranslator
         $timeout = (int) $this->getConfig('timeout', 120);
 
         // Build system message — include context prompt if set
-        $runtime   = new RuntimeConfig();
-        $context   = $runtime->get('context', '')
+        $runtime = new RuntimeConfig;
+        $context = $runtime->get('context', '')
             ?: config('ai-translator.options.context', '');
-        $sysMsg    = 'You are a professional translator. Follow all instructions exactly.';
-        if (!empty(trim((string) $context))) {
-            $sysMsg .= '\n\nContext about this application: ' . trim($context);
+        $sysMsg = 'You are a professional translator. Follow all instructions exactly.';
+        if (! empty(trim((string) $context))) {
+            $sysMsg .= '\n\nContext about this application: '.trim($context);
         }
 
         $response = Http::timeout($timeout)
@@ -198,15 +198,15 @@ class OllamaTranslator extends AbstractTranslator
                 'model' => $this->model(),
                 'messages' => [
                     [
-                        'role'    => 'system',
+                        'role' => 'system',
                         'content' => $sysMsg,
                     ],
                     [
-                        'role'    => 'user',
+                        'role' => 'user',
                         'content' => $userMessage,
                     ],
                 ],
-                'stream'      => false,
+                'stream' => false,
                 'temperature' => 0.1,
             ]);
 
