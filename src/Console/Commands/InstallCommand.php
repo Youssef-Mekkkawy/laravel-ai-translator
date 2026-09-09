@@ -4,12 +4,10 @@ namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Http;
 
 class InstallCommand extends Command
 {
-    protected $signature = 'ai-translator:install';
-
+    protected $signature   = 'ai-translator:install';
     protected $description = 'Install and configure the Laravel AI Translator package';
 
     public function handle(): int
@@ -27,11 +25,11 @@ class InstallCommand extends Command
         $this->info('📦 Step 1: Publishing config file...');
 
         if (File::exists(config_path('ai-translator.php'))) {
-            if (! $this->confirm('  Config file already exists. Overwrite?', false)) {
+            if (!$this->confirm('  Config file already exists. Overwrite?', false)) {
                 $this->line('  <fg=yellow>⏩ Skipped config publish.</>');
             } else {
                 $this->callSilent('vendor:publish', [
-                    '--tag' => 'ai-translator-config',
+                    '--tag'   => 'ai-translator-config',
                     '--force' => true,
                 ]);
                 $this->line('  <fg=green>✅ Config published to config/ai-translator.php</>');
@@ -50,7 +48,7 @@ class InstallCommand extends Command
             '  Which provider do you want to use?',
             [
                 'ollama' => 'Ollama (local, free — recommended for development)',
-                'deepl' => 'DeepL (cloud, free tier: 500k chars/month)',
+                'deepl'  => 'DeepL (cloud, free tier: 500k chars/month)',
                 'claude' => 'Claude by Anthropic (cloud, paid)',
                 'openai' => 'ChatGPT by OpenAI (cloud, paid)',
                 'gemini' => 'Gemini by Google (cloud, paid)',
@@ -78,38 +76,38 @@ class InstallCommand extends Command
         $this->newLine();
         $this->info('⚙️  Step 4: Updating .env...');
 
-        $envPath = base_path('.env');
-        $allLangs = $sourceLang.','.trim($langs, ',');
+        $envPath  = base_path('.env');
+        $allLangs = $sourceLang . ',' . trim($langs, ',');
 
         $envKeys = [
-            'AUTO_TRANSLATE_DRIVER' => $driver,
-            'SUPPORTED_LANGUAGES' => $allLangs,
-            'DEFAULT_LANGUAGE' => $sourceLang,
-            'AUTO_TRANSLATE_BACKUP' => 'true',
+            'AUTO_TRANSLATE_DRIVER'   => $driver,
+            'SUPPORTED_LANGUAGES'     => $allLangs,
+            'DEFAULT_LANGUAGE'        => $sourceLang,
+            'AUTO_TRANSLATE_BACKUP'   => 'true',
             'AUTO_TRANSLATE_CHUNK_SIZE' => '20',
         ];
 
         // Provider-specific keys
         match ($driver) {
             'ollama' => $envKeys += [
-                'OLLAMA_MODEL' => 'llama3.2',
+                'OLLAMA_MODEL'   => 'llama3.2',
                 'OLLAMA_API_URL' => 'http://localhost:11434',
             ],
-            'deepl' => $envKeys += [
+            'deepl'  => $envKeys += [
                 'DEEPL_API_KEY' => '',
-                'DEEPL_PLAN' => 'free',
+                'DEEPL_PLAN'    => 'free',
             ],
             'claude' => $envKeys += [
                 'ANTHROPIC_API_KEY' => '',
-                'ANTHROPIC_MODEL' => 'claude-sonnet-4-5',
+                'ANTHROPIC_MODEL'   => 'claude-sonnet-4-5',
             ],
             'openai' => $envKeys += [
                 'OPENAI_API_KEY' => '',
-                'OPENAI_MODEL' => 'gpt-4o-mini',
+                'OPENAI_MODEL'   => 'gpt-4o-mini',
             ],
             'gemini' => $envKeys += [
                 'GEMINI_API_KEY' => '',
-                'GEMINI_MODEL' => 'gemini-1.5-flash',
+                'GEMINI_MODEL'   => 'gemini-1.5-flash',
             ],
             default => [],
         };
@@ -118,10 +116,10 @@ class InstallCommand extends Command
             $env = File::get($envPath);
 
             foreach ($envKeys as $key => $value) {
-                if (preg_match('/^'.preg_quote($key, '/').'=/m', $env)) {
-                    $env = preg_replace('/^'.preg_quote($key, '/').'=.*/m', "{$key}={$value}", $env);
+                if (preg_match('/^' . preg_quote($key, '/') . '=/m', $env)) {
+                    $env = preg_replace('/^' . preg_quote($key, '/') . '=.*/m', "{$key}={$value}", $env);
                 } else {
-                    $env .= PHP_EOL."{$key}={$value}";
+                    $env .= PHP_EOL . "{$key}={$value}";
                 }
             }
 
@@ -140,7 +138,7 @@ class InstallCommand extends Command
             $this->info('🔍 Step 5: Checking Ollama...');
 
             try {
-                $response = Http::timeout(3)
+                $response = \Illuminate\Support\Facades\Http::timeout(3)
                     ->get('http://localhost:11434/api/tags');
 
                 if ($response->successful()) {
@@ -160,12 +158,12 @@ class InstallCommand extends Command
                 $this->showOllamaHelp();
             }
         } else {
-            $apiKeyVar = match ($driver) {
-                'deepl' => 'DEEPL_API_KEY',
+            $apiKeyVar = match($driver) {
+                'deepl'  => 'DEEPL_API_KEY',
                 'claude' => 'ANTHROPIC_API_KEY',
                 'openai' => 'OPENAI_API_KEY',
                 'gemini' => 'GEMINI_API_KEY',
-                default => null,
+                default  => null,
             };
 
             if ($apiKeyVar) {
@@ -177,6 +175,91 @@ class InstallCommand extends Command
 
         // ── Step 6: Clear config cache ─────────────────────────────────────
         $this->callSilent('config:clear');
+
+        // ── Step 7: Scan views and generate source language files ─────────
+        $this->newLine();
+        $this->info('🔍 Step 7: Scanning views and generating source language files...');
+
+        try {
+            // Scan all views for translation keys
+            $scanPaths = config('ai-translator.scan_paths', [resource_path('views')]);
+            $scanner   = new \YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner(
+                array_filter($scanPaths, fn ($p) => is_dir($p))
+            );
+            $keys = $scanner->scanAll();
+
+            if (empty($keys)) {
+                $this->line('  <fg=yellow>⚠️  No translation keys found in views. Add __() calls first.</>');
+            } else {
+                // Separate PHP keys (dot-notation) from JSON keys (full strings)
+                $phpKeys  = [];
+                $jsonKeys = [];
+
+                foreach ($keys as $key) {
+                    if (!str_contains($key, ' ') && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$/', $key)) {
+                        // PHP key like auth.login
+                        $parts = explode('.', $key, 2);
+                        $phpKeys[$parts[0]][$parts[1]] = $parts[1]; // key as value
+                    } else {
+                        // JSON key like "Login" or "Forgot your password?"
+                        $jsonKeys[$key] = $key; // key as value
+                    }
+                }
+
+                $sourceLangDir = lang_path($sourceLang);
+
+                // Write PHP source files
+                if (!empty($phpKeys)) {
+                    if (!\Illuminate\Support\Facades\File::exists($sourceLangDir)) {
+                        \Illuminate\Support\Facades\File::makeDirectory($sourceLangDir, 0755, true);
+                    }
+
+                    foreach ($phpKeys as $group => $groupKeys) {
+                        $filePath = $sourceLangDir . DIRECTORY_SEPARATOR . $group . '.php';
+
+                        // Merge with existing if file already exists
+                        $existing = [];
+                        if (\Illuminate\Support\Facades\File::exists($filePath)) {
+                            $existing = @include $filePath;
+                            if (!is_array($existing)) $existing = [];
+                        }
+
+                        // Only add keys that don't exist yet
+                        $merged = array_merge($groupKeys, $existing);
+                        ksort($merged);
+
+                        \Illuminate\Support\Facades\File::put(
+                            $filePath,
+                            "<?php
+
+return " . $this->arrayToPhp($merged) . ";
+"
+                        );
+                    }
+                    $this->line("  <fg=green>✅ Source PHP files created in lang/{$sourceLang}/</>");
+                }
+
+                // Write JSON source file
+                if (!empty($jsonKeys)) {
+                    $jsonPath = lang_path($sourceLang . '.json');
+                    $existing = [];
+                    if (\Illuminate\Support\Facades\File::exists($jsonPath)) {
+                        $existing = @json_decode(\Illuminate\Support\Facades\File::get($jsonPath), true) ?? [];
+                    }
+                    $merged = array_merge($jsonKeys, $existing);
+                    ksort($merged);
+                    \Illuminate\Support\Facades\File::put(
+                        $jsonPath,
+                        json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . PHP_EOL
+                    );
+                    $this->line("  <fg=green>✅ Source JSON file created: lang/{$sourceLang}.json</>");
+                }
+
+                $this->line("  <fg=gray>  Found " . count($keys) . " translation keys</>");
+            }
+        } catch (\Throwable $e) {
+            $this->line("  <fg=yellow>⚠️  Could not scan views: {$e->getMessage()}</>");
+        }
 
         // ── Done ───────────────────────────────────────────────────────────
         $this->newLine();
@@ -194,6 +277,24 @@ class InstallCommand extends Command
         $this->newLine();
 
         return self::SUCCESS;
+    }
+
+    private function arrayToPhp(array $array, int $depth = 0): string
+    {
+        if (empty($array)) return '[]';
+        $indent     = str_repeat('    ', $depth);
+        $nextIndent = str_repeat('    ', $depth + 1);
+        $lines      = ['['];
+        foreach ($array as $key => $value) {
+            $k = "'" . addslashes((string) $key) . "'";
+            if (is_array($value)) {
+                $lines[] = "{$nextIndent}{$k} => " . $this->arrayToPhp($value, $depth + 1) . ',';
+            } else {
+                $lines[] = "{$nextIndent}{$k} => '" . addslashes((string) $value) . "',";
+            }
+        }
+        $lines[] = "{$indent}]";
+        return implode("\n", $lines);
     }
 
     private function showOllamaHelp(): void

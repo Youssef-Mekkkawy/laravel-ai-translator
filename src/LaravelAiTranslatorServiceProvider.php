@@ -12,7 +12,7 @@ use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\ScanTranslationsCommand
 use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\TranslateCommand;
 use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\UnlockTranslationCommand;
 use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\ValidateTranslationsCommand;
-
+use YoussefMekkkawy\LaravelAiTranslator\Console\Commands\CleanCommand;
 class LaravelAiTranslatorServiceProvider extends ServiceProvider
 {
     /**
@@ -76,6 +76,7 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
             RestoreCommand::class,
             ListBackupsCommand::class,
             InstallCommand::class,
+            CleanCommand::class,
         ]);
     }
 }
