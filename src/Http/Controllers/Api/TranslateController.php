@@ -10,6 +10,7 @@ class TranslateController extends DashboardController
 {
     public function run(Request $request)
     {
+        set_time_limit(0); // Translation can take several minutes
         try {
             $options = [];
 
@@ -35,3 +36,4 @@ class TranslateController extends DashboardController
         }
     }
 }
+

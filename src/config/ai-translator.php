@@ -36,7 +36,7 @@ return [
     | Exclude Patterns
     |--------------------------------------------------------------------------
     */
-    'exclude_files' => explode(',', env('AUTO_TRANSLATE_EXCLUDE_FILES', 'vendor/**,node_modules/**,tests/**')),
+    'exclude_files' => explode(',', env('AUTO_TRANSLATE_EXCLUDE_FILES', 'vendor/**,node_modules/**,tests/**,lang/**,storage/**')),
 
     /*
     |--------------------------------------------------------------------------
@@ -116,3 +116,4 @@ return [
         'middleware' => ['web'],
     ],
 ];
+

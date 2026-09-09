@@ -120,34 +120,44 @@ class OllamaTranslator extends AbstractTranslator
 
     /**
      * Translate a chunk of texts via a single JSON batch prompt.
+     * Long strings (> 150 chars) are translated individually to avoid timeouts.
      * Falls back to individual calls on JSON parse failure.
      */
     private function translateChunk(array $chunk, string $targetLang, string $sourceLang): array
     {
-        // Filter out empty strings — translate non-empty ones as a JSON object
-        $toTranslate = array_filter($chunk, fn ($t) => trim($t) !== '');
+        $result      = [];
+        $shortChunk  = [];
 
-        if (empty($toTranslate)) {
-            return $chunk; // all empty, return as-is
+        // Split: long strings translate individually, short ones batch together
+        foreach ($chunk as $i => $text) {
+            if (trim((string) $text) === '') {
+                $result[$i] = $text;
+            } elseif (mb_strlen((string) $text) > 150) {
+                // Translate long strings one by one to avoid Ollama timeouts
+                $result[$i] = $this->sendChatRequest(
+                    $this->buildSinglePrompt((string) $text, $targetLang, $sourceLang)
+                );
+            } else {
+                $shortChunk[$i] = $text;
+            }
         }
 
-        $prompt = $this->buildBatchPrompt($toTranslate, $targetLang, $sourceLang);
+        if (empty($shortChunk)) {
+            return $result;
+        }
+
+        $prompt = $this->buildBatchPrompt($shortChunk, $targetLang, $sourceLang);
 
         try {
-            $raw = $this->sendChatRequest($prompt);
+            $raw  = $this->sendChatRequest($prompt);
             $json = $this->extractJson($raw);
 
             if (is_array($json)) {
-                // Map translated values back to original positions.
-                // Works whether model returns {"0":"val"} or ["val1","val2"].
                 $jsonValues = array_values($json);
-                $result = [];
                 $pos = 0;
 
-                foreach ($chunk as $i => $text) {
-                    $result[$i] = trim((string) $text) === ''
-                        ? $text
-                        : (string) ($json[$i] ?? $jsonValues[$pos] ?? $text);
+                foreach ($shortChunk as $i => $text) {
+                    $result[$i] = (string) ($json[$i] ?? $jsonValues[$pos] ?? $text);
                     $pos++;
                 }
 
@@ -157,12 +167,11 @@ class OllamaTranslator extends AbstractTranslator
             // Fall through to individual translation
         }
 
-        // Fallback: translate one by one
-        $result = [];
-        foreach ($chunk as $i => $text) {
-            $result[$i] = trim((string) $text) === ''
-                ? $text
-                : $this->sendChatRequest($this->buildSinglePrompt($text, $targetLang, $sourceLang));
+        // Fallback: translate short ones individually too
+        foreach ($shortChunk as $i => $text) {
+            $result[$i] = $this->sendChatRequest(
+                $this->buildSinglePrompt((string) $text, $targetLang, $sourceLang)
+            );
         }
 
         return $result;

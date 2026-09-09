@@ -109,7 +109,7 @@ class TranslationService
         }
 
         // Step 6: Save hashes after successful translation so next run skips unchanged keys
-        if (!$dryRun && !empty($keysNeedingTranslation)) {
+        if (!$dryRun && !empty($changedKeys)) {
             $this->changeTracker->updateHashes($keysToTranslate, $sourceLang);
         }
 
@@ -147,15 +147,23 @@ class TranslationService
             }
 
             // Check if target already has this key
-            $parts          = explode('.', $fullKey, 2);
-            $file           = $parts[0];
-            $existingPath   = lang_path("{$targetLang}/{$file}.php");
-            $targetHasKey   = false;
+            $isJsonKey = !(!str_contains($fullKey, ' ') && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$/', $fullKey));
 
-            if (file_exists($existingPath)) {
-                $existing     = @include $existingPath;
-                $key          = $parts[1] ?? $fullKey;
-                $targetHasKey = is_array($existing) && isset($existing[$key]);
+            if ($isJsonKey) {
+                // Check JSON file for this key
+                $existingJson = $this->jsonWriter->readJson($targetLang);
+                $targetHasKey = isset($existingJson[$fullKey]);
+            } else {
+                $parts        = explode('.', $fullKey, 2);
+                $file         = $parts[0];
+                $existingPath = lang_path("{$targetLang}/{$file}.php");
+                $targetHasKey = false;
+
+                if (file_exists($existingPath)) {
+                    $existing     = @include $existingPath;
+                    $key          = $parts[1] ?? $fullKey;
+                    $targetHasKey = is_array($existing) && isset($existing[$key]);
+                }
             }
 
             if (!$targetHasKey) {
@@ -189,26 +197,49 @@ class TranslationService
             $index++;
         }
 
-        // Organise by file and write
-        $organizedByFile = $this->writer->organizeByFile($finalTranslations);
+        // Separate PHP keys (dot-notation) from JSON keys (spaces or no dot)
+        $phpKeys  = [];
+        $jsonKeys = [];
+
+        foreach ($finalTranslations as $key => $value) {
+            if (!(!str_contains($key, ' ') && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$/', $key))) {
+                // JSON key — full English string like "Forgot your password?"
+                $jsonKeys[$key] = $value;
+            } else {
+                // PHP key — dot-notation like "auth.login"
+                $phpKeys[$key] = $value;
+            }
+        }
+
+        // Write PHP files
+        $organizedByFile = $this->writer->organizeByFile($phpKeys);
         $writtenFiles    = [];
 
         if (!$dryRun) {
             foreach ($organizedByFile as $file => $translations) {
                 $writtenFiles[] = $this->writer->write($targetLang, $file, $translations, true);
             }
+
+            // Write JSON file for JSON-style keys
+            if (!empty($jsonKeys)) {
+                $writtenFiles[] = $this->jsonWriter->writeJson($targetLang, $jsonKeys);
+            }
         }
 
-        // Handle JSON file translation
+        // Handle JSON source file (lang/en.json) — only keys NOT already in scanned keys
         if (!empty($jsonSourceKeys) && !$dryRun) {
             $jsonToTranslate = [];
+            $existingJson    = $this->jsonWriter->readJson($targetLang);
+
             foreach ($jsonSourceKeys as $key => $value) {
+                // Skip if already handled as a scanned key
+                if (array_key_exists($key, $allSourceKeys)) {
+                    continue;
+                }
                 if ($this->lockManager->isLocked($targetLang, $key)) {
                     continue;
                 }
-                // Check if target JSON already has this key
-                $existing = $this->jsonWriter->readJson($targetLang);
-                if (isset($existing[$key]) && !isset($changedKeys[$key]) && !$force) {
+                if (isset($existingJson[$key]) && !isset($changedKeys[$key]) && !$force) {
                     $skipped++;
                     continue;
                 }
@@ -230,8 +261,7 @@ class TranslationService
                     $index++;
                 }
 
-                $jsonPath = $this->jsonWriter->writeJson($targetLang, $translatedJson);
-                $writtenFiles[] = $jsonPath;
+                $writtenFiles[] = $this->jsonWriter->writeJson($targetLang, $translatedJson);
             }
         }
 
@@ -310,3 +340,5 @@ class TranslationService
         return $translator->estimateCost($texts, $targetLanguages);
     }
 }
+
+

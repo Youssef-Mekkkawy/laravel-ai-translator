@@ -243,8 +243,9 @@ HEADER;
             $parts = explode('.', $fullKey, 2);
 
             if (count($parts) === 1) {
-                $file = 'auto';
-                $key = $parts[0];
+                // Single-part key (no dot) — this is a JSON-style key
+                // It should not be written as a PHP file — skip it
+                continue;
             } else {
                 $file = $parts[0];
                 $key = $parts[1];
