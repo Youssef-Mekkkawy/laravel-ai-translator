@@ -206,27 +206,27 @@ html, body {
     <nav style="display:flex;flex-direction:column;gap:2px;padding:12px 10px;flex:1">
       <button class="nav-btn" :class="page==='overview'  ? 'active' : ''" @click="go('overview')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
-        <span x-show="expanded" x-text="t.overview"></span>
+        <span x-show="expanded" x-text="t.overview" style="white-space:nowrap;overflow:hidden"></span>
       </button>
       <button class="nav-btn" :class="page==='languages' ? 'active' : ''" @click="go('languages')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 3 2.6 15 0 18M12 3c-2.6 3-2.6 15 0 18"/></svg>
-        <span x-show="expanded" x-text="t.languages"></span>
+        <span x-show="expanded" x-text="t.languages" style="white-space:nowrap;overflow:hidden"></span>
       </button>
       <button class="nav-btn" :class="page==='locked'    ? 'active' : ''" @click="go('locked')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        <span x-show="expanded" x-text="t.locked"></span>
+        <span x-show="expanded" x-text="t.locked" style="white-space:nowrap;overflow:hidden"></span>
       </button>
       <button class="nav-btn" :class="page==='history'   ? 'active' : ''" @click="go('history')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4.5l3 1.8"/></svg>
-        <span x-show="expanded" x-text="t.history"></span>
+        <span x-show="expanded" x-text="t.history" style="white-space:nowrap;overflow:hidden"></span>
       </button>
       <button class="nav-btn" :class="page==='backups'   ? 'active' : ''" @click="go('backups')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
-        <span x-show="expanded" x-text="t.backups"></span>
+        <span x-show="expanded" x-text="t.backups" style="white-space:nowrap;overflow:hidden"></span>
       </button>
       <button class="nav-btn" :class="page==='settings'  ? 'active' : ''" @click="go('settings')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.5 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14.6H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.5 1.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
-        <span x-show="expanded" x-text="t.settings"></span>
+        <span x-show="expanded" x-text="t.settings" style="white-space:nowrap;overflow:hidden"></span>
       </button>
     </nav>
 
@@ -612,3 +612,5 @@ function langSelector() {
 </script>
 </body>
 </html>
+
+
