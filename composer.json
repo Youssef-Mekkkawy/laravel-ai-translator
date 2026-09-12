@@ -2,7 +2,10 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "youssef-mekkkawy/laravel-ai-translator",
     "description": "AI-powered automatic translation for Laravel — scan Blade views, translate to any language using Ollama, DeepL, Claude, ChatGPT or Gemini, with smart change tracking, lock system, backup/restore, and an embedded dashboard.",
-    "keywords": [
+"keywords": [
+        "youssef-mekkkawy",
+        "youssef mekkkawy",
+        "laravel ai translator",
         "laravel",
         "laravel-package",
         "translation",
