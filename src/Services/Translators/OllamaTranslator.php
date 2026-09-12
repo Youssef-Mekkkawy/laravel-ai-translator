@@ -7,38 +7,27 @@ use YoussefMekkkawy\LaravelAiTranslator\Services\RuntimeConfig;
 
 class OllamaTranslator extends AbstractTranslator
 {
-    /**
-     * Get the translator name.
-     */
     public function getName(): string
     {
         return 'ollama';
     }
 
-    /**
-     * Check if Ollama is running locally.
-     */
     public function isAvailable(): bool
     {
         try {
-            $response = Http::timeout(3)->get($this->baseUrl().'/api/tags');
-
+            $response = Http::timeout(3)->get($this->baseUrl() . '/api/tags');
             return $response->successful();
         } catch (\Throwable $e) {
             return false;
         }
     }
 
-    /**
-     * Translate a single text.
-     */
     public function translate(string $text, string $targetLang, string $sourceLang = 'en'): string
     {
         if (empty(trim($text))) {
             return $text;
         }
 
-        // Protect placeholders and HTML tags before sending to AI
         [$prepared, $placeholders, $tags] = $this->prepareText($text);
 
         $translated = $this->sendChatRequest(
@@ -49,8 +38,11 @@ class OllamaTranslator extends AbstractTranslator
     }
 
     /**
-     * Translate multiple texts efficiently using a single JSON batch request.
-     * Falls back to individual calls if the model returns malformed JSON.
+     * Translate multiple texts in batches.
+     *
+     * Speed improvements vs original:
+     * - chunk_size default raised from 20 → 50  (fewer API calls)
+     * - long-string threshold raised from 150 → 500 chars (more strings batch together)
      */
     public function translateBatch(array $texts, string $targetLang, string $sourceLang = 'en'): array
     {
@@ -58,47 +50,41 @@ class OllamaTranslator extends AbstractTranslator
             return [];
         }
 
-        // Prepare all texts (protect placeholders + HTML)
-        $prepared = [];
+        $prepared   = [];
         $restoreMap = [];
 
         foreach ($texts as $i => $text) {
             if (empty(trim((string) $text))) {
-                $prepared[$i] = '';
+                $prepared[$i]   = '';
                 $restoreMap[$i] = [[], []];
-
                 continue;
             }
 
             [$preparedText, $placeholders, $tags] = $this->prepareText((string) $text);
-            $prepared[$i] = $preparedText;
+            $prepared[$i]   = $preparedText;
             $restoreMap[$i] = [$placeholders, $tags];
         }
 
-        // Split into chunks so we don't exceed context windows
-        $chunkSize = (int) $this->getConfig('chunk_size', 20);
-        $chunks = array_chunk($prepared, $chunkSize, true);
+        // SPEED FIX: default chunk_size raised to 50 (was 20)
+        $chunkSize    = (int) $this->getConfig('chunk_size', 50);
+        $chunks       = array_chunk($prepared, $chunkSize, true);
         $translations = [];
 
         foreach ($chunks as $chunk) {
-            $translated = $this->translateChunk($chunk, $targetLang, $sourceLang);
+            $translated   = $this->translateChunk($chunk, $targetLang, $sourceLang);
             $translations = $translations + $translated;
         }
 
-        // Restore placeholders and HTML on every result
         $result = [];
         foreach ($texts as $i => $text) {
             [$placeholders, $tags] = $restoreMap[$i];
-            $raw = $translations[$i] ?? (string) $text;
+            $raw      = $translations[$i] ?? (string) $text;
             $result[] = $this->restoreText($raw, $placeholders, $tags);
         }
 
         return $result;
     }
 
-    /**
-     * Ollama is free and local — no cost.
-     */
     public function estimateCost(array $texts, array $targetLangs): array
     {
         $totalChars = 0;
@@ -107,33 +93,34 @@ class OllamaTranslator extends AbstractTranslator
         }
 
         return [
-            'characters' => $totalChars * count($targetLangs),
+            'characters'       => $totalChars * count($targetLangs),
             'total_characters' => $totalChars * count($targetLangs),
-            'cost' => 0.0,
-            'estimated_cost' => 0.0,
-            'currency' => 'USD',
-            'note' => 'Ollama runs locally — zero API cost',
+            'cost'             => 0.0,
+            'estimated_cost'   => 0.0,
+            'currency'         => 'USD',
+            'note'             => 'Ollama runs locally — zero API cost',
         ];
     }
 
     // ── Private helpers ────────────────────────────────────────────────────
 
     /**
-     * Translate a chunk of texts via a single JSON batch prompt.
-     * Long strings (> 150 chars) are translated individually to avoid timeouts.
-     * Falls back to individual calls on JSON parse failure.
+     * Translate a chunk of texts.
+     *
+     * SPEED FIX: long-string threshold raised from 150 → 500 chars.
+     * Most UI strings are well under 500 chars, so nearly everything
+     * goes through the fast batch path instead of individual calls.
      */
     private function translateChunk(array $chunk, string $targetLang, string $sourceLang): array
     {
-        $result = [];
+        $result     = [];
         $shortChunk = [];
 
-        // Split: long strings translate individually, short ones batch together
         foreach ($chunk as $i => $text) {
             if (trim((string) $text) === '') {
                 $result[$i] = $text;
-            } elseif (mb_strlen((string) $text) > 150) {
-                // Translate long strings one by one to avoid Ollama timeouts
+            } elseif (mb_strlen((string) $text) > 500) {
+                // Only truly long strings (500+ chars) go individual
                 $result[$i] = $this->sendChatRequest(
                     $this->buildSinglePrompt((string) $text, $targetLang, $sourceLang)
                 );
@@ -149,12 +136,12 @@ class OllamaTranslator extends AbstractTranslator
         $prompt = $this->buildBatchPrompt($shortChunk, $targetLang, $sourceLang);
 
         try {
-            $raw = $this->sendChatRequest($prompt);
+            $raw  = $this->sendChatRequest($prompt);
             $json = $this->extractJson($raw);
 
             if (is_array($json)) {
                 $jsonValues = array_values($json);
-                $pos = 0;
+                $pos        = 0;
 
                 foreach ($shortChunk as $i => $text) {
                     $result[$i] = (string) ($json[$i] ?? $jsonValues[$pos] ?? $text);
@@ -167,7 +154,7 @@ class OllamaTranslator extends AbstractTranslator
             // Fall through to individual translation
         }
 
-        // Fallback: translate short ones individually too
+        // Fallback: translate individually
         foreach ($shortChunk as $i => $text) {
             $result[$i] = $this->sendChatRequest(
                 $this->buildSinglePrompt((string) $text, $targetLang, $sourceLang)
@@ -177,53 +164,39 @@ class OllamaTranslator extends AbstractTranslator
         return $result;
     }
 
-    /**
-     * Send a chat/completions request to Ollama and return the assistant reply.
-     */
     private function sendChatRequest(string $userMessage): string
     {
         $timeout = (int) $this->getConfig('timeout', 120);
 
-        // Build system message — include context prompt if set
-        $runtime = new RuntimeConfig;
+        $runtime = new RuntimeConfig();
         $context = $runtime->get('context', '')
             ?: config('ai-translator.options.context', '');
+
         $sysMsg = 'You are a professional translator. Follow all instructions exactly.';
-        if (! empty(trim((string) $context))) {
-            $sysMsg .= '\n\nContext about this application: '.trim($context);
+        if (!empty(trim((string) $context))) {
+            $sysMsg .= '\n\nContext about this application: ' . trim($context);
         }
 
         $response = Http::timeout($timeout)
-            ->post($this->baseUrl().'/v1/chat/completions', [
-                'model' => $this->model(),
+            ->post($this->baseUrl() . '/v1/chat/completions', [
+                'model'    => $this->model(),
                 'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => $sysMsg,
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => $userMessage,
-                    ],
+                    ['role' => 'system', 'content' => $sysMsg],
+                    ['role' => 'user',   'content' => $userMessage],
                 ],
-                'stream' => false,
+                'stream'      => false,
                 'temperature' => 0.1,
             ]);
 
-        if (! $response->successful()) {
+        if (!$response->successful()) {
             throw new \RuntimeException(
-                "Ollama API error [{$response->status()}]: ".$response->body()
+                "Ollama API error [{$response->status()}]: " . $response->body()
             );
         }
 
-        return trim(
-            $response->json('choices.0.message.content', '')
-        );
+        return trim($response->json('choices.0.message.content', ''));
     }
 
-    /**
-     * Build a single-text translation prompt.
-     */
     private function buildSinglePrompt(string $text, string $targetLang, string $sourceLang): string
     {
         $targetName = $this->languageName($targetLang);
@@ -241,31 +214,34 @@ PROMPT;
     }
 
     /**
-     * Build a batch translation prompt that returns a JSON object.
-     * Keys are the original array positions; values are the texts to translate.
+     * Build a batch translation prompt.
+     *
+     * The "Output JSON:" ending anchors the model to start its response
+     * with { directly — reduces preamble and markdown wrapping,
+     * meaning extractJson() succeeds more often and the individual fallback
+     * is hit less frequently.
      */
     private function buildBatchPrompt(array $texts, string $targetLang, string $sourceLang): string
     {
         $targetName = $this->languageName($targetLang);
-        $input = json_encode($texts, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $input      = json_encode($texts, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
         return <<<PROMPT
-Translate the following JSON object values from {$sourceLang} to {$targetName}.
+You are a professional translator. Translate the JSON values from {$sourceLang} to {$targetName}.
 
-Rules:
-- Return ONLY valid JSON, no explanations, no markdown code blocks.
-- Keep the same numeric keys.
-- Preserve any markers like ___PLACEHOLDER_0___ or ___TAG_0___ exactly as they appear.
+STRICT RULES:
+1. Return ONLY a valid JSON object — no markdown, no code blocks, no explanations.
+2. Keep the same numeric keys.
+3. Preserve markers like ___PLACEHOLDER_0___ or ___TAG_0___ exactly as they appear.
+4. Do NOT add extra fields or change the structure.
 
-Input:
+Input JSON:
 {$input}
+
+Output JSON:
 PROMPT;
     }
 
-    /**
-     * Extract a JSON object or array from a raw AI response.
-     * Handles cases where the model wraps JSON in markdown code blocks.
-     */
     private function extractJson(string $raw): ?array
     {
         // Strip markdown code fences if present
@@ -273,13 +249,11 @@ PROMPT;
         $clean = preg_replace('/```\s*$/m', '', $clean ?? $raw);
         $clean = trim($clean ?? $raw);
 
-        // Try to parse the whole cleaned string as JSON first (fastest path)
         $decoded = json_decode($clean, true);
         if (is_array($decoded)) {
             return $decoded;
         }
 
-        // Try to find a JSON object { ... }
         if (preg_match('/\{.+\}/s', $clean, $m)) {
             $decoded = json_decode($m[0], true);
             if (is_array($decoded)) {
@@ -287,7 +261,6 @@ PROMPT;
             }
         }
 
-        // Try to find a JSON array [ ... ]
         if (preg_match('/\[.+\]/s', $clean, $m)) {
             $decoded = json_decode($m[0], true);
             if (is_array($decoded)) {
@@ -298,28 +271,17 @@ PROMPT;
         return null;
     }
 
-    /**
-     * Get the Ollama base URL (without trailing slash).
-     */
     private function baseUrl(): string
     {
         $url = $this->getConfig('api_url', 'http://localhost:11434');
-
-        // Strip any /v1 suffix — we add it ourselves per-endpoint
         return rtrim(str_replace('/v1', '', $url), '/');
     }
 
-    /**
-     * Get the configured model name.
-     */
     private function model(): string
     {
         return $this->getConfig('model', 'llama3');
     }
 
-    /**
-     * Map an ISO language code to a human-readable name for better prompts.
-     */
     private function languageName(string $code): string
     {
         $map = [

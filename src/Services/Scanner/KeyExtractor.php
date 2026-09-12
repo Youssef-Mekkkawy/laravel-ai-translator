@@ -15,10 +15,17 @@ class KeyExtractor
      * @param  string  $key  Translation key (e.g., 'auth.login' or 'Welcome')
      * @return array ['file' => 'auth', 'key' => 'login', 'value' => null]
      */
+    protected function isPhpTranslationKey(string $key): bool
+    {
+        return preg_match(
+            '/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$/',
+            $key
+        ) === 1;
+    }
     public function parseKey(string $key): array
     {
         // Check if key contains dot notation (e.g., 'auth.login')
-        if (str_contains($key, '.')) {
+        if ($this->isPhpTranslationKey($key)) {
             return $this->parseDotNotationKey($key);
         }
 
@@ -107,6 +114,48 @@ class KeyExtractor
 
         return trim($text, '_');
     }
+    public function getKeyValue(
+        string $key,
+        string $language = 'en'
+    ): ?string {
+        $parsed = $this->parseKey($key);
+
+        if ($parsed['file'] === 'auto') {
+            $jsonPath = base_path("lang/{$language}.json");
+
+            if (! File::exists($jsonPath)) {
+                return null;
+            }
+
+            $translations = json_decode(
+                File::get($jsonPath),
+                true
+            );
+
+            return is_array($translations)
+                ? ($translations[$key] ?? null)
+                : null;
+        }
+
+        if (! $this->keyExists($key, $language)) {
+            return null;
+        }
+
+        $filePath = base_path(
+            "lang/{$language}/{$parsed['file']}.php"
+        );
+
+        $translations = include $filePath;
+
+        if ($parsed['is_nested']) {
+            return $this->getNestedValue(
+                $translations,
+                $parsed['key']
+            );
+        }
+
+        return $translations[$parsed['key']] ?? null;
+    }
 
     /**
      * Check if a key exists in language files
@@ -154,22 +203,7 @@ class KeyExtractor
     /**
      * Get the value of a translation key
      */
-    public function getKeyValue(string $key, string $language = 'en'): ?string
-    {
-        if (! $this->keyExists($key, $language)) {
-            return null;
-        }
-
-        $parsed = $this->parseKey($key);
-        $filePath = base_path("lang/{$language}/{$parsed['file']}.php");
-        $translations = include $filePath;
-
-        if ($parsed['is_nested']) {
-            return $this->getNestedValue($translations, $parsed['key']);
-        }
-
-        return $translations[$parsed['key']] ?? null;
-    }
+    
 
     /**
      * Get nested value from array

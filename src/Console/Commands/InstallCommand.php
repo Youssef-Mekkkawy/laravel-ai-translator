@@ -5,6 +5,8 @@ namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
+use YoussefMekkkawy\LaravelAiTranslator\Services\StackDetector;
+
 class InstallCommand extends Command
 {
     protected $signature   = 'ai-translator:install';
@@ -38,6 +40,19 @@ class InstallCommand extends Command
             $this->callSilent('vendor:publish', ['--tag' => 'ai-translator-config']);
             $this->line('  <fg=green>✅ Config published to config/ai-translator.php</>');
         }
+
+        // ── Step 1b: Detect stack ─────────────────────────────────────
+        $this->newLine();
+        $this->info('🔍 Detecting your Laravel stack...');
+
+        $detector = new StackDetector();
+        $detected = $detector->detect();
+
+        $this->line('  <fg=green>✅ Detected: ' . $detector->describe($detected) . '</>');
+        if ($detected['starter_kit'] !== 'none') {
+            $this->line('  <fg=gray>  Starter kit: ' . ucfirst($detected['starter_kit']) . '</>');
+        }
+        $this->line('  <fg=gray>  Output format: ' . $detected['output_format'] . '</>');
 
         // ── Step 2: Detect driver preference ──────────────────────────────
         $this->newLine();
@@ -125,6 +140,16 @@ class InstallCommand extends Command
 
             File::put($envPath, $env);
             $this->line('  <fg=green>✅ .env updated successfully</>');
+
+            // Save stack detection to RuntimeConfig
+            $runtime = new \YoussefMekkkawy\LaravelAiTranslator\Services\RuntimeConfig();
+            $runtime->merge([
+                'stack'             => $detected['stack'],
+                'output_format'     => $detected['output_format'],
+                'scan_paths'        => $detected['scan_paths'],
+                'scan_extensions'   => $detected['scan_extensions'],
+                'detected_stack_at' => now()->toISOString(),
+            ]);
         } else {
             $this->line('  <fg=yellow>⚠️  .env file not found — please add these keys manually:</>');
             foreach ($envKeys as $key => $value) {

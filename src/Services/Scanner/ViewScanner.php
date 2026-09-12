@@ -6,220 +6,220 @@ use Illuminate\Support\Facades\File;
 
 class ViewScanner
 {
-    /**
-     * Paths to scan for blade files.
-     */
     protected array $paths;
-
-    /**
-     * Patterns to exclude from scanning.
-     */
     protected array $excludePatterns;
-
-    /**
-     * Statistics about the scan.
-     */
+    protected array $extensions;
     protected array $statistics = [
-        'total_files' => 0,
-        'total_keys' => 0,
+        'total_files'   => 0,
+        'total_keys'    => 0,
         'files_scanned' => [],
     ];
-
-    /**
-     * Whether a scan has been performed.
-     */
     protected bool $hasScanned = false;
 
-    /**
-     * Create a new ViewScanner instance.
-     */
-    public function __construct(array $paths = [], ?array $excludePatterns = null)
-    {
+    protected array $patterns = [
+        'php' => [
+            '/(?:__|trans|@lang|trans_choice)\s*\(\s*[\'"]([^\'"]+)[\'"]/u',
+        ],
+        'vue' => [
+            '/\$t\s*\(\s*[\'"]([^\'"]+)[\'"]/u',
+            '/\bt\s*\(\s*[\'"]([^\'"]+)[\'"]/u',
+        ],
+        'jsx' => [
+            '/(?:__|i18n\.t|t)\s*\(\s*[\'"]([^\'"]+)[\'"]/u',
+        ],
+        'tsx' => [
+            '/(?:__|i18n\.t|t)\s*\(\s*[\'"]([^\'"]+)[\'"]/u',
+        ],
+    ];
+
+    public function __construct(
+        array $paths            = [],
+        ?array $excludePatterns = null,
+        array $extensions       = ['blade.php']
+    ) {
         $this->paths = empty($paths)
             ? config('ai-translator.scan_paths', [resource_path('views')])
             : $paths;
 
-        // Only use config defaults if NO exclude patterns were explicitly passed
-        // If empty array is passed, use that (allows disabling exclusions)
         if ($excludePatterns === null && empty($paths)) {
-            $configExcludes = config('ai-translator.exclude_files', []);
+            $configExcludes        = config('ai-translator.exclude_files', []);
             $this->excludePatterns = is_array($configExcludes) ? $configExcludes : [];
         } else {
             $this->excludePatterns = $excludePatterns ?? [];
         }
+
+        $this->extensions = $extensions;
     }
 
     /**
-     * Scan for all blade files in configured paths.
-     */
-    public function scanForBladeFiles(): array
-    {
-        $bladeFiles = [];
-
-        foreach ($this->paths as $path) {
-            if (! File::exists($path)) {
-                continue;
-            }
-
-            if (File::isFile($path)) {
-                // Single file provided
-                if (str_ends_with($path, '.blade.php')) {
-                    $bladeFiles[] = $path;
-                }
-
-                continue;
-            }
-
-            // Directory - scan recursively
-            $files = File::allFiles($path);
-
-            foreach ($files as $file) {
-                $filepath = $file->getPathname();
-
-                // Skip if matches exclude pattern
-                if ($this->shouldExclude($filepath)) {
-                    continue;
-                }
-
-                // Only include .blade.php files
-                if (str_ends_with($file->getFilename(), '.blade.php')) {
-                    $bladeFiles[] = str_replace('\\', '/', $filepath);
-                }
-            }
-        }
-
-        return $bladeFiles;
-    }
-
-    /**
-     * Scan a single file for translation keys.
-     */
-    public function scanFile(string $filepath): array
-    {
-        if (! File::exists($filepath)) {
-            return [];
-        }
-
-        $content = File::get($filepath);
-        $keys = $this->extractKeysFromContent($content);
-
-        // Remove duplicates
-        return array_unique($keys);
-    }
-
-    /**
-     * Scan all configured paths for translation keys.
+     * Scan all configured paths and return unique translation keys.
      */
     public function scanAll(): array
     {
-        $files = $this->scanForBladeFiles();
-        $allKeys = [];
-
-        foreach ($files as $file) {
-            $keys = $this->scanFile($file);
-            $allKeys = array_merge($allKeys, $keys);
-            $this->statistics['files_scanned'][] = $file;
+        if ($this->hasScanned) {
+            return array_unique($this->statistics['files_scanned']
+                ? $this->getAllKeys()
+                : []);
         }
 
-        // Remove duplicates and update statistics
-        $allKeys = array_unique($allKeys);
-        $this->statistics['total_files'] = count($files);
+        $allKeys = [];
+
+        foreach ($this->paths as $path) {
+            if (!File::exists($path)) continue;
+
+            foreach (File::allFiles($path) as $file) {
+                if (!$this->shouldScanFile($file)) continue;
+
+                $this->statistics['total_files']++;
+                $keys = $this->extractKeysFromFile($file);
+
+                if (!empty($keys)) {
+                    $this->statistics['files_scanned'][$file->getPathname()] = $keys;
+                    $allKeys = array_merge($allKeys, $keys);
+                }
+            }
+        }
+
+        $allKeys = array_values(array_unique($allKeys));
         $this->statistics['total_keys'] = count($allKeys);
-        $this->hasScanned = true;
+        $this->hasScanned               = true;
 
         return $allKeys;
     }
 
     /**
-     * Scan a specific directory path for translation keys.
-     * This method is used by commands that need to scan custom paths.
+     * Return all blade/vue/jsx file paths found in the configured paths.
+     * Respects exclude patterns and extension filters.
+     * Used by tests and the Clean page.
      */
-    public function scan(string $path): array
+    public function scanForBladeFiles(): array
     {
-        if (! File::exists($path)) {
-            return [];
+        $files = [];
+
+        foreach ($this->paths as $path) {
+            if (!File::exists($path)) continue;
+
+            foreach (File::allFiles($path) as $file) {
+                if (!$this->shouldScanFile($file)) continue;
+                $files[] = $file->getPathname();
+            }
         }
 
-        // Temporarily set path and scan
-        $originalPaths = $this->paths;
-        $this->paths = [$path];
-
-        $keys = $this->scanAll();
-
-        // Restore original paths
-        $this->paths = $originalPaths;
-
-        return $keys;
+        sort($files); // consistent, predictable ordering
+        return $files;
     }
 
     /**
-     * Get statistics about the scan.
-     * If no scan has been performed yet, automatically trigger one.
+     * Extract translation keys from a single file by path.
+     * Used by tests and callers that need per-file extraction.
+     */
+    public function scanFile(string $path): array
+    {
+        if (!File::exists($path)) {
+            return [];
+        }
+
+        return $this->extractKeysFromFile(new \SplFileInfo($path));
+    }
+
+    /**
+     * Return scanner statistics.
+     * Auto-triggers a scan if scanAll() has not been called yet,
+     * so tests can call getStatistics() directly.
      */
     public function getStatistics(): array
     {
-        // Auto-scan if not scanned yet
-        if (! $this->hasScanned) {
+        if (!$this->hasScanned) {
             $this->scanAll();
         }
 
         return $this->statistics;
     }
 
+    // ── Protected helpers ──────────────────────────────────────────────────
+
     /**
-     * Check if a filepath should be excluded.
+     * Check if this file should be scanned.
+     *
+     * Extension check: must match one of the configured extensions.
+     * Exclude check:   pattern matches full path, filename, OR any directory
+     *                  component in the path — so 'vendor' excludes everything
+     *                  inside a vendor/ subdirectory, not just files named vendor.
      */
-    protected function shouldExclude(string $filepath): bool
+    protected function shouldScanFile(\SplFileInfo $file): bool
     {
-        // If no exclude patterns, don't exclude anything
-        if (empty($this->excludePatterns)) {
-            return false;
+        $filename = $file->getFilename();
+        $path     = $file->getPathname();
+
+        // Extension check
+        $matched = false;
+        foreach ($this->extensions as $ext) {
+            if (str_ends_with($filename, '.' . ltrim($ext, '.'))) {
+                $matched = true;
+                break;
+            }
         }
 
-        // Normalize path separators for consistent matching
-        $filepath = str_replace('\\', '/', $filepath);
+        if (!$matched) return false;
+
+        // Exclude pattern check
+        // Normalize to forward slashes so str_contains works on Windows too
+        $normalizedPath = str_replace('\\', '/', $path);
 
         foreach ($this->excludePatterns as $pattern) {
-            // Normalize pattern
-            $pattern = str_replace('\\', '/', trim($pattern));
-
-            if (empty($pattern)) {
-                continue;
+            // Glob match against full path or filename
+            if (fnmatch($pattern, $path) || fnmatch($pattern, $filename)) {
+                return false;
             }
-
-            // Remove ** wildcards for simple matching
-            $simplePattern = str_replace('**', '', $pattern);
-            $simplePattern = str_replace('*', '', $simplePattern);
-            $simplePattern = trim($simplePattern, '/');
-
-            // Check if the simple pattern appears anywhere in the path
-            if (! empty($simplePattern) && str_contains($filepath, $simplePattern)) {
-                return true;
+            // Directory component match: 'vendor' excludes files inside vendor/ dirs
+            if (str_contains($normalizedPath, '/' . $pattern . '/')) {
+                return false;
             }
         }
 
-        return false;
+        return true;
     }
 
-    /**
-     * Extract translation keys from file content.
-     */
-    protected function extractKeysFromContent(string $content): array
+    protected function extractKeysFromFile(\SplFileInfo $file): array
+    {
+        $content  = File::get($file->getPathname());
+        $ext      = $this->getFileType($file);
+        $patterns = $this->patterns[$ext] ?? $this->patterns['php'];
+        $keys     = [];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match_all($pattern, $content, $matches)) {
+                foreach ($matches[1] as $key) {
+                    $key = trim($key);
+                    if (!empty($key) && strlen($key) < 500) {
+                        $keys[] = $key;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    protected function getFileType(\SplFileInfo $file): string
+    {
+        $name = $file->getFilename();
+
+        if (str_ends_with($name, '.blade.php')) return 'php';
+        if (str_ends_with($name, '.vue'))       return 'vue';
+        if (str_ends_with($name, '.jsx'))       return 'jsx';
+        if (str_ends_with($name, '.tsx'))       return 'tsx';
+        if (str_ends_with($name, '.php'))       return 'php';
+
+        return 'php';
+    }
+
+    protected function getAllKeys(): array
     {
         $keys = [];
-
-        // Pattern 1: __('key') or __("key")
-        preg_match_all('/__\([\'"]([^\'"]+)[\'"]\)/', $content, $matches1);
-        $keys = array_merge($keys, $matches1[1]);
-
-        // Pattern 2: @lang('key') or @lang("key")
-        preg_match_all('/@lang\([\'"]([^\'"]+)[\'"]\)/', $content, $matches2);
-        $keys = array_merge($keys, $matches2[1]);
-
-        // Pattern 3: trans('key') or trans("key")
-        preg_match_all('/trans\([\'"]([^\'"]+)[\'"]\)/', $content, $matches3);
-        $keys = array_merge($keys, $matches3[1]);
-
-        return $keys;
+        foreach ($this->statistics['files_scanned'] as $fileKeys) {
+            $keys = array_merge($keys, $fileKeys);
+        }
+        return array_unique($keys);
     }
 }

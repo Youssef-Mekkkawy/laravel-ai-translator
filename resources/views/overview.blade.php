@@ -267,6 +267,7 @@ function overviewPage() {
         }).then(r => r.json());
         clearInterval(ticker);
         this.progressPct = 100;
+        if (r.success) await this.refreshStats();
         setTimeout(() => {
           this.running = false;
           this.progressPct = 0;
