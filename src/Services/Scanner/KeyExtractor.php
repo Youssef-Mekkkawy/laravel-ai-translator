@@ -10,10 +10,7 @@ use Illuminate\Support\Str;
 class KeyExtractor
 {
     /**
-     * Parse a translation key and determine its file and key name
-     *
-     * @param  string  $key  Translation key (e.g., 'auth.login' or 'Welcome')
-     * @return array ['file' => 'auth', 'key' => 'login', 'value' => null]
+     * @return bool
      */
     protected function isPhpTranslationKey(string $key): bool
     {
@@ -23,6 +20,12 @@ class KeyExtractor
         ) === 1;
     }
 
+    /**
+     * Parse a translation key and determine its file and key name.
+     *
+     * @param  string  $key  Translation key (e.g., 'auth.login' or 'Welcome')
+     * @return array{'file': string, 'key': string, 'full_key': string, 'default_value': string, 'is_nested': bool}
+     */
     public function parseKey(string $key): array
     {
         // Check if key contains dot notation (e.g., 'auth.login')
