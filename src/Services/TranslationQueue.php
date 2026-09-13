@@ -7,12 +7,13 @@ use Illuminate\Support\Facades\File;
 class TranslationQueue
 {
     protected string $queueFile;
+
     protected string $statusFile;
 
     public function __construct()
     {
-        $this->queueFile  = base_path('lang' . DIRECTORY_SEPARATOR . '.translation-queue.json');
-        $this->statusFile = base_path('lang' . DIRECTORY_SEPARATOR . '.translation-status.json');
+        $this->queueFile = base_path('lang'.DIRECTORY_SEPARATOR.'.translation-queue.json');
+        $this->statusFile = base_path('lang'.DIRECTORY_SEPARATOR.'.translation-status.json');
     }
 
     // ── Queue management ───────────────────────────────────────────────────
@@ -22,7 +23,7 @@ class TranslationQueue
      */
     public function push(array $job): void
     {
-        $queue   = $this->getQueue();
+        $queue = $this->getQueue();
         $queue[] = array_merge($job, ['queued_at' => now()->toIso8601String()]);
         $this->saveQueue($queue);
     }
@@ -32,7 +33,7 @@ class TranslationQueue
      */
     public function getQueue(): array
     {
-        if (!File::exists($this->queueFile)) {
+        if (! File::exists($this->queueFile)) {
             return [];
         }
 
@@ -79,20 +80,21 @@ class TranslationQueue
     {
         $status = $this->getStatus();
 
-        if (!($status['running'] ?? false)) {
+        if (! ($status['running'] ?? false)) {
             return false;
         }
 
         // Verify the PID is still alive — handles crashes gracefully
         $pid = $status['pid'] ?? null;
 
-        if ($pid && !$this->isPidAlive((int) $pid)) {
+        if ($pid && ! $this->isPidAlive((int) $pid)) {
             // Process died unexpectedly — clean up so next job can start
             $this->setStatus([
-                'running'     => false,
-                'pid'         => null,
+                'running' => false,
+                'pid' => null,
                 'current_job' => null,
             ]);
+
             return false;
         }
 
@@ -104,15 +106,15 @@ class TranslationQueue
      */
     public function getStatus(): array
     {
-        if (!File::exists($this->statusFile)) {
+        if (! File::exists($this->statusFile)) {
             return [
-                'running'           => false,
-                'pid'               => null,
-                'current_job'       => null,
-                'queue_size'        => 0,
+                'running' => false,
+                'pid' => null,
+                'current_job' => null,
+                'queue_size' => 0,
                 'last_completed_at' => null,
-                'last_result'       => null,
-                'updated_at'        => null,
+                'last_result' => null,
+                'updated_at' => null,
             ];
         }
 
@@ -129,7 +131,7 @@ class TranslationQueue
     public function setStatus(array $updates): void
     {
         $current = $this->getStatus();
-        $merged  = array_merge($current, $updates, [
+        $merged = array_merge($current, $updates, [
             'updated_at' => now()->toIso8601String(),
         ]);
 
@@ -148,11 +150,11 @@ class TranslationQueue
     {
         $this->clear();
         $this->setStatus([
-            'running'           => false,
-            'pid'               => null,
-            'current_job'       => null,
+            'running' => false,
+            'pid' => null,
+            'current_job' => null,
             'last_completed_at' => null,
-            'last_result'       => null,
+            'last_result' => null,
         ]);
     }
 
@@ -170,18 +172,18 @@ class TranslationQueue
      */
     public function spawnWorker(): void
     {
-        $php     = PHP_BINARY;
+        $php = PHP_BINARY;
         $artisan = base_path('artisan');
 
         if (PHP_OS_FAMILY === 'Windows') {
             // Windows: popen with 'start /B' detaches the process
             pclose(popen(
-                'start /B "" "' . $php . '" "' . $artisan . '" lang:work-queue',
+                'start /B "" "'.$php.'" "'.$artisan.'" lang:work-queue',
                 'r'
             ));
         } else {
             // Linux / macOS: trailing & detaches the process
-            exec('"' . $php . '" "' . $artisan . '" lang:work-queue > /dev/null 2>&1 &');
+            exec('"'.$php.'" "'.$artisan.'" lang:work-queue > /dev/null 2>&1 &');
         }
     }
 
@@ -212,6 +214,7 @@ class TranslationQueue
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -226,6 +229,7 @@ class TranslationQueue
 
         // Fallback: shell kill -0
         exec("kill -0 {$pid} 2>/dev/null", $out, $code);
+
         return $code === 0;
     }
 }

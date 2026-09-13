@@ -3,7 +3,6 @@
 namespace YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\DashboardController;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
@@ -16,19 +15,19 @@ class CleanController extends DashboardController
     public function scan()
     {
         try {
-            $config     = config('ai-translator', []);
+            $config = config('ai-translator', []);
             $sourceLang = $config['default_language'] ?? 'en';
-            $scanPaths  = array_filter(
+            $scanPaths = array_filter(
                 $config['scan_paths'] ?? [resource_path('views')],
                 fn ($p) => is_dir($p)
             );
 
             // Get used keys from views
-            $scanner  = new ViewScanner(array_values($scanPaths));
+            $scanner = new ViewScanner(array_values($scanPaths));
             $usedKeys = array_flip($scanner->scanAll());
 
             // Also add JSON source keys as used
-            $jsonPath = lang_path($sourceLang . '.json');
+            $jsonPath = lang_path($sourceLang.'.json');
             if (File::exists($jsonPath)) {
                 $json = @json_decode(File::get($jsonPath), true);
                 if (is_array($json)) {
@@ -40,28 +39,28 @@ class CleanController extends DashboardController
 
             // Load all source lang keys
             $sourceLangPath = lang_path($sourceLang);
-            $allKeys        = $this->loadAllKeys($sourceLangPath);
+            $allKeys = $this->loadAllKeys($sourceLangPath);
 
             // Find unused
             $unused = [];
             foreach ($allKeys as $fullKey => $meta) {
-                if (!isset($usedKeys[$fullKey])) {
+                if (! isset($usedKeys[$fullKey])) {
                     $unused[] = [
-                        'key'  => $fullKey,
+                        'key' => $fullKey,
                         'file' => $meta['file'],
                     ];
                 }
             }
 
             return $this->success([
-                'unused'     => $unused,
-                'total'      => count($allKeys),
-                'used'       => count($usedKeys),
-                'unusedCount'=> count($unused),
+                'unused' => $unused,
+                'total' => count($allKeys),
+                'used' => count($usedKeys),
+                'unusedCount' => count($unused),
             ]);
 
         } catch (\Throwable $e) {
-            return $this->error('Scan failed: ' . $e->getMessage());
+            return $this->error('Scan failed: '.$e->getMessage());
         }
     }
 
@@ -70,10 +69,10 @@ class CleanController extends DashboardController
      */
     public function delete(Request $request)
     {
-        $keys       = $request->input('keys', []);
-        $config     = config('ai-translator', []);
+        $keys = $request->input('keys', []);
+        $config = config('ai-translator', []);
         $sourceLang = $config['default_language'] ?? 'en';
-        $languages  = $config['languages'] ?? ['en'];
+        $languages = $config['languages'] ?? ['en'];
 
         if (empty($keys)) {
             return $this->error('No keys provided.');
@@ -82,23 +81,23 @@ class CleanController extends DashboardController
         $deleted = 0;
 
         foreach ($keys as $keyData) {
-            $file      = $keyData['file'] ?? '';
-            $fullKey   = $keyData['key'] ?? '';
+            $file = $keyData['file'] ?? '';
+            $fullKey = $keyData['key'] ?? '';
             $nestedKey = str_contains($fullKey, '.') ? substr($fullKey, strlen($file) + 1) : $fullKey;
 
             foreach ($languages as $lang) {
                 $filePath = lang_path("{$lang}/{$file}.php");
 
-                if (!File::exists($filePath)) {
+                if (! File::exists($filePath)) {
                     continue;
                 }
 
                 $translations = @include $filePath;
-                if (!is_array($translations)) {
+                if (! is_array($translations)) {
                     continue;
                 }
 
-                $keyParts     = explode('.', $nestedKey);
+                $keyParts = explode('.', $nestedKey);
                 $translations = $this->removeNestedKey($translations, $keyParts);
 
                 File::put($filePath, $this->generatePhpFile($translations));
@@ -108,8 +107,8 @@ class CleanController extends DashboardController
 
         return $this->success([
             'deleted' => count($keys),
-            'files'   => $deleted,
-        ], count($keys) . ' key(s) deleted from all language files.');
+            'files' => $deleted,
+        ], count($keys).' key(s) deleted from all language files.');
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
@@ -118,7 +117,7 @@ class CleanController extends DashboardController
     {
         $keys = [];
 
-        if (!File::exists($langPath)) {
+        if (! File::exists($langPath)) {
             return $keys;
         }
 
@@ -127,10 +126,10 @@ class CleanController extends DashboardController
                 continue;
             }
 
-            $group        = $file->getBasename('.php');
+            $group = $file->getBasename('.php');
             $translations = @include $file->getPathname();
 
-            if (!is_array($translations)) {
+            if (! is_array($translations)) {
                 continue;
             }
 
@@ -146,7 +145,7 @@ class CleanController extends DashboardController
     {
         $result = [];
         foreach ($array as $k => $v) {
-            $fullKey   = $prefix ? "{$prefix}.{$k}" : $k;
+            $fullKey = $prefix ? "{$prefix}.{$k}" : $k;
             $nestedKey = $keyPrefix ? "{$keyPrefix}.{$k}" : $k;
             if (is_array($v)) {
                 $result = array_merge($result, $this->flattenKeys($v, $fullKey, $nestedKey));
@@ -154,6 +153,7 @@ class CleanController extends DashboardController
                 $result[$fullKey] = $nestedKey;
             }
         }
+
         return $result;
     }
 
@@ -164,31 +164,37 @@ class CleanController extends DashboardController
             unset($array[$key]);
         } elseif (isset($array[$key]) && is_array($array[$key])) {
             $array[$key] = $this->removeNestedKey($array[$key], $keys);
-            if (empty($array[$key])) unset($array[$key]);
+            if (empty($array[$key])) {
+                unset($array[$key]);
+            }
         }
+
         return $array;
     }
 
     private function generatePhpFile(array $translations): string
     {
-        return "<?php\n\nreturn " . $this->arrayToPhp($translations) . ";\n";
+        return "<?php\n\nreturn ".$this->arrayToPhp($translations).";\n";
     }
 
     private function arrayToPhp(array $array, int $depth = 0): string
     {
-        if (empty($array)) return '[]';
-        $indent     = str_repeat('    ', $depth);
+        if (empty($array)) {
+            return '[]';
+        }
+        $indent = str_repeat('    ', $depth);
         $nextIndent = str_repeat('    ', $depth + 1);
-        $lines      = ['['];
+        $lines = ['['];
         foreach ($array as $key => $value) {
-            $k = "'" . addslashes((string) $key) . "'";
+            $k = "'".addslashes((string) $key)."'";
             if (is_array($value)) {
-                $lines[] = "{$nextIndent}{$k} => " . $this->arrayToPhp($value, $depth + 1) . ',';
+                $lines[] = "{$nextIndent}{$k} => ".$this->arrayToPhp($value, $depth + 1).',';
             } else {
-                $lines[] = "{$nextIndent}{$k} => '" . addslashes((string) $value) . "',";
+                $lines[] = "{$nextIndent}{$k} => '".addslashes((string) $value)."',";
             }
         }
         $lines[] = "{$indent}]";
+
         return implode("\n", $lines);
     }
 }

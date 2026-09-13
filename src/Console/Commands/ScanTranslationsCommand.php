@@ -27,7 +27,7 @@ class ScanTranslationsCommand extends Command
         }
 
         $paths = array_values(
-            array_filter($paths, fn($path) => File::isDirectory($path))
+            array_filter($paths, fn ($path) => File::isDirectory($path))
         );
 
         if (empty($paths)) {
@@ -41,7 +41,7 @@ class ScanTranslationsCommand extends Command
         $scanner = new ViewScanner($paths);
         $extractor = new KeyExtractor;
 
-        $this->components->info('📂 Scanning: ' . implode(', ', $paths));
+        $this->components->info('📂 Scanning: '.implode(', ', $paths));
         $this->newLine();
 
         $keys = $scanner->scanAll();
@@ -62,7 +62,7 @@ class ScanTranslationsCommand extends Command
 
         $defaultLang = config('ai-translator.default_language', 'en');
         $langBasePath = base_path(
-            'lang' . DIRECTORY_SEPARATOR . $defaultLang
+            'lang'.DIRECTORY_SEPARATOR.$defaultLang
         );
 
         $missingOnly = $this->option('missing-only');
@@ -108,11 +108,11 @@ class ScanTranslationsCommand extends Command
                 $subKey = $parsed['key'];
 
                 $langFile = $langBasePath
-                    . DIRECTORY_SEPARATOR
-                    . $file
-                    . '.php';
+                    .DIRECTORY_SEPARATOR
+                    .$file
+                    .'.php';
 
-                $displayFile = $file . '.php';
+                $displayFile = $file.'.php';
 
                 if (File::exists($langFile)) {
                     $translations = require $langFile;
@@ -137,9 +137,9 @@ class ScanTranslationsCommand extends Command
                  *
                  * -> lang/en.json
                  */
-                $displayFile = $defaultLang . '.json';
+                $displayFile = $defaultLang.'.json';
 
-                $jsonFile = lang_path($defaultLang . '.json');
+                $jsonFile = lang_path($defaultLang.'.json');
 
                 if (File::exists($jsonFile)) {
                     $translations = json_decode(

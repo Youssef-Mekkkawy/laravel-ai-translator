@@ -19,16 +19,16 @@ class OllamaStartController extends DashboardController
         if ($manager->isRunning()) {
             $hasModel = $manager->hasModel();
 
-            if (!$hasModel) {
+            if (! $hasModel) {
                 $manager->pullModelBackground();
             }
 
             return $this->success([
-                'running'  => true,
-                'started'  => false,
+                'running' => true,
+                'started' => false,
                 'hasModel' => $hasModel,
-                'pulling'  => !$hasModel,
-                'model'    => $manager->getModel(),
+                'pulling' => ! $hasModel,
+                'model' => $manager->getModel(),
             ], $hasModel ? 'Ollama is already running.' : 'Ollama running. Model is downloading in background.');
         }
 
@@ -38,7 +38,7 @@ class OllamaStartController extends DashboardController
             'running' => false,
             'started' => true,
             'polling' => true,
-            'model'   => $manager->getModel(),
+            'model' => $manager->getModel(),
         ], 'Ollama is starting up. Checking status...');
     }
 
@@ -52,17 +52,17 @@ class OllamaStartController extends DashboardController
      */
     public function status()
     {
-        $manager  = new OllamaManager;
-        $running  = $manager->isRunning();
+        $manager = new OllamaManager;
+        $running = $manager->isRunning();
         $hasModel = $running && $manager->hasModel();
-        $models   = $running ? $manager->listModels() : [];
+        $models = $running ? $manager->listModels() : [];
 
         return $this->success([
-            'running'  => $running,
+            'running' => $running,
             'hasModel' => $hasModel,
-            'pulling'  => $running && !$hasModel, // still pulling if running but no model yet
-            'model'    => $manager->getModel(),
-            'models'   => $models,
+            'pulling' => $running && ! $hasModel, // still pulling if running but no model yet
+            'model' => $manager->getModel(),
+            'models' => $models,
         ]);
     }
 }

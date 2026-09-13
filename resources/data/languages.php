@@ -181,7 +181,7 @@ return [
     ['code' => 'ug', 'name' => 'Uyghur', 'native' => 'ئۇيغۇرچە'],
     ['code' => 'uk', 'name' => 'Ukrainian', 'native' => 'Українська'],
     ['code' => 'ur', 'name' => 'Urdu', 'native' => 'اردو'],
-    ['code' => 'uz', 'name' => 'Uzbek', 'native' => "Oʻzbek"],
+    ['code' => 'uz', 'name' => 'Uzbek', 'native' => 'Oʻzbek'],
     ['code' => 've', 'name' => 'Venda', 'native' => 'Tshivenḓa'],
     ['code' => 'vi', 'name' => 'Vietnamese', 'native' => 'Tiếng Việt'],
     ['code' => 'vo', 'name' => 'Volapük', 'native' => 'Volapük'],

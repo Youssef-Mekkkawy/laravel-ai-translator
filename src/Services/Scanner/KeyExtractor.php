@@ -22,6 +22,7 @@ class KeyExtractor
             $key
         ) === 1;
     }
+
     public function parseKey(string $key): array
     {
         // Check if key contains dot notation (e.g., 'auth.login')
@@ -114,6 +115,7 @@ class KeyExtractor
 
         return trim($text, '_');
     }
+
     public function getKeyValue(
         string $key,
         string $language = 'en'
@@ -203,7 +205,6 @@ class KeyExtractor
     /**
      * Get the value of a translation key
      */
-    
 
     /**
      * Get nested value from array

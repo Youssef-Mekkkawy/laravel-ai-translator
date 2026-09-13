@@ -4,11 +4,15 @@ namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
+use YoussefMekkkawy\LaravelAiTranslator\Services\RuntimeConfig;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
 use YoussefMekkkawy\LaravelAiTranslator\Services\StackDetector;
 
 class InstallCommand extends Command
 {
-    protected $signature   = 'ai-translator:install';
+    protected $signature = 'ai-translator:install';
+
     protected $description = 'Install and configure the Laravel AI Translator package';
 
     public function handle(): int
@@ -26,11 +30,11 @@ class InstallCommand extends Command
         $this->info('📦 Step 1: Publishing config file...');
 
         if (File::exists(config_path('ai-translator.php'))) {
-            if (!$this->confirm('  Config file already exists. Overwrite?', false)) {
+            if (! $this->confirm('  Config file already exists. Overwrite?', false)) {
                 $this->line('  <fg=yellow>⏩ Skipped config publish.</>');
             } else {
                 $this->callSilent('vendor:publish', [
-                    '--tag'   => 'ai-translator-config',
+                    '--tag' => 'ai-translator-config',
                     '--force' => true,
                 ]);
                 $this->line('  <fg=green>✅ Config published to config/ai-translator.php</>');
@@ -44,14 +48,14 @@ class InstallCommand extends Command
         $this->newLine();
         $this->info('🔍 Detecting your Laravel stack...');
 
-        $detector = new StackDetector();
+        $detector = new StackDetector;
         $detected = $detector->detect();
 
-        $this->line('  <fg=green>✅ Detected: ' . $detector->describe($detected) . '</>');
+        $this->line('  <fg=green>✅ Detected: '.$detector->describe($detected).'</>');
         if ($detected['starter_kit'] !== 'none') {
-            $this->line('  <fg=gray>  Starter kit: ' . ucfirst($detected['starter_kit']) . '</>');
+            $this->line('  <fg=gray>  Starter kit: '.ucfirst($detected['starter_kit']).'</>');
         }
-        $this->line('  <fg=gray>  Output format: ' . $detected['output_format'] . '</>');
+        $this->line('  <fg=gray>  Output format: '.$detected['output_format'].'</>');
 
         // ── Step 2: Detect driver preference ──────────────────────────────
         $this->newLine();
@@ -62,7 +66,7 @@ class InstallCommand extends Command
             '  Which provider do you want to use?',
             [
                 'ollama' => 'Ollama (local, free — recommended for development)',
-                'deepl'  => 'DeepL (cloud, free tier: 500k chars/month)',
+                'deepl' => 'DeepL (cloud, free tier: 500k chars/month)',
                 'claude' => 'Claude by Anthropic (cloud, paid)',
                 'openai' => 'ChatGPT by OpenAI (cloud, paid)',
                 'gemini' => 'Gemini by Google (cloud, paid)',
@@ -93,10 +97,10 @@ class InstallCommand extends Command
         // un-cleared default "ar,fr,es" to be written even when user typed "ar".
         $targetLangs = array_values(array_unique(array_filter(
             array_map('trim', explode(',', $langs)),
-            fn ($l) => !empty($l) && $l !== $sourceLang
+            fn ($l) => ! empty($l) && $l !== $sourceLang
         )));
 
-        $allLangs = $sourceLang . ',' . implode(',', $targetLangs);
+        $allLangs = $sourceLang.','.implode(',', $targetLangs);
 
         // ── Step 4: Write .env ─────────────────────────────────────────────
         $this->newLine();
@@ -105,34 +109,34 @@ class InstallCommand extends Command
         $envPath = base_path('.env');
 
         $envKeys = [
-            'AUTO_TRANSLATE_DRIVER'     => $driver,
-            'SUPPORTED_LANGUAGES'       => $allLangs,
-            'DEFAULT_LANGUAGE'          => $sourceLang,
-            'AUTO_TRANSLATE_BACKUP'     => 'true',
+            'AUTO_TRANSLATE_DRIVER' => $driver,
+            'SUPPORTED_LANGUAGES' => $allLangs,
+            'DEFAULT_LANGUAGE' => $sourceLang,
+            'AUTO_TRANSLATE_BACKUP' => 'true',
             'AUTO_TRANSLATE_CHUNK_SIZE' => '20',
         ];
 
         // Provider-specific keys
         match ($driver) {
             'ollama' => $envKeys += [
-                'OLLAMA_MODEL'   => 'llama3.2',
+                'OLLAMA_MODEL' => 'llama3.2',
                 'OLLAMA_API_URL' => 'http://localhost:11434',
             ],
-            'deepl'  => $envKeys += [
+            'deepl' => $envKeys += [
                 'DEEPL_API_KEY' => '',
-                'DEEPL_PLAN'    => 'free',
+                'DEEPL_PLAN' => 'free',
             ],
             'claude' => $envKeys += [
                 'ANTHROPIC_API_KEY' => '',
-                'ANTHROPIC_MODEL'   => 'claude-sonnet-4-5',
+                'ANTHROPIC_MODEL' => 'claude-sonnet-4-5',
             ],
             'openai' => $envKeys += [
                 'OPENAI_API_KEY' => '',
-                'OPENAI_MODEL'   => 'gpt-4o-mini',
+                'OPENAI_MODEL' => 'gpt-4o-mini',
             ],
             'gemini' => $envKeys += [
                 'GEMINI_API_KEY' => '',
-                'GEMINI_MODEL'   => 'gemini-1.5-flash',
+                'GEMINI_MODEL' => 'gemini-1.5-flash',
             ],
             default => [],
         };
@@ -141,14 +145,14 @@ class InstallCommand extends Command
             $env = File::get($envPath);
 
             foreach ($envKeys as $key => $value) {
-                if (preg_match('/^' . preg_quote($key, '/') . '=/m', $env)) {
+                if (preg_match('/^'.preg_quote($key, '/').'=/m', $env)) {
                     $env = preg_replace(
-                        '/^' . preg_quote($key, '/') . '=.*/m',
+                        '/^'.preg_quote($key, '/').'=.*/m',
                         "{$key}={$value}",
                         $env
                     );
                 } else {
-                    $env .= PHP_EOL . "{$key}={$value}";
+                    $env .= PHP_EOL."{$key}={$value}";
                 }
             }
 
@@ -159,16 +163,16 @@ class InstallCommand extends Command
             // reads the correct list immediately — without RuntimeConfig the translate
             // command falls back to the static config default (en,ar,fr,es) regardless
             // of what the user entered here.
-            $runtime = new \YoussefMekkkawy\LaravelAiTranslator\Services\RuntimeConfig();
+            $runtime = new RuntimeConfig;
             $runtime->merge([
-                'stack'               => $detected['stack'],
-                'output_format'       => $detected['output_format'],
-                'scan_paths'          => $detected['scan_paths'],
-                'scan_extensions'     => $detected['scan_extensions'],
-                'detected_stack_at'   => now()->toISOString(),
+                'stack' => $detected['stack'],
+                'output_format' => $detected['output_format'],
+                'scan_paths' => $detected['scan_paths'],
+                'scan_extensions' => $detected['scan_extensions'],
+                'detected_stack_at' => now()->toISOString(),
                 'supported_languages' => array_filter(
                     explode(',', $allLangs),
-                    fn ($l) => !empty(trim($l))
+                    fn ($l) => ! empty(trim($l))
                 ),
             ]);
 
@@ -185,7 +189,7 @@ class InstallCommand extends Command
             $this->info('🔍 Step 5: Checking Ollama...');
 
             try {
-                $response = \Illuminate\Support\Facades\Http::timeout(3)
+                $response = Http::timeout(3)
                     ->get('http://localhost:11434/api/tags');
 
                 if ($response->successful()) {
@@ -206,11 +210,11 @@ class InstallCommand extends Command
             }
         } else {
             $apiKeyVar = match ($driver) {
-                'deepl'  => 'DEEPL_API_KEY',
+                'deepl' => 'DEEPL_API_KEY',
                 'claude' => 'ANTHROPIC_API_KEY',
                 'openai' => 'OPENAI_API_KEY',
                 'gemini' => 'GEMINI_API_KEY',
-                default  => null,
+                default => null,
             };
 
             if ($apiKeyVar) {
@@ -229,7 +233,7 @@ class InstallCommand extends Command
 
         try {
             $scanPaths = config('ai-translator.scan_paths', [resource_path('views')]);
-            $scanner   = new \YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner(
+            $scanner = new ViewScanner(
                 array_filter($scanPaths, fn ($p) => is_dir($p))
             );
             $keys = $scanner->scanAll();
@@ -237,12 +241,12 @@ class InstallCommand extends Command
             if (empty($keys)) {
                 $this->line('  <fg=yellow>⚠️  No translation keys found in views. Add __() calls first.</>');
             } else {
-                $phpKeys  = [];
+                $phpKeys = [];
                 $jsonKeys = [];
 
                 foreach ($keys as $key) {
-                    if (!str_contains($key, ' ') && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$/', $key)) {
-                        $parts                        = explode('.', $key, 2);
+                    if (! str_contains($key, ' ') && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$/', $key)) {
+                        $parts = explode('.', $key, 2);
                         $phpKeys[$parts[0]][$parts[1]] = $parts[1];
                     } else {
                         $jsonKeys[$key] = $key;
@@ -251,30 +255,32 @@ class InstallCommand extends Command
 
                 $sourceLangDir = lang_path($sourceLang);
 
-                if (!empty($phpKeys)) {
-                    if (!File::exists($sourceLangDir)) {
+                if (! empty($phpKeys)) {
+                    if (! File::exists($sourceLangDir)) {
                         File::makeDirectory($sourceLangDir, 0755, true);
                     }
 
                     foreach ($phpKeys as $group => $groupKeys) {
-                        $filePath = $sourceLangDir . DIRECTORY_SEPARATOR . $group . '.php';
+                        $filePath = $sourceLangDir.DIRECTORY_SEPARATOR.$group.'.php';
                         $existing = [];
                         if (File::exists($filePath)) {
                             $existing = @include $filePath;
-                            if (!is_array($existing)) $existing = [];
+                            if (! is_array($existing)) {
+                                $existing = [];
+                            }
                         }
                         $merged = array_merge($groupKeys, $existing);
                         ksort($merged);
                         File::put(
                             $filePath,
-                            "<?php\n\nreturn " . $this->arrayToPhp($merged) . ";\n"
+                            "<?php\n\nreturn ".$this->arrayToPhp($merged).";\n"
                         );
                     }
                     $this->line("  <fg=green>✅ Source PHP files created in lang/{$sourceLang}/</>");
                 }
 
-                if (!empty($jsonKeys)) {
-                    $jsonPath = lang_path($sourceLang . '.json');
+                if (! empty($jsonKeys)) {
+                    $jsonPath = lang_path($sourceLang.'.json');
                     $existing = [];
                     if (File::exists($jsonPath)) {
                         $existing = @json_decode(File::get($jsonPath), true) ?? [];
@@ -283,12 +289,12 @@ class InstallCommand extends Command
                     ksort($merged);
                     File::put(
                         $jsonPath,
-                        json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . PHP_EOL
+                        json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL
                     );
                     $this->line("  <fg=green>✅ Source JSON file created: lang/{$sourceLang}.json</>");
                 }
 
-                $this->line("  <fg=gray>  Found " . count($keys) . " translation keys</>");
+                $this->line('  <fg=gray>  Found '.count($keys).' translation keys</>');
             }
         } catch (\Throwable $e) {
             $this->line("  <fg=yellow>⚠️  Could not scan views: {$e->getMessage()}</>");
@@ -314,19 +320,22 @@ class InstallCommand extends Command
 
     private function arrayToPhp(array $array, int $depth = 0): string
     {
-        if (empty($array)) return '[]';
-        $indent     = str_repeat('    ', $depth);
+        if (empty($array)) {
+            return '[]';
+        }
+        $indent = str_repeat('    ', $depth);
         $nextIndent = str_repeat('    ', $depth + 1);
-        $lines      = ['['];
+        $lines = ['['];
         foreach ($array as $key => $value) {
-            $k = "'" . addslashes((string) $key) . "'";
+            $k = "'".addslashes((string) $key)."'";
             if (is_array($value)) {
-                $lines[] = "{$nextIndent}{$k} => " . $this->arrayToPhp($value, $depth + 1) . ',';
+                $lines[] = "{$nextIndent}{$k} => ".$this->arrayToPhp($value, $depth + 1).',';
             } else {
-                $lines[] = "{$nextIndent}{$k} => '" . addslashes((string) $value) . "',";
+                $lines[] = "{$nextIndent}{$k} => '".addslashes((string) $value)."',";
             }
         }
         $lines[] = "{$indent}]";
+
         return implode("\n", $lines);
     }
 

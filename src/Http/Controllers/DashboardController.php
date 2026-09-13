@@ -12,6 +12,7 @@ abstract class DashboardController extends Controller
     protected function config(?string $key = null, mixed $default = null): mixed
     {
         $base = 'ai-translator';
+
         return $key ? config("{$base}.{$key}", $default) : config($base, $default);
     }
 
@@ -25,7 +26,7 @@ abstract class DashboardController extends Controller
         return response()->json([
             'success' => true,
             'message' => $message,
-            'data'    => $data,
+            'data' => $data,
         ]);
     }
 
@@ -40,9 +41,9 @@ abstract class DashboardController extends Controller
     protected function sharedData(): array
     {
         $dashLang = request()->cookie('dashboard_lang', 'en');
-        $pkgPath  = app('ai-translator.package_path');
-        $langFile = $pkgPath . '/resources/lang/' . $dashLang . '/dashboard.php';
-        $enFile   = $pkgPath . '/resources/lang/en/dashboard.php';
+        $pkgPath = app('ai-translator.package_path');
+        $langFile = $pkgPath.'/resources/lang/'.$dashLang.'/dashboard.php';
+        $enFile = $pkgPath.'/resources/lang/en/dashboard.php';
 
         $trans = [];
         if (file_exists($langFile)) {
@@ -51,27 +52,29 @@ abstract class DashboardController extends Controller
             $trans = include $enFile;
         }
 
-        $runtime = new RuntimeConfig();
+        $runtime = new RuntimeConfig;
 
         return [
             'activeProvider' => $runtime->get('driver', $this->config('driver', 'ollama')),
-            'sourceLang'     => $this->config('default_language', 'en'),
-            'dashboardPath'  => $this->config('dashboard.path', 'ai-translator'),
-            'version'        => $this->getPackageVersion(),
-            '_trans'         => $trans,
-            '_dashLang'      => $dashLang,
-            '_isRtl'         => in_array($dashLang, ['ar', 'he', 'fa', 'ur']),
-            'cfgLangs'       => $runtime->getSupportedLanguages(), // ← added
+            'sourceLang' => $this->config('default_language', 'en'),
+            'dashboardPath' => $this->config('dashboard.path', 'ai-translator'),
+            'version' => $this->getPackageVersion(),
+            '_trans' => $trans,
+            '_dashLang' => $dashLang,
+            '_isRtl' => in_array($dashLang, ['ar', 'he', 'fa', 'ur']),
+            'cfgLangs' => $runtime->getSupportedLanguages(), // ← added
         ];
     }
 
     protected function getPackageVersion(): string
     {
-        $composerJson = app('ai-translator.package_path') . '/composer.json';
+        $composerJson = app('ai-translator.package_path').'/composer.json';
         if (file_exists($composerJson)) {
             $composer = json_decode(file_get_contents($composerJson), true);
+
             return $composer['version'] ?? '1.0.0';
         }
+
         return '1.0.0';
     }
 }

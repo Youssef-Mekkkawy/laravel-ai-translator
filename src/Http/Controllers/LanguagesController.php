@@ -9,17 +9,17 @@ class LanguagesController extends DashboardController
 {
     public function index()
     {
-        $config     = config('ai-translator', []);
+        $config = config('ai-translator', []);
         $sourceLang = $config['default_language'] ?? 'en';
-        $runtime    = new RuntimeConfig;
-        $allLangs   = $runtime->getSupportedLanguages();
+        $runtime = new RuntimeConfig;
+        $allLangs = $runtime->getSupportedLanguages();
 
         $scanPaths = $config['scan_paths'] ?? [resource_path('views')];
-        $scanner   = new ViewScanner(array_filter($scanPaths, fn ($p) => is_dir($p)));
-        $allKeys   = $scanner->scanAll();
+        $scanner = new ViewScanner(array_filter($scanPaths, fn ($p) => is_dir($p)));
+        $allKeys = $scanner->scanAll();
 
         // FIX: include JSON source keys in total (same as LanguageApiController::stats)
-        $sourceLangJson = lang_path($sourceLang . '.json');
+        $sourceLangJson = lang_path($sourceLang.'.json');
         if (file_exists($sourceLangJson)) {
             $jsonData = @json_decode(file_get_contents($sourceLangJson), true);
             if (is_array($jsonData)) {
@@ -35,24 +35,24 @@ class LanguagesController extends DashboardController
                 continue;
             }
 
-            $langPath   = lang_path($lang);
-            $exists     = is_dir($langPath);
-            $langKeys   = $exists ? $this->loadLangKeys($langPath) : [];
-            $missing    = $totalKeys - count(array_intersect($allKeys, array_keys($langKeys)));
+            $langPath = lang_path($lang);
+            $exists = is_dir($langPath);
+            $langKeys = $exists ? $this->loadLangKeys($langPath) : [];
+            $missing = $totalKeys - count(array_intersect($allKeys, array_keys($langKeys)));
             $translated = $totalKeys - $missing;
-            $pct        = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
-            $isEnabled  = !$runtime->isDisabled($lang);
+            $pct = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
+            $isEnabled = ! $runtime->isDisabled($lang);
 
             $languages[] = [
-                'code'        => $lang,
-                'name'        => $this->languageName($lang),
-                'nativeName'  => $this->nativeName($lang),
-                'enabled'     => $isEnabled,
-                'exists'      => $exists,
-                'totalKeys'   => $totalKeys,
-                'translated'  => $translated,
-                'missing'     => $missing,
-                'pct'         => $pct,
+                'code' => $lang,
+                'name' => $this->languageName($lang),
+                'nativeName' => $this->nativeName($lang),
+                'enabled' => $isEnabled,
+                'exists' => $exists,
+                'totalKeys' => $totalKeys,
+                'translated' => $translated,
+                'missing' => $missing,
+                'pct' => $pct,
             ];
         }
 
@@ -61,12 +61,12 @@ class LanguagesController extends DashboardController
 
     private function loadLangKeys(string $langPath): array
     {
-        $keys  = [];
-        $files = glob($langPath . DIRECTORY_SEPARATOR . '*.php') ?: [];
+        $keys = [];
+        $files = glob($langPath.DIRECTORY_SEPARATOR.'*.php') ?: [];
 
         foreach ($files as $file) {
             $group = pathinfo($file, PATHINFO_FILENAME);
-            $data  = @include $file;
+            $data = @include $file;
             if (is_array($data)) {
                 foreach (array_keys($this->flatten($data, $group)) as $key) {
                     $keys[$key] = true;
@@ -75,8 +75,8 @@ class LanguagesController extends DashboardController
         }
 
         // FIX: also read JSON file (e.g. lang/ar.json)
-        $locale   = basename($langPath);
-        $jsonPath = lang_path($locale . '.json');
+        $locale = basename($langPath);
+        $jsonPath = lang_path($locale.'.json');
         if (file_exists($jsonPath)) {
             $json = @json_decode(file_get_contents($jsonPath), true);
             if (is_array($json)) {
@@ -100,6 +100,7 @@ class LanguagesController extends DashboardController
                 $result[$fk] = $v;
             }
         }
+
         return $result;
     }
 
@@ -113,6 +114,7 @@ class LanguagesController extends DashboardController
             'pl' => 'Polish',    'hi' => 'Hindi',      'sv' => 'Swedish',
             'da' => 'Danish',
         ];
+
         return $names[$code] ?? strtoupper($code);
     }
 
@@ -126,6 +128,7 @@ class LanguagesController extends DashboardController
             'pl' => 'Polski',   'hi' => 'हिन्दी',    'sv' => 'Svenska',
             'da' => 'Dansk',
         ];
+
         return $names[$code] ?? $code;
     }
 }

@@ -8,19 +8,26 @@ use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockManager;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\KeyExtractor;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Tracking\ChangeTracker;
-use YoussefMekkkawy\LaravelAiTranslator\Services\Writers\JsonLanguageWriter;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Translators\TranslatorManager;
+use YoussefMekkkawy\LaravelAiTranslator\Services\Writers\JsonLanguageWriter;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Writers\LanguageFileWriter;
 
 class TranslationService
 {
     protected ViewScanner $scanner;
+
     protected KeyExtractor $extractor;
+
     protected TranslatorManager $translatorManager;
+
     protected LanguageFileWriter $writer;
+
     protected ChangeTracker $changeTracker;
+
     protected LockManager $lockManager;
+
     protected JsonLanguageWriter $jsonWriter;
+
     protected array $config;
 
     public function __construct(
@@ -32,28 +39,28 @@ class TranslationService
         LockManager $lockManager,
         array $config = []
     ) {
-        $this->scanner           = $scanner;
-        $this->extractor         = $extractor;
+        $this->scanner = $scanner;
+        $this->extractor = $extractor;
         $this->translatorManager = $translatorManager;
-        $this->writer            = $writer;
-        $this->changeTracker     = $changeTracker;
-        $this->lockManager       = $lockManager;
-        $this->jsonWriter        = new JsonLanguageWriter();
-        $this->config            = $config;
+        $this->writer = $writer;
+        $this->changeTracker = $changeTracker;
+        $this->lockManager = $lockManager;
+        $this->jsonWriter = new JsonLanguageWriter;
+        $this->config = $config;
     }
 
     public function translateAll(array $targetLanguages, bool $force = false, bool $dryRun = false): array
     {
-        $startTime  = microtime(true);
+        $startTime = microtime(true);
         $sourceLang = $this->config['default_language'] ?? 'en';
 
         // Step 1: Scan views
-        $runtime      = new RuntimeConfig();
+        $runtime = new RuntimeConfig;
         $runtimePaths = $runtime->get('scan_paths', []);
-        $runtimeExts  = $runtime->get('scan_extensions', ['blade.php']);
+        $runtimeExts = $runtime->get('scan_extensions', ['blade.php']);
         $outputFormat = $runtime->get('output_format', env('AUTO_TRANSLATE_OUTPUT', 'auto'));
 
-        if (!empty($runtimePaths)) {
+        if (! empty($runtimePaths)) {
             $scanner = new ViewScanner(
                 array_filter((array) $runtimePaths, fn ($p) => is_dir($p)),
                 null,
@@ -61,13 +68,13 @@ class TranslationService
             );
         }
 
-        $activeScanner = !empty($runtimePaths) ? $scanner : $this->scanner;
-        $allKeys       = $activeScanner->scanAll();
+        $activeScanner = ! empty($runtimePaths) ? $scanner : $this->scanner;
+        $allKeys = $activeScanner->scanAll();
 
         // Step 2: Extract and organise keys
-        $organized          = $this->extractor->extractMultiple($allKeys);
+        $organized = $this->extractor->extractMultiple($allKeys);
         $sourceTranslations = $this->loadSourceTranslations($sourceLang);
-        $jsonSourceKeys     = $this->jsonWriter->getSourceJsonKeys($sourceLang);
+        $jsonSourceKeys = $this->jsonWriter->getSourceJsonKeys($sourceLang);
 
         // Step 3: Auto-create missing source files
         // Creates lang/en.json for JSON-style keys and lang/en/{file}.php for PHP-style keys
@@ -82,13 +89,13 @@ class TranslationService
         // Reload after creation so source values are correct
         if ($sourceCreated) {
             $sourceTranslations = $this->loadSourceTranslations($sourceLang);
-            $jsonSourceKeys     = $this->jsonWriter->getSourceJsonKeys($sourceLang);
+            $jsonSourceKeys = $this->jsonWriter->getSourceJsonKeys($sourceLang);
         }
 
         // Step 4: Build source-value map
         $keysToTranslate = [];
         foreach ($organized as $data) {
-            $fullKey                   = $data['full_key'];
+            $fullKey = $data['full_key'];
             $keysToTranslate[$fullKey] = $sourceTranslations[$fullKey]
                 ?? $this->extractor->generateDefaultValue($fullKey);
         }
@@ -100,12 +107,12 @@ class TranslationService
 
         // Step 6: Translate to each target language
         $results = [
-            'total_keys'          => count($keysToTranslate),
+            'total_keys' => count($keysToTranslate),
             'languages_processed' => 0,
-            'files_written'       => [],
-            'errors'              => [],
-            'skipped_unchanged'   => 0,
-            'locked_keys'         => 0,
+            'files_written' => [],
+            'errors' => [],
+            'skipped_unchanged' => 0,
+            'locked_keys' => 0,
         ];
 
         foreach ($targetLanguages as $targetLang) {
@@ -126,17 +133,17 @@ class TranslationService
                 );
 
                 $results['languages_processed']++;
-                $results['files_written']     = array_merge($results['files_written'], $langResult['files']);
+                $results['files_written'] = array_merge($results['files_written'], $langResult['files']);
                 $results['skipped_unchanged'] += $langResult['skipped'] ?? 0;
-                $results['total_keys']         = count($keysToTranslate);
-                $results['locked_keys']       += $langResult['locked']  ?? 0;
+                $results['total_keys'] = count($keysToTranslate);
+                $results['locked_keys'] += $langResult['locked'] ?? 0;
             } catch (\Exception $e) {
                 $results['errors'][$targetLang] = $e->getMessage();
             }
         }
 
         // Step 7: Save hashes
-        if (!$dryRun && !empty($changedKeys)) {
+        if (! $dryRun && ! empty($changedKeys)) {
             $this->changeTracker->updateHashes($keysToTranslate, $sourceLang);
         }
 
@@ -160,7 +167,7 @@ class TranslationService
         array $existingPhpTranslations,
         array $existingJsonKeys
     ): bool {
-        $newJsonKeys  = [];
+        $newJsonKeys = [];
         $newPhpByFile = [];
 
         foreach ($organized as $data) {
@@ -168,27 +175,29 @@ class TranslationService
 
             // JSON-style key — original_text is set for plain-text keys
             if (isset($data['original_text'])) {
-                if (!array_key_exists($fullKey, $existingJsonKeys)) {
+                if (! array_key_exists($fullKey, $existingJsonKeys)) {
                     // Key IS the value in Laravel JSON translations
                     $newJsonKeys[$fullKey] = $fullKey;
                 }
+
                 continue;
             }
 
             // PHP-style key — check existence in flattened source
-            if (!isset($existingPhpTranslations[$fullKey])) {
+            if (! isset($existingPhpTranslations[$fullKey])) {
                 $file = $data['file'] ?? 'auto';
-                $key  = $data['key']  ?? $fullKey;
+                $key = $data['key'] ?? $fullKey;
 
                 // 'auto' keys have no dot-notation — safer as JSON source
                 if ($file === 'auto') {
-                    if (!array_key_exists($fullKey, $existingJsonKeys)) {
+                    if (! array_key_exists($fullKey, $existingJsonKeys)) {
                         $newJsonKeys[$fullKey] = $fullKey;
                     }
+
                     continue;
                 }
 
-                if (!isset($newPhpByFile[$file])) {
+                if (! isset($newPhpByFile[$file])) {
                     $newPhpByFile[$file] = [];
                 }
                 $newPhpByFile[$file][$key] = $data['default_value']
@@ -198,7 +207,7 @@ class TranslationService
 
         $created = false;
 
-        if (!empty($newJsonKeys)) {
+        if (! empty($newJsonKeys)) {
             $this->jsonWriter->writeJson($sourceLang, $newJsonKeys);
             $created = true;
         }
@@ -222,22 +231,24 @@ class TranslationService
         string $outputFormat = 'auto'
     ): array {
         $translated = [];
-        $skipped    = 0;
-        $locked     = 0;
+        $skipped = 0;
+        $locked = 0;
 
         foreach ($allSourceKeys as $fullKey => $value) {
             if ($this->lockManager->isLocked($targetLang, $fullKey)) {
                 $locked++;
+
                 continue;
             }
 
             if ($force) {
                 $translated[$fullKey] = $value;
+
                 continue;
             }
 
             $isPhpKey = str_contains($fullKey, '.')
-                && !str_contains($fullKey, ' ')
+                && ! str_contains($fullKey, ' ')
                 && preg_match(
                     '/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$/',
                     $fullKey
@@ -246,34 +257,34 @@ class TranslationService
             $targetHasKey = false;
             $isTranslated = false;
 
-            if (!$isPhpKey) {
+            if (! $isPhpKey) {
                 $existingJson = $this->jsonWriter->readJson($targetLang);
                 if (array_key_exists($fullKey, $existingJson)) {
                     $targetHasKey = true;
-                    $targetValue  = trim((string) $existingJson[$fullKey]);
-                    $sourceValue  = trim((string) $value);
+                    $targetValue = trim((string) $existingJson[$fullKey]);
+                    $sourceValue = trim((string) $value);
                     $isTranslated = $targetValue !== '' && $targetValue !== $sourceValue;
                 }
             } else {
-                $parts        = explode('.', $fullKey, 2);
-                $file         = $parts[0];
-                $key          = $parts[1] ?? $fullKey;
+                $parts = explode('.', $fullKey, 2);
+                $file = $parts[0];
+                $key = $parts[1] ?? $fullKey;
                 $existingPath = lang_path("{$targetLang}/{$file}.php");
 
                 if (File::exists($existingPath)) {
                     $existing = @include $existingPath;
                     if (is_array($existing) && array_key_exists($key, $existing)) {
                         $targetHasKey = true;
-                        $targetValue  = trim((string) $existing[$key]);
-                        $sourceValue  = trim((string) $value);
+                        $targetValue = trim((string) $existing[$key]);
+                        $sourceValue = trim((string) $value);
                         $isTranslated = $targetValue !== '' && $targetValue !== $sourceValue;
                     }
                 }
             }
 
-            if (!$targetHasKey) {
+            if (! $targetHasKey) {
                 $translated[$fullKey] = $value;
-            } elseif (!$isTranslated) {
+            } elseif (! $isTranslated) {
                 $translated[$fullKey] = $value;
             } elseif (isset($changedKeys[$fullKey])) {
                 $translated[$fullKey] = $value;
@@ -283,8 +294,8 @@ class TranslationService
         }
 
         $translatedValues = [];
-        if (!empty($translated)) {
-            $translator       = $this->translatorManager->translator();
+        if (! empty($translated)) {
+            $translator = $this->translatorManager->translator();
             $translatedValues = $translator->translateBatch(
                 array_values($translated),
                 $targetLang,
@@ -293,17 +304,17 @@ class TranslationService
         }
 
         $finalTranslations = [];
-        $index             = 0;
+        $index = 0;
         foreach ($translated as $fullKey => $originalValue) {
             $finalTranslations[$fullKey] = $translatedValues[$index] ?? $originalValue;
             $index++;
         }
 
-        $phpKeys  = [];
+        $phpKeys = [];
         $jsonKeys = [];
 
         foreach ($finalTranslations as $key => $value) {
-            $isPhpKey = !str_contains($key, ' ')
+            $isPhpKey = ! str_contains($key, ' ')
                 && (bool) preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$/', $key);
 
             if ($outputFormat === 'json') {
@@ -320,21 +331,21 @@ class TranslationService
         }
 
         $organizedByFile = $this->writer->organizeByFile($phpKeys);
-        $writtenFiles    = [];
+        $writtenFiles = [];
 
-        if (!$dryRun) {
+        if (! $dryRun) {
             foreach ($organizedByFile as $file => $translations) {
                 $writtenFiles[] = $this->writer->write($targetLang, $file, $translations, true);
             }
 
-            if (!empty($jsonKeys)) {
+            if (! empty($jsonKeys)) {
                 $writtenFiles[] = $this->jsonWriter->writeJson($targetLang, $jsonKeys);
             }
         }
 
-        if (!empty($jsonSourceKeys) && !$dryRun) {
+        if (! empty($jsonSourceKeys) && ! $dryRun) {
             $jsonToTranslate = [];
-            $existingJson    = $this->jsonWriter->readJson($targetLang);
+            $existingJson = $this->jsonWriter->readJson($targetLang);
 
             foreach ($jsonSourceKeys as $key => $value) {
                 if (array_key_exists($key, $allSourceKeys)) {
@@ -343,15 +354,16 @@ class TranslationService
                 if ($this->lockManager->isLocked($targetLang, $key)) {
                     continue;
                 }
-                if (isset($existingJson[$key]) && !isset($changedKeys[$key]) && !$force) {
+                if (isset($existingJson[$key]) && ! isset($changedKeys[$key]) && ! $force) {
                     $skipped++;
+
                     continue;
                 }
                 $jsonToTranslate[$key] = $value;
             }
 
-            if (!empty($jsonToTranslate)) {
-                $translator       = $this->translatorManager->translator();
+            if (! empty($jsonToTranslate)) {
+                $translator = $this->translatorManager->translator();
                 $translatedValues = $translator->translateBatch(
                     array_values($jsonToTranslate),
                     $targetLang,
@@ -359,7 +371,7 @@ class TranslationService
                 );
 
                 $translatedJson = [];
-                $index          = 0;
+                $index = 0;
                 foreach ($jsonToTranslate as $key => $original) {
                     $translatedJson[$key] = $translatedValues[$index] ?? $original;
                     $index++;
@@ -371,15 +383,15 @@ class TranslationService
 
         return [
             'translated' => count($finalTranslations),
-            'skipped'    => $skipped,
-            'locked'     => $locked,
-            'files'      => $writtenFiles,
+            'skipped' => $skipped,
+            'locked' => $locked,
+            'files' => $writtenFiles,
         ];
     }
 
     protected function loadSourceTranslations(string $sourceLang): array
     {
-        $langPath     = base_path('lang') . DIRECTORY_SEPARATOR . $sourceLang;
+        $langPath = base_path('lang').DIRECTORY_SEPARATOR.$sourceLang;
         $translations = [];
 
         if (File::exists($langPath)) {
@@ -387,9 +399,9 @@ class TranslationService
                 if ($file->getExtension() !== 'php') {
                     continue;
                 }
-                $fileName         = $file->getBasename('.php');
+                $fileName = $file->getBasename('.php');
                 $fileTranslations = include $file->getPathname();
-                if (!is_array($fileTranslations)) {
+                if (! is_array($fileTranslations)) {
                     continue;
                 }
                 $translations = array_merge(
@@ -413,15 +425,17 @@ class TranslationService
                 $result[$newKey] = $value;
             }
         }
+
         return $result;
     }
 
     public function estimateCost(array $targetLanguages, bool $force = false): array
     {
-        $allKeys    = $this->scanner->scanAll();
-        $organized  = $this->extractor->extractMultiple($allKeys);
-        $texts      = array_column($organized, 'key');
+        $allKeys = $this->scanner->scanAll();
+        $organized = $this->extractor->extractMultiple($allKeys);
+        $texts = array_column($organized, 'key');
         $translator = $this->translatorManager->translator();
+
         return $translator->estimateCost($texts, $targetLanguages);
     }
 }

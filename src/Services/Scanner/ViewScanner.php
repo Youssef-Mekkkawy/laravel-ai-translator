@@ -7,13 +7,17 @@ use Illuminate\Support\Facades\File;
 class ViewScanner
 {
     protected array $paths;
+
     protected array $excludePatterns;
+
     protected array $extensions;
+
     protected array $statistics = [
-        'total_files'   => 0,
-        'total_keys'    => 0,
+        'total_files' => 0,
+        'total_keys' => 0,
         'files_scanned' => [],
     ];
+
     protected bool $hasScanned = false;
 
     protected array $patterns = [
@@ -33,16 +37,16 @@ class ViewScanner
     ];
 
     public function __construct(
-        array $paths            = [],
+        array $paths = [],
         ?array $excludePatterns = null,
-        array $extensions       = ['blade.php']
+        array $extensions = ['blade.php']
     ) {
         $this->paths = empty($paths)
             ? config('ai-translator.scan_paths', [resource_path('views')])
             : $paths;
 
         if ($excludePatterns === null && empty($paths)) {
-            $configExcludes        = config('ai-translator.exclude_files', []);
+            $configExcludes = config('ai-translator.exclude_files', []);
             $this->excludePatterns = is_array($configExcludes) ? $configExcludes : [];
         } else {
             $this->excludePatterns = $excludePatterns ?? [];
@@ -65,15 +69,19 @@ class ViewScanner
         $allKeys = [];
 
         foreach ($this->paths as $path) {
-            if (!File::exists($path)) continue;
+            if (! File::exists($path)) {
+                continue;
+            }
 
             foreach (File::allFiles($path) as $file) {
-                if (!$this->shouldScanFile($file)) continue;
+                if (! $this->shouldScanFile($file)) {
+                    continue;
+                }
 
                 $this->statistics['total_files']++;
                 $keys = $this->extractKeysFromFile($file);
 
-                if (!empty($keys)) {
+                if (! empty($keys)) {
                     $this->statistics['files_scanned'][$file->getPathname()] = $keys;
                     $allKeys = array_merge($allKeys, $keys);
                 }
@@ -82,7 +90,7 @@ class ViewScanner
 
         $allKeys = array_values(array_unique($allKeys));
         $this->statistics['total_keys'] = count($allKeys);
-        $this->hasScanned               = true;
+        $this->hasScanned = true;
 
         return $allKeys;
     }
@@ -97,15 +105,20 @@ class ViewScanner
         $files = [];
 
         foreach ($this->paths as $path) {
-            if (!File::exists($path)) continue;
+            if (! File::exists($path)) {
+                continue;
+            }
 
             foreach (File::allFiles($path) as $file) {
-                if (!$this->shouldScanFile($file)) continue;
+                if (! $this->shouldScanFile($file)) {
+                    continue;
+                }
                 $files[] = $file->getPathname();
             }
         }
 
         sort($files); // consistent, predictable ordering
+
         return $files;
     }
 
@@ -115,7 +128,7 @@ class ViewScanner
      */
     public function scanFile(string $path): array
     {
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return [];
         }
 
@@ -129,7 +142,7 @@ class ViewScanner
      */
     public function getStatistics(): array
     {
-        if (!$this->hasScanned) {
+        if (! $this->hasScanned) {
             $this->scanAll();
         }
 
@@ -149,18 +162,20 @@ class ViewScanner
     protected function shouldScanFile(\SplFileInfo $file): bool
     {
         $filename = $file->getFilename();
-        $path     = $file->getPathname();
+        $path = $file->getPathname();
 
         // Extension check
         $matched = false;
         foreach ($this->extensions as $ext) {
-            if (str_ends_with($filename, '.' . ltrim($ext, '.'))) {
+            if (str_ends_with($filename, '.'.ltrim($ext, '.'))) {
                 $matched = true;
                 break;
             }
         }
 
-        if (!$matched) return false;
+        if (! $matched) {
+            return false;
+        }
 
         // Exclude pattern check
         // Normalize to forward slashes so str_contains works on Windows too
@@ -172,7 +187,7 @@ class ViewScanner
                 return false;
             }
             // Directory component match: 'vendor' excludes files inside vendor/ dirs
-            if (str_contains($normalizedPath, '/' . $pattern . '/')) {
+            if (str_contains($normalizedPath, '/'.$pattern.'/')) {
                 return false;
             }
         }
@@ -182,16 +197,16 @@ class ViewScanner
 
     protected function extractKeysFromFile(\SplFileInfo $file): array
     {
-        $content  = File::get($file->getPathname());
-        $ext      = $this->getFileType($file);
+        $content = File::get($file->getPathname());
+        $ext = $this->getFileType($file);
         $patterns = $this->patterns[$ext] ?? $this->patterns['php'];
-        $keys     = [];
+        $keys = [];
 
         foreach ($patterns as $pattern) {
             if (preg_match_all($pattern, $content, $matches)) {
                 foreach ($matches[1] as $key) {
                     $key = trim($key);
-                    if (!empty($key) && strlen($key) < 500) {
+                    if (! empty($key) && strlen($key) < 500) {
                         $keys[] = $key;
                     }
                 }
@@ -205,11 +220,21 @@ class ViewScanner
     {
         $name = $file->getFilename();
 
-        if (str_ends_with($name, '.blade.php')) return 'php';
-        if (str_ends_with($name, '.vue'))       return 'vue';
-        if (str_ends_with($name, '.jsx'))       return 'jsx';
-        if (str_ends_with($name, '.tsx'))       return 'tsx';
-        if (str_ends_with($name, '.php'))       return 'php';
+        if (str_ends_with($name, '.blade.php')) {
+            return 'php';
+        }
+        if (str_ends_with($name, '.vue')) {
+            return 'vue';
+        }
+        if (str_ends_with($name, '.jsx')) {
+            return 'jsx';
+        }
+        if (str_ends_with($name, '.tsx')) {
+            return 'tsx';
+        }
+        if (str_ends_with($name, '.php')) {
+            return 'php';
+        }
 
         return 'php';
     }
@@ -220,6 +245,7 @@ class ViewScanner
         foreach ($this->statistics['files_scanned'] as $fileKeys) {
             $keys = array_merge($keys, $fileKeys);
         }
+
         return array_unique($keys);
     }
 }

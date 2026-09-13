@@ -22,13 +22,13 @@ class TranslateController extends DashboardController
         set_time_limit(30); // only needed for the queue+spawn, not the translation
 
         try {
-            $queue = new TranslationQueue();
+            $queue = new TranslationQueue;
 
             // Build the job from the request
             $job = [
-                'force'   => $request->boolean('force'),
+                'force' => $request->boolean('force'),
                 'dry_run' => $request->boolean('dry_run'),
-                'lang'    => $request->input('lang') ?: null,
+                'lang' => $request->input('lang') ?: null,
             ];
 
             // Add to the queue
@@ -37,18 +37,18 @@ class TranslateController extends DashboardController
             // Spawn the background worker if not already running.
             // If the worker is already running it will pick up the new job
             // automatically when it finishes the current one.
-            if (!$queue->isRunning()) {
+            if (! $queue->isRunning()) {
                 $queue->spawnWorker();
             }
 
             return $this->success([
-                'status'     => 'queued',
+                'status' => 'queued',
                 'queue_size' => count($queue->getQueue()),
-                'running'    => true,
+                'running' => true,
             ], 'Translation queued and running in background.');
 
         } catch (\Throwable $e) {
-            return $this->error('Failed to queue translation: ' . $e->getMessage());
+            return $this->error('Failed to queue translation: '.$e->getMessage());
         }
     }
 }

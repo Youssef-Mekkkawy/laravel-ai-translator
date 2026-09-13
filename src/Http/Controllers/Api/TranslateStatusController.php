@@ -13,18 +13,18 @@ class TranslateStatusController extends DashboardController
      */
     public function status()
     {
-        $queue  = new TranslationQueue();
+        $queue = new TranslationQueue;
         $status = $queue->getStatus();
-        $jobs   = $queue->getQueue();
+        $jobs = $queue->getQueue();
 
         return $this->success([
-            'running'           => $status['running']           ?? false,
-            'current_job'       => $status['current_job']       ?? null,
-            'queue_size'        => count($jobs),
-            'queue'             => $jobs,
+            'running' => $status['running'] ?? false,
+            'current_job' => $status['current_job'] ?? null,
+            'queue_size' => count($jobs),
+            'queue' => $jobs,
             'last_completed_at' => $status['last_completed_at'] ?? null,
-            'last_result'       => $status['last_result']       ?? null,
-            'pid'               => $status['pid']               ?? null,
+            'last_result' => $status['last_result'] ?? null,
+            'pid' => $status['pid'] ?? null,
         ]);
     }
 
@@ -34,7 +34,7 @@ class TranslateStatusController extends DashboardController
      */
     public function reset()
     {
-        $queue = new TranslationQueue();
+        $queue = new TranslationQueue;
         $queue->reset();
 
         return $this->success([], 'Translation queue reset.');
