@@ -14,49 +14,52 @@ class ApiSettingsController extends DashboardController
         $runtime = new RuntimeConfig;
 
         try {
-            // Settings saved to runtime config — NO .env writes, NO server restarts
+            // All non-sensitive settings saved to RuntimeConfig — no .env writes, no server restarts
             $updates = array_filter([
-                'driver' => $request->input('driver'),
-                'source_lang' => $request->input('source_lang'),
-                'chunk_size' => $request->input('chunk_size'),
-                'context' => $request->input('context'),
+                'driver'       => $request->input('driver'),
+                'source_lang'  => $request->input('source_lang'),
+                'chunk_size'   => $request->input('chunk_size'),
+                'context'      => $request->input('context'),
                 'ollama_model' => $request->input('ollama_model'),
-                'ollama_url' => $request->input('ollama_url'),
+                'ollama_url'   => $request->input('ollama_url'),
+                // FIX: persist backup settings from the backups page
+                'backup_keep'  => $request->input('backup_keep'),
+                'backup_auto'  => $request->input('backup_auto') !== null
+                    ? (bool) $request->input('backup_auto')
+                    : null,
             ], fn ($v) => $v !== null);
 
-            if (! empty($updates)) {
+            if (!empty($updates)) {
                 $runtime->merge($updates);
             }
 
-            // API keys still go to .env (sensitive, should not be in lang/ folder)
-            // But we do it carefully — only if provided and non-empty
+            // API keys still go to .env (sensitive — should not be in lang/ folder)
             $apiKeyMap = [
-                'DEEPL_API_KEY' => $request->input('deepl_key'),
+                'DEEPL_API_KEY'     => $request->input('deepl_key'),
                 'ANTHROPIC_API_KEY' => $request->input('claude_key'),
-                'OPENAI_API_KEY' => $request->input('openai_key'),
-                'GEMINI_API_KEY' => $request->input('gemini_key'),
+                'OPENAI_API_KEY'    => $request->input('openai_key'),
+                'GEMINI_API_KEY'    => $request->input('gemini_key'),
             ];
 
-            $envUpdates = array_filter($apiKeyMap, fn ($v) => ! empty($v));
+            $envUpdates = array_filter($apiKeyMap, fn ($v) => !empty($v));
 
-            if (! empty($envUpdates)) {
+            if (!empty($envUpdates)) {
                 $envPath = base_path('.env');
                 if (File::exists($envPath)) {
                     $env = File::get($envPath);
                     foreach ($envUpdates as $key => $value) {
-                        if (preg_match('/^'.preg_quote($key, '/').'=/m', $env)) {
-                            $env = preg_replace('/^'.preg_quote($key, '/').'=.*/m', "{$key}={$value}", $env);
+                        if (preg_match('/^' . preg_quote($key, '/') . '=/m', $env)) {
+                            $env = preg_replace('/^' . preg_quote($key, '/') . '=.*/m', "{$key}={$value}", $env);
                         } else {
-                            $env .= PHP_EOL."{$key}={$value}";
+                            $env .= PHP_EOL . "{$key}={$value}";
                         }
                     }
                     File::put($envPath, $env);
-                    // Note: this may restart dev server, but only when saving API keys
                 }
             }
 
         } catch (\Throwable $e) {
-            return $this->error('Failed to save: '.$e->getMessage());
+            return $this->error('Failed to save: ' . $e->getMessage());
         }
 
         return $this->success([], 'Settings saved successfully.');

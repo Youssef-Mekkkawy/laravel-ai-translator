@@ -26,10 +26,14 @@ class ScanTranslationsCommand extends Command
             $paths = array_merge($paths, $additionalPaths);
         }
 
-        $paths = array_values(array_filter($paths, fn ($path) => File::isDirectory($path)));
+        $paths = array_values(
+            array_filter($paths, fn($path) => File::isDirectory($path))
+        );
 
         if (empty($paths)) {
-            $this->components->warn('⚠️  No valid scan paths found. Check your config or use --path.');
+            $this->components->warn(
+                '⚠️  No valid scan paths found. Check your config or use --path.'
+            );
 
             return self::FAILURE;
         }
@@ -37,7 +41,7 @@ class ScanTranslationsCommand extends Command
         $scanner = new ViewScanner($paths);
         $extractor = new KeyExtractor;
 
-        $this->components->info('📂 Scanning: '.implode(', ', $paths));
+        $this->components->info('📂 Scanning: ' . implode(', ', $paths));
         $this->newLine();
 
         $keys = $scanner->scanAll();
@@ -49,11 +53,18 @@ class ScanTranslationsCommand extends Command
         }
 
         $keyCount = count($keys);
-        $this->components->info("✅ Found {$keyCount} unique translation keys");
+
+        $this->components->info(
+            "✅ Found {$keyCount} unique translation keys."
+        );
+
         $this->newLine();
 
         $defaultLang = config('ai-translator.default_language', 'en');
-        $langBasePath = base_path('lang'.DIRECTORY_SEPARATOR.$defaultLang);
+        $langBasePath = base_path(
+            'lang' . DIRECTORY_SEPARATOR . $defaultLang
+        );
+
         $missingOnly = $this->option('missing-only');
 
         $rows = [];
@@ -62,26 +73,93 @@ class ScanTranslationsCommand extends Command
 
         foreach ($keys as $key) {
             $parsed = $extractor->extractFromKey($key);
-            $file = $parsed['file'];
-            $subKey = $parsed['key'];
+
             $defaultValue = $parsed['default_value'];
 
-            $langFile = $langBasePath.DIRECTORY_SEPARATOR.$file.'.php';
             $exists = false;
             $value = "(missing) → {$defaultValue}";
 
-            if (File::exists($langFile)) {
-                $translations = require $langFile;
+            /*
+             * KeyExtractor returns:
+             *
+             * Plain string:
+             * __('Dashboard')
+             *     file = auto
+             *
+             * PHP translation key:
+             * __('auth.login')
+             *     file = auth
+             *
+             * We use that information instead of checking for "."
+             * ourselves because "auto" is the package's indicator
+             * for JSON-style translations.
+             */
+            $isPhpKey = ($parsed['file'] !== 'auto');
 
-                if (is_array($translations) && isset($translations[$subKey])) {
-                    $exists = true;
-                    $value = $translations[$subKey];
-                    $existingCount++;
+            if ($isPhpKey) {
+                /*
+                 * Example:
+                 * __('auth.login')
+                 *
+                 * -> lang/en/auth.php
+                 * -> ['login' => 'Login']
+                 */
+                $file = $parsed['file'];
+                $subKey = $parsed['key'];
+
+                $langFile = $langBasePath
+                    . DIRECTORY_SEPARATOR
+                    . $file
+                    . '.php';
+
+                $displayFile = $file . '.php';
+
+                if (File::exists($langFile)) {
+                    $translations = require $langFile;
+
+                    if (
+                        is_array($translations)
+                        && array_key_exists($subKey, $translations)
+                    ) {
+                        $exists = true;
+                        $value = $translations[$subKey];
+                        $existingCount++;
+                    } else {
+                        $missingCount++;
+                    }
                 } else {
                     $missingCount++;
                 }
             } else {
-                $missingCount++;
+                /*
+                 * Example:
+                 * __('Dashboard')
+                 *
+                 * -> lang/en.json
+                 */
+                $displayFile = $defaultLang . '.json';
+
+                $jsonFile = lang_path($defaultLang . '.json');
+
+                if (File::exists($jsonFile)) {
+                    $translations = json_decode(
+                        File::get($jsonFile),
+                        true
+                    );
+
+                    if (
+                        is_array($translations)
+                        && array_key_exists($key, $translations)
+                    ) {
+                        $exists = true;
+                        $value = $translations[$key];
+                        $existingCount++;
+                    } else {
+                        $missingCount++;
+                    }
+                } else {
+                    $missingCount++;
+                }
             }
 
             if ($missingOnly && $exists) {
@@ -90,7 +168,7 @@ class ScanTranslationsCommand extends Command
 
             $rows[] = [
                 $key,
-                $file.'.php',
+                $displayFile,
                 $exists ? '✅' : '❌',
                 $value,
             ];
@@ -99,20 +177,37 @@ class ScanTranslationsCommand extends Command
         if (! empty($rows)) {
             $this->components->info('📋 Translation Keys:');
             $this->newLine();
-            $this->table(['Key', 'File', 'Exists', 'Value'], $rows);
+
+            $this->table(
+                ['Key', 'File', 'Exists', 'Value'],
+                $rows
+            );
         } elseif ($missingOnly) {
             $this->components->info('✨ All translation keys exist!');
         }
 
         $this->newLine();
+
         $this->components->info('📊 Summary:');
-        $this->line("   Total Keys: <fg=cyan>{$keyCount}</>");
-        $this->line("   Existing: <fg=green>{$existingCount}</>");
-        $this->line("   Missing: <fg=yellow>{$missingCount}</>");
+
+        $this->line(
+            "   Total Keys: <fg=cyan>{$keyCount}</>"
+        );
+
+        $this->line(
+            "   Existing: <fg=green>{$existingCount}</>"
+        );
+
+        $this->line(
+            "   Missing: <fg=yellow>{$missingCount}</>"
+        );
 
         if ($missingCount > 0) {
             $this->newLine();
-            $this->components->info('💡 Tip: Missing keys will be auto-generated when you run lang:sync');
+
+            $this->components->info(
+                '💡 Tip: Missing keys will be auto-generated when you run lang:sync'
+            );
         }
 
         return self::SUCCESS;

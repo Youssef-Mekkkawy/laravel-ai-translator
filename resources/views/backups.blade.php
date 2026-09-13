@@ -80,7 +80,7 @@
   </div>
   @endif
 
-  {{-- Settings --}}
+  {{-- Backup settings --}}
   <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:20px;margin-top:8px">
     <div style="font-size:13px;font-weight:600;margin-bottom:16px">{{ $tr['backup_settings'] ?? 'Backup settings' }}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
@@ -101,6 +101,17 @@
         </button>
       </div>
     </div>
+
+    {{-- FIX: added save button for backup settings — was missing, inputs had no save handler --}}
+    <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+      <button @click="saveSettings()" :disabled="savingSettings"
+        style="padding:9px 16px;border-radius:10px;border:1px solid #6EE7B7;background:#6EE7B7;color:#062A20;font-size:13px;font-weight:600;cursor:pointer">
+        <span x-show="savingSettings" style="display:inline-block;width:11px;height:11px;border-radius:50%;border:2px solid rgba(6,42,32,.3);border-top-color:#062A20;animation:spin .8s linear infinite;margin-inline-end:6px"></span>
+        <span x-text="savingSettings ? '{{ addslashes($tr['saving'] ?? 'Saving...') }}' : '{{ addslashes($tr['save'] ?? 'Save settings') }}'"></span>
+      </button>
+      <span x-show="settingsMsg" x-text="settingsMsg"
+        :style="settingsMsgOk ? 'font-size:13px;color:#6EE7B7' : 'font-size:13px;color:#F87171'"></span>
+    </div>
   </div>
 
 </div>
@@ -108,7 +119,13 @@
 <script>
 function backupsPage() {
   return {
-    creating: false, keepLast: {{ $keepCount }}, autoBackup: true, msg: '', msgOk: true,
+    creating: false,
+    keepLast: {{ $keepCount }},
+    autoBackup: true,
+    msg: '', msgOk: true,
+    savingSettings: false,
+    settingsMsg: '', settingsMsgOk: true,
+
     async createBackup() {
       this.creating = true; this.msg = '';
       try {
@@ -122,6 +139,22 @@ function backupsPage() {
         if (r.success) setTimeout(() => window.location.reload(), 800);
       } catch (e) { this.msgOk = false; this.msg = 'Error: ' + e.message; }
       this.creating = false;
+    },
+
+    // FIX: persist keepLast and autoBackup via settings API
+    async saveSettings() {
+      this.savingSettings = true; this.settingsMsg = '';
+      try {
+        const r = await fetch('{{ url("ai-translator/api/settings") }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+          body: JSON.stringify({ backup_keep: parseInt(this.keepLast), backup_auto: this.autoBackup }),
+        }).then(r => r.json());
+        this.settingsMsgOk = r.success;
+        this.settingsMsg   = r.success ? '{{ addslashes($tr['save'] ?? 'Saved.') }}' : (r.message || 'Failed.');
+        setTimeout(() => { this.settingsMsg = ''; }, 3000);
+      } catch (e) { this.settingsMsgOk = false; this.settingsMsg = 'Error: ' + e.message; }
+      this.savingSettings = false;
     },
   };
 }

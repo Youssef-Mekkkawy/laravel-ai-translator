@@ -3,9 +3,10 @@
 
 @section('content')
 @php
-    $d        = config('ai-translator.driver', 'ollama');
+
+    $d        = $driver;
     $provs    = config('ai-translator.providers', []);
-    $curModel = $provs[$d]['model'] ?? $provs[$d]['plan'] ?? '';
+    $curModel = $ollamaModel;
     $tr       = $_trans ?? [];
 @endphp
 
@@ -47,7 +48,6 @@
         </button>
       </div>
 
-      {{-- Model pull status --}}
       <div x-show="ollamaPulling" style="padding:10px 14px;border-radius:10px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);font-size:12.5px;color:#FBBF24">
         ⬇ Model is downloading in the background. This may take a few minutes. The page will refresh automatically when ready.
       </div>
@@ -78,19 +78,19 @@
         <span style="font-size:12.5px;color:#FBBF24">{{ $tr['coming_soon_provider'] ?? 'This provider is coming soon. You can save your API key now and it will be used when support is added.' }}</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
-      <div>
-        <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $tr['api_key'] ?? 'API key' }}</label>
-        <input type="password" x-model="apiKey" placeholder="••••••••••••••••••••"
-          style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
-        <div style="font-size:11px;color:#5C6678;margin-top:6px">{{ $tr['api_key_hint'] ?? 'Stored in your .env — never in the database.' }}</div>
+        <div>
+          <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $tr['api_key'] ?? 'API key' }}</label>
+          <input type="password" x-model="apiKey" placeholder="••••••••••••••••••••"
+            style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
+          <div style="font-size:11px;color:#5C6678;margin-top:6px">{{ $tr['api_key_hint'] ?? 'Stored in your .env — never in the database.' }}</div>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $tr['model'] ?? 'Model' }}</label>
+          <select x-model="model" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
+            <template x-for="m in availableModels" :key="m"><option :value="m" x-text="m"></option></template>
+          </select>
+        </div>
       </div>
-      <div>
-        <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $tr['model'] ?? 'Model' }}</label>
-        <select x-model="model" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
-          <template x-for="m in availableModels" :key="m"><option :value="m" x-text="m"></option></template>
-        </select>
-      </div>
-    </div>
     </div>
   </div>
 
@@ -138,13 +138,15 @@
 <script>
 function settingsPage() {
   return {
-    provider:  '{{ $d }}',
+    {{-- FIX: initialize from PHP variables passed by SettingsController (RuntimeConfig values) --}}
+    {{-- Previously these called config() directly, always showing stale static config values --}}
+    provider:  '{{ $driver }}',
     apiKey:    '',
-    model:     '{{ env("OLLAMA_MODEL", $curModel) }}',
-    sourceLang:'{{ config("ai-translator.default_language", "en") }}',
-    chunk:     {{ config("ai-translator.options.chunk_size", 20) }},
-    context:   '{{ addslashes(config("ai-translator.options.context", "")) }}',
-    ollamaUrl: '{{ config("ai-translator.providers.ollama.api_url", "http://localhost:11434") }}',
+    model:     '{{ $ollamaModel }}',
+    sourceLang:'{{ $sourceLang }}',
+    chunk:     {{ $chunkSize }},
+    context:   '{{ addslashes($context) }}',
+    ollamaUrl: '{{ $ollamaUrl }}',
     ollamaUp:  false, ollamaTesting: false, ollamaStarting: false, ollamaPulling: false, ollamaMsg: '',
     saving: false, resultMsg: '', resultOk: true,
     ollamaModels: [], ollamaModelsLoading: false,
@@ -159,9 +161,8 @@ function settingsPage() {
         await this.testOllama();
 
         @if(config('ai-translator.providers.ollama.auto_start', false))
-        // Auto-start if not running — non-blocking
         if (!this.ollamaUp) {
-          this.startOllama(); // no await — fire and forget
+          this.startOllama();
         }
         @endif
       }
@@ -181,7 +182,6 @@ function settingsPage() {
       this.ollamaStarting = true;
       this.ollamaMsg      = '';
       try {
-        // Fire start — returns immediately
         await fetch('{{ url("ai-translator/api/ollama/start") }}', {
           method: 'POST',
           headers: {
@@ -193,7 +193,6 @@ function settingsPage() {
 
         this.ollamaMsg = 'Starting Ollama...';
 
-        // Poll every 2 seconds until running (max 30 seconds)
         let attempts = 0;
         const poll = setInterval(async () => {
           attempts++;
@@ -201,19 +200,13 @@ function settingsPage() {
 
           if (s.success && s.data?.running) {
             clearInterval(poll);
-            this.ollamaUp      = true;
+            this.ollamaUp       = true;
             this.ollamaStarting = false;
 
             if (!s.data?.hasModel) {
-              // Start model pull in background
-              await fetch('{{ url("ai-translator/api/ollama/pull") }}', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                },
-                body: JSON.stringify({ model: this.model }),
-              });
+              // FIX: removed fetch to /api/ollama/pull (route didn't exist).
+              // start() already calls pullModelBackground() when it detects a missing model.
+              // We just set the pulling state and keep polling status.
               this.ollamaPulling = true;
               this.ollamaMsg     = 'Ollama started! Model is downloading in background. Come back in a few minutes.';
             } else {
@@ -221,6 +214,15 @@ function settingsPage() {
               await this.fetchOllamaModels();
               setTimeout(() => { this.ollamaMsg = ''; }, 4000);
             }
+          } else if (s.success && s.data?.running && s.data?.hasModel && this.ollamaPulling) {
+            // Model finished downloading
+            clearInterval(poll);
+            this.ollamaPulling  = false;
+            this.ollamaStarting = false;
+            this.ollamaUp       = true;
+            await this.fetchOllamaModels();
+            this.ollamaMsg = 'Model ready!';
+            setTimeout(() => { this.ollamaMsg = ''; }, 3000);
           } else if (attempts >= 15) {
             clearInterval(poll);
             this.ollamaStarting = false;
@@ -273,7 +275,7 @@ function settingsPage() {
           headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
           body: JSON.stringify(payload),
         }).then(r => r.json());
-        this.resultOk = r.success;
+        this.resultOk  = r.success;
         this.resultMsg = r.message || (r.success ? '{{ addslashes($tr['save'] ?? 'Saved.') }}' : 'Error saving.');
         setTimeout(() => { this.resultMsg = ''; }, 4000);
       } catch (e) { this.resultOk = false; this.resultMsg = 'Error: ' + e.message; }

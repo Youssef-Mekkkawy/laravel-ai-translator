@@ -18,9 +18,6 @@ class LanguageApiController extends DashboardController
         $this->runtime = new RuntimeConfig();
     }
 
-    /**
-     * Add a new language.
-     */
     public function add(Request $request)
     {
         $locale = preg_replace('/[^a-z\-]/', '', strtolower($request->input('locale', '')));
@@ -43,9 +40,6 @@ class LanguageApiController extends DashboardController
         ], "Language '{$locale}' added. Run translate to generate the files.");
     }
 
-    /**
-     * Toggle a language on/off (enable/disable).
-     */
     public function toggle(Request $request)
     {
         $locale  = preg_replace('/[^a-z\-]/', '', strtolower($request->input('locale', '')));
@@ -68,9 +62,6 @@ class LanguageApiController extends DashboardController
         ], "Language '{$locale}' " . ($enabled ? 'enabled' : 'disabled') . '.');
     }
 
-    /**
-     * Remove a language completely.
-     */
     public function remove(Request $request)
     {
         $locale = preg_replace('/[^a-z\-]/', '', strtolower($request->input('locale', '')));
@@ -92,9 +83,6 @@ class LanguageApiController extends DashboardController
         ], "Language '{$locale}' removed.");
     }
 
-    /**
-     * Return current dashboard stats for live refresh.
-     */
     public function stats()
     {
         try {
@@ -104,15 +92,14 @@ class LanguageApiController extends DashboardController
                 $this->runtime->getSupportedLanguages(),
                 fn ($l) => $l !== $sourceLang
             );
-            $scanPaths = array_filter(
-                $config['scan_paths'] ?? [resource_path('views')],
-                fn ($p) => is_dir($p)
-            );
 
-            $scanner   = new ViewScanner(array_values($scanPaths));
+            $runtimePaths = $this->runtime->get('scan_paths', $config['scan_paths'] ?? [resource_path('views')]);
+            $runtimeExts  = $this->runtime->get('scan_extensions', ['blade.php']);
+            $scanPaths    = array_filter((array) $runtimePaths, fn ($p) => is_dir($p));
+
+            $scanner     = new ViewScanner(array_values($scanPaths), null, $runtimeExts);
             $scannedKeys = $scanner->scanAll();
 
-            // Also include JSON source keys (lang/en.json) in total
             $sourceLangJson = lang_path($sourceLang . '.json');
             $jsonSourceKeys = [];
             if (file_exists($sourceLangJson)) {
@@ -122,24 +109,20 @@ class LanguageApiController extends DashboardController
                 }
             }
 
-            // Merge all keys — scanned PHP keys + JSON source keys
             $allKeys   = array_unique(array_merge($scannedKeys, $jsonSourceKeys));
             $totalKeys = count($allKeys);
 
-            $translatedCount = 0;
-            $missingCount    = 0;
-            $coverage        = [];
-            $langCount       = count($languages);
+            $coverage    = [];
+            $langCount   = count($languages);
 
-            // Get locked keys
             $storage      = new LockStorage();
             $lockManager  = new LockManager($storage);
             $lockedCount  = 0;
             $lockedByLang = [];
             foreach ($lockManager->getAll() as $lLang => $llocks) {
                 if (is_array($llocks)) {
-                    $lockedCount += count($llocks);
-                    $lockedByLang[$lLang] = array_keys($llocks);
+                    $lockedCount          += count($llocks);
+                    $lockedByLang[$lLang]  = array_keys($llocks);
                 }
             }
 
@@ -154,12 +137,21 @@ class LanguageApiController extends DashboardController
                 $translated = $totalKeys - $missing;
                 $pct        = $totalKeys > 0 ? round(($translated / $totalKeys) * 100) : 0;
                 $coverage[] = compact('lang', 'translated', 'missing', 'pct');
-                $missingCount += $missing;
             }
 
-            $translatedCount = $langCount > 0
-                ? (int) round(array_sum(array_column($coverage, 'translated')) / max($langCount, 1))
+            // Only average languages that have been translated at least once
+            $activeCoverage  = array_filter($coverage, fn ($c) => $c['translated'] > 0);
+            $translatedCount = count($activeCoverage) > 0
+                ? (int) round(array_sum(array_column($activeCoverage, 'translated')) / count($activeCoverage))
                 : 0;
+
+            // FIX: only sum missing from languages that have STARTED translation
+            // Brand-new languages with 0 translated keys are excluded — they show
+            // as "not started" in coverage, not as "missing" in the aggregate
+            $missingCount = array_sum(array_column(
+                array_filter($coverage, fn ($c) => $c['translated'] > 0),
+                'missing'
+            ));
 
             return $this->success([
                 'totalKeys'       => $totalKeys,
@@ -180,7 +172,6 @@ class LanguageApiController extends DashboardController
     {
         $keys = [];
 
-        // Load PHP files (dot-notation keys like auth.login)
         if (is_dir($langPath)) {
             $files = glob($langPath . DIRECTORY_SEPARATOR . '*.php') ?: [];
             foreach ($files as $file) {
@@ -194,7 +185,6 @@ class LanguageApiController extends DashboardController
             }
         }
 
-        // Load JSON file (full-string keys like "Login", "Forgot your password?")
         $locale   = basename($langPath);
         $jsonPath = lang_path($locale . '.json');
         if (file_exists($jsonPath)) {
@@ -214,8 +204,11 @@ class LanguageApiController extends DashboardController
         $result = [];
         foreach ($array as $k => $v) {
             $fk = $prefix ? "{$prefix}.{$k}" : $k;
-            if (is_array($v)) $result = array_merge($result, $this->flatten($v, $fk));
-            else $result[$fk] = $v;
+            if (is_array($v)) {
+                $result = array_merge($result, $this->flatten($v, $fk));
+            } else {
+                $result[$fk] = $v;
+            }
         }
         return $result;
     }
