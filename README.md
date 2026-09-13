@@ -30,17 +30,23 @@ Building multi-language Laravel apps traditionally wastes **8+ hours per project
 
 ```bash
 composer require youssef-mekkkawy/laravel-ai-translator
+php artisan ai-translator:install
 php artisan lang:translate
 ```
 
 That's it. Your entire app is translated.
 
-✅ Auto-scans all Blade views for `__()`, `@lang()`, and `trans()` keys  
+✅ Auto-detects your stack (Blade, Breeze, Inertia+Vue, Inertia+React, Livewire)  
+✅ Scans Blade, Vue, JSX, and TSX files for all translation keys  
+✅ Supports PHP files (`lang/en/*.php`) and JSON files (`lang/en.json`)  
+✅ Auto-creates missing source files when keys are found  
 ✅ Translates only what **changed** — saves 70%+ on API costs  
 ✅ Protects manual edits with a **lock system**  
 ✅ Works **offline and free** with [Ollama](https://ollama.com)  
+✅ **Non-blocking** — translation runs in the background, your site stays live  
 ✅ Embedded dashboard at `/ai-translator` (like Laravel Telescope)  
-✅ Zero configuration required
+✅ **180+ languages** supported out of the box  
+✅ Zero extra dependencies — works with any Laravel project
 
 ---
 
@@ -49,7 +55,7 @@ That's it. Your entire app is translated.
 | Requirement | Version |
 |---|---|
 | PHP | 8.2+ |
-| Laravel | 10.x , 11.x, 12.x and 13.x  |
+| Laravel | 10.x, 11.x, 12.x, 13.x |
 | Ollama *(optional)* | Any recent version |
 
 ---
@@ -60,83 +66,43 @@ That's it. Your entire app is translated.
 composer require youssef-mekkkawy/laravel-ai-translator
 ```
 
-Publish the config file (optional):
+Then run the interactive setup wizard:
 
 ```bash
-php artisan vendor:publish --tag=ai-translator-config
+php artisan ai-translator:install
 ```
+
+The wizard will:
+- Detect your Laravel stack automatically (Blade, Vue, React, Livewire, Breeze)
+- Ask which AI provider you want to use
+- Ask which languages to translate into
+- Update your `.env` file
+- Scan your views and create source language files
+- Verify your provider is connected
 
 ---
 
 ## Quick Start
 
-### 1. Choose your AI provider
-
-**Option A — Ollama (free, local, no API key needed):**
+### 1. Run the install wizard
 
 ```bash
-# Install Ollama from https://ollama.com
-ollama pull llama3
+php artisan ai-translator:install
 ```
 
-```env
-AUTO_TRANSLATE_DRIVER=ollama
-OLLAMA_MODEL=llama3
-OLLAMA_API_URL=http://localhost:11434
-SUPPORTED_LANGUAGES=en,ar,fr,es
-DEFAULT_LANGUAGE=en
-```
-
-**Option B — Cloud provider:**
-
-```env
-AUTO_TRANSLATE_DRIVER=deepl
-DEEPL_API_KEY=your-api-key
-SUPPORTED_LANGUAGES=en,ar,fr,es
-DEFAULT_LANGUAGE=en
-```
-
-### 2. Scan your views
+### 2. Translate
 
 ```bash
-php artisan lang:scan
-```
-
-See all translation keys found in your Blade files, with their status.
-
-### 3. Translate
-
-```bash
-# Preview what would happen (no changes made)
-php artisan lang:translate --dry-run
-
-# Translate everything
 php artisan lang:translate
-
-# Translate to a specific language only
-php artisan lang:translate --lang=ar
-
-# Force re-translate all keys
-php artisan lang:translate --force
 ```
 
-### 4. Result
+### 3. Open the dashboard
 
 ```
-lang/
-├── en/
-│   ├── auth.php         ← your original
-│   └── welcome.php      ← your original
-├── ar/
-│   ├── auth.php         ← auto-generated ✅
-│   └── welcome.php      ← auto-generated ✅
-├── fr/
-│   ├── auth.php         ← auto-generated ✅
-│   └── welcome.php      ← auto-generated ✅
-└── es/
-    ├── auth.php         ← auto-generated ✅
-    └── welcome.php      ← auto-generated ✅
+http://yourapp.test/ai-translator
 ```
+
+That's it. Your app is now multilingual.
 
 ---
 
@@ -145,36 +111,100 @@ lang/
 | Provider | Quality | Speed | Cost | Offline |
 |---|---|---|---|---|
 | **Ollama** | ⭐⭐⭐⭐ | ⭐⭐⭐ | Free | ✅ Yes |
-| **DeepL** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | $ | ❌ No |
-| **Claude** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | $$ | ❌ No |
-| **ChatGPT** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | $$ | ❌ No |
-| **Gemini** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | $ | ❌ No |
+| **DeepL** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Free tier available | ❌ No |
+| **Claude** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Paid | ❌ No |
+| **ChatGPT** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Paid | ❌ No |
+| **Gemini** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | Free tier available | ❌ No |
 
 > **Recommended for most developers:** Start with Ollama (free, private). Switch to DeepL or Claude for production.
+
+### Manual provider configuration
+
+**.env (Ollama):**
+
+```env
+AUTO_TRANSLATE_DRIVER=ollama
+OLLAMA_MODEL=llama3.2
+OLLAMA_API_URL=http://localhost:11434
+SUPPORTED_LANGUAGES=en,ar,fr,es
+DEFAULT_LANGUAGE=en
+```
+
+**.env (DeepL):**
+
+```env
+AUTO_TRANSLATE_DRIVER=deepl
+DEEPL_API_KEY=your-api-key
+DEEPL_PLAN=free
+SUPPORTED_LANGUAGES=en,ar,fr,es
+DEFAULT_LANGUAGE=en
+```
+
+---
+
+## Stack Detection
+
+The package automatically detects your Laravel stack and configures itself accordingly — no manual setup needed.
+
+| Stack | Scan paths | Output format |
+|---|---|---|
+| Blade | `resources/views/**/*.blade.php` | PHP files |
+| Blade + Livewire | `resources/views/**/*.blade.php` | PHP files |
+| Inertia + Vue | `resources/views/`, `resources/js/**/*.vue` | JSON files |
+| Inertia + React | `resources/views/`, `resources/js/**/*.jsx`, `.tsx` | JSON files |
+| Breeze | Auto-detected starter kit + JSON source | JSON files |
+
+Detection runs once during `ai-translator:install` and is stored in `lang/.ai-translator-runtime.json`.
 
 ---
 
 ## Commands
 
+### `ai-translator:install`
+Interactive setup wizard. Run once after installation.
+
+```bash
+php artisan ai-translator:install
+```
+
+Detects your stack, configures your provider, sets your languages, and scans views.
+
+---
+
+### `lang:translate`
+Translate all keys to all configured languages. **Runs in the background** — your site stays live during translation.
+
+```bash
+php artisan lang:translate
+php artisan lang:translate --dry-run        # Preview only, no changes
+php artisan lang:translate --lang=ar        # One language only
+php artisan lang:translate --force          # Re-translate everything
+php artisan lang:translate --no-backup      # Skip backup creation
+```
+
+---
+
 ### `lang:scan`
-Scan Blade views and show all translation keys.
+Scan views and show all translation keys with their status.
 
 ```bash
 php artisan lang:scan
 php artisan lang:scan --missing-only        # Show only missing keys
-php artisan lang:scan --path=resources/views/admin  # Custom path
+php artisan lang:scan --path=resources/views/admin
 ```
 
-### `lang:translate`
-Translate all keys to all configured languages.
+---
+
+### `lang:clean`
+Find and remove translation keys that no longer exist in any view.
 
 ```bash
-php artisan lang:translate
-php artisan lang:translate --dry-run        # Preview only
-php artisan lang:translate --lang=ar        # One language
-php artisan lang:translate --force          # Re-translate everything
-php artisan lang:translate --no-backup      # Skip backup creation
+php artisan lang:clean                      # Interactive — shows what would be removed
+php artisan lang:clean --force              # Remove without confirmation
+php artisan lang:clean --lang=ar            # Clean one language only
 ```
+
+---
 
 ### `lang:validate`
 Validate translation quality — checks for missing keys, broken placeholders, missing HTML tags.
@@ -185,49 +215,110 @@ php artisan lang:validate --lang=ar         # One language
 php artisan lang:validate --strict          # Fail on warnings too
 ```
 
+---
+
 ### `lang:lock` / `lang:unlock`
 Protect manual translations from being overwritten.
 
 ```bash
-php artisan lang:lock ar auth.login                 # Lock one key
-php artisan lang:lock ar auth.* --all               # Lock a pattern
-php artisan lang:lock ar auth.login --reason="Client preferred shorter translation"
+php artisan lang:lock ar auth.login
+php artisan lang:lock ar auth.login --reason="Client preferred term"
 
-php artisan lang:unlock ar auth.login               # Unlock one key
-php artisan lang:locked                             # List all locked keys
-php artisan lang:locked --lang=ar                   # Filter by language
+php artisan lang:unlock ar auth.login
+php artisan lang:locked                     # List all locked keys
+php artisan lang:locked --lang=ar           # Filter by language
 ```
+
+---
 
 ### `lang:backup:list` / `lang:restore`
-Manage translation backups (automatic before every sync).
+Manage translation backups. A backup is created automatically before every translation run.
 
 ```bash
-php artisan lang:backup:list                        # Show available backups
-php artisan lang:restore 2026-04-14_10-30-00        # Restore specific backup
-php artisan lang:restore --latest                   # Restore most recent
+php artisan lang:backup:list
+php artisan lang:restore 2026-04-14_10-30-00
+php artisan lang:restore --latest
 ```
+
+---
+
+## Background Translation
+
+Translation runs in a **completely separate background process** — the web server is never blocked.
+
+```
+User clicks Translate
+  → Job queued in lang/.translation-queue.json
+  → Background worker spawned (uses PHP_BINARY — cross-platform)
+  → Web server returns immediately ✅
+  → Your site stays live for all visitors ✅
+  → Dashboard stays navigable ✅
+
+Translation finishes (2 seconds to 30 minutes, depending on provider)
+  → Toast notification appears
+  → Stats refresh automatically
+```
+
+This works on **all setups** with zero extra dependencies:
+- `php artisan serve` (single-threaded dev server)
+- Laravel Valet / Herd
+- Nginx / Apache
+- Docker / Sail
+- Shared hosting
+
+---
+
+## Dashboard
+
+Access the embedded dashboard at `/ai-translator`.
+
+### Overview
+Real-time stats — total keys, translated, missing, locked. Progress bar during translation. Quick actions: Scan, Translate, Dry Run.
+
+### Languages
+Full list of configured languages with per-language coverage bars. Add any of **180+ languages** from the built-in list — the new language is automatically translated in the background without blocking navigation. Enable, disable, or remove languages at any time.
+
+### Locked Keys
+View, add, and remove translation locks. Filter by language.
+
+### History
+Every translation run with timestamp, provider, duration, and which keys changed.
+
+### Backups
+Create and restore snapshots of your language files. Configure how many backups to keep.
+
+### Settings
+Switch providers, configure API keys, set Ollama model and URL, adjust chunk size, set context prompt.
+
+> The dashboard supports **10 languages** (EN, AR, FR, ES, DE, ZH, JA, TR, RU, PT) with on-demand AI generation for 170+ more.
 
 ---
 
 ## Configuration
 
-All options are in `config/ai-translator.php` after publishing. The most important ones:
+All options are in `config/ai-translator.php` after publishing with `vendor:publish`.
 
 ```php
 return [
     // Active AI driver: 'ollama', 'deepl', 'claude', 'openai', 'gemini'
     'driver' => env('AUTO_TRANSLATE_DRIVER', 'ollama'),
 
-    // Languages to translate into
+    // Languages to translate into (managed via dashboard or .env)
     'languages' => explode(',', env('SUPPORTED_LANGUAGES', 'en,ar,fr,es')),
 
-    // Source language
+    // Source language of your application
     'default_language' => env('DEFAULT_LANGUAGE', 'en'),
 
-    // Providers configuration
+    // Paths to scan for translation keys
+    'scan_paths' => [
+        resource_path('views'),
+        // resource_path('js'),  ← added automatically for Vue/React stacks
+    ],
+
+    // Providers
     'providers' => [
         'ollama' => [
-            'model'   => env('OLLAMA_MODEL', 'llama3'),
+            'model'   => env('OLLAMA_MODEL', 'llama3.2'),
             'api_url' => env('OLLAMA_API_URL', 'http://localhost:11434'),
         ],
         'deepl' => [
@@ -236,9 +327,16 @@ return [
         ],
         'claude' => [
             'api_key' => env('ANTHROPIC_API_KEY'),
-            'model'   => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
+            'model'   => env('ANTHROPIC_MODEL', 'claude-sonnet-4-5'),
         ],
-        // ...
+        'openai' => [
+            'api_key' => env('OPENAI_API_KEY'),
+            'model'   => env('OPENAI_MODEL', 'gpt-4o-mini'),
+        ],
+        'gemini' => [
+            'api_key' => env('GEMINI_API_KEY'),
+            'model'   => env('GEMINI_MODEL', 'gemini-1.5-flash'),
+        ],
     ],
 
     // Backup settings
@@ -246,24 +344,14 @@ return [
         'enabled' => env('AUTO_TRANSLATE_BACKUP', true),
         'keep'    => env('AUTO_TRANSLATE_BACKUP_KEEP', 5),
     ],
+
+    // Translation options
+    'options' => [
+        'chunk_size' => env('AUTO_TRANSLATE_CHUNK_SIZE', 50),
+        'context'    => env('AUTO_TRANSLATE_CONTEXT', ''),
+    ],
 ];
 ```
-
----
-
-## Dashboard
-
-Access the embedded dashboard at `/ai-translator` in your application.
-
-The dashboard provides:
-
-- **Overview** — key counts, translation status, last sync info
-- **Languages** — enable/disable languages, per-language progress
-- **Settings** — switch providers, configure API keys, manage models
-- **Locked Keys** — view and unlock protected translations
-- **History** — sync logs, cost tracking, what changed each run
-
-> The dashboard supports both **Arabic (RTL)** and **English (LTR)** — switchable from within the UI.
 
 ---
 
@@ -271,37 +359,38 @@ The dashboard provides:
 
 Every time you run `lang:translate`, the package:
 
-1. Scans your Blade views for translation keys
-2. Loads your English `lang/en/*.php` files
+1. Scans your views for translation keys
+2. Loads your source language files (`lang/en/*.php` and `lang/en.json`)
 3. Generates an MD5 hash of every value
 4. Compares against stored hashes in `lang/.translations-meta.json`
 5. **Only translates keys that actually changed**
-6. Saves new hashes for next run
+6. Saves new hashes for the next run
 
 Result: if you have 500 keys and change 3, only 3 API calls are made.
 
 ---
 
-## Protecting Manual Translations
+## Supported Translation Syntaxes
 
-Sometimes the AI translation isn't quite right. Lock it:
-
-```bash
-php artisan lang:lock ar auth.login --reason="Client prefers 'دخول' over 'تسجيل الدخول'"
+### Blade / PHP
+```blade
+{{ __('welcome.title') }}
+{{ __('auth.login') }}
+@lang('messages.success')
+{{ trans('errors.404') }}
+{{ __('user.greeting', ['name' => $user->name]) }}
 ```
 
-That key will never be overwritten, even when you run `lang:translate --force`.
-
-To see what's locked:
-
-```bash
-php artisan lang:locked
+### Vue (Inertia)
+```vue
+{{ $t('welcome.title') }}
+{{ t('auth.login') }}
 ```
 
-To restore AI control:
-
-```bash
-php artisan lang:unlock ar auth.login
+### React / JSX (Inertia)
+```jsx
+{__('welcome.title')}
+{i18n.t('auth.login')}
 ```
 
 ---
@@ -314,8 +403,6 @@ The package automatically preserves:
 - Numbered placeholders: `{0}`, `{1}`, `{2}`
 - HTML tags: `<strong>`, `<a href="#">`, `<br>`, etc.
 
-Example:
-
 ```php
 // English
 'greeting' => 'Hello <strong>:name</strong>, you have :count messages.'
@@ -326,16 +413,48 @@ Example:
 
 ---
 
-## Supported Translation Syntaxes
+## Runtime Configuration
 
-The scanner detects all standard Laravel translation helpers:
+Settings changed via the dashboard (provider, model, languages) are stored in `lang/.ai-translator-runtime.json` — not in `.env`. This means:
 
-```blade
-{{ __('welcome.title') }}
-{{ __("auth.login") }}
-@lang('messages.success')
-{{ trans('errors.404') }}
-{{ __('user.greeting', ['name' => $user->name]) }}
+- No server restarts when changing settings
+- Safe for production deployments
+- `.env` acts as the initial default only
+
+```json
+{
+    "stack": "blade",
+    "output_format": "auto",
+    "supported_languages": ["en", "ar", "fr"],
+    "driver": "ollama",
+    "ollama_model": "llama3.2"
+}
+```
+
+---
+
+## File Structure
+
+After running `lang:translate`:
+
+```
+lang/
+├── .ai-translator-runtime.json   ← runtime settings (dashboard changes)
+├── .translations-meta.json       ← hash tracking (change detection)
+├── .translation-queue.json       ← background job queue
+├── .translation-status.json      ← current worker status
+├── .backup/                      ← automatic backups
+├── en/
+│   ├── auth.php                  ← your original PHP files
+│   └── welcome.php
+├── en.json                       ← your original JSON keys (Breeze/Vue/React)
+├── ar/
+│   ├── auth.php                  ← auto-generated ✅
+│   └── welcome.php
+├── ar.json                       ← auto-generated ✅
+├── fr/
+│   └── ...
+└── fr.json
 ```
 
 ---
@@ -362,7 +481,7 @@ Contributions are very welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) f
 
 ## Security
 
-If you discover a security vulnerability, please email **your-email@example.com** instead of using the issue tracker.
+If you discover a security vulnerability, please email **youssef.mekkawy@example.com** instead of using the issue tracker. See [SECURITY.md](SECURITY.md) for details.
 
 ---
 

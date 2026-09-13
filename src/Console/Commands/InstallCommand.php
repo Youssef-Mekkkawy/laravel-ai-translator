@@ -4,7 +4,6 @@ namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-
 use YoussefMekkkawy\LaravelAiTranslator\Services\StackDetector;
 
 class InstallCommand extends Command
@@ -16,9 +15,9 @@ class InstallCommand extends Command
     {
         $this->newLine();
         $this->line('  <fg=bright-green>     ___  ____   ______                      __      __            </>');
-        $this->line('  <fg=bright-green>    / _ |\/  /  /_  __/______ ____  ___ ____/ /___ _/ /____  ____  </>');
-        $this->line('  <fg=bright-green>   / __ |/ /     / / / __/ _ `/ _ \(_-</ __/ / _ `/ __/ _ \/ __/  </>');
-        $this->line('  <fg=bright-green>  /_/ |_/_/     /_/ /_/  \_,_/_//_/___/\__/_/\_,_/\__/\___/_/     </>');
+        $this->line('  <fg=bright-green>    / _ |\\/  /  /_  __/______ ____  ___ ____/ /___ _/ /____  ____  </>');
+        $this->line('  <fg=bright-green>   / __ |/ /     / / / __/ _ `/ _ \\(_-</ __/ / _ `/ __/ _ \\/ __/  </>');
+        $this->line('  <fg=bright-green>  /_/ |_/_/     /_/ /_/  \\_,_/_//_/___/\\__/_/\\_,_/\\__/\\___/_/     </>');
         $this->newLine();
         $this->line('  <fg=gray>  Laravel AI Translator — automatic translation for Laravel apps</>');
         $this->newLine();
@@ -41,7 +40,7 @@ class InstallCommand extends Command
             $this->line('  <fg=green>✅ Config published to config/ai-translator.php</>');
         }
 
-        // ── Step 1b: Detect stack ─────────────────────────────────────
+        // ── Step 1b: Detect stack ──────────────────────────────────────────
         $this->newLine();
         $this->info('🔍 Detecting your Laravel stack...');
 
@@ -85,20 +84,31 @@ class InstallCommand extends Command
             'ar,fr,es'
         );
 
-        $sourceLang = $this->ask('  Source language (your app\'s language)', 'en');
+        // FIX: sanitize source language
+        $sourceLang = trim($this->ask('  Source language (your app\'s language)', 'en'));
+
+        // FIX: sanitize target languages — remove spaces, empty entries,
+        // duplicates, and the source language if accidentally included.
+        // Previously raw input was used directly, causing "ar " or the
+        // un-cleared default "ar,fr,es" to be written even when user typed "ar".
+        $targetLangs = array_values(array_unique(array_filter(
+            array_map('trim', explode(',', $langs)),
+            fn ($l) => !empty($l) && $l !== $sourceLang
+        )));
+
+        $allLangs = $sourceLang . ',' . implode(',', $targetLangs);
 
         // ── Step 4: Write .env ─────────────────────────────────────────────
         $this->newLine();
         $this->info('⚙️  Step 4: Updating .env...');
 
-        $envPath  = base_path('.env');
-        $allLangs = $sourceLang . ',' . trim($langs, ',');
+        $envPath = base_path('.env');
 
         $envKeys = [
-            'AUTO_TRANSLATE_DRIVER'   => $driver,
-            'SUPPORTED_LANGUAGES'     => $allLangs,
-            'DEFAULT_LANGUAGE'        => $sourceLang,
-            'AUTO_TRANSLATE_BACKUP'   => 'true',
+            'AUTO_TRANSLATE_DRIVER'     => $driver,
+            'SUPPORTED_LANGUAGES'       => $allLangs,
+            'DEFAULT_LANGUAGE'          => $sourceLang,
+            'AUTO_TRANSLATE_BACKUP'     => 'true',
             'AUTO_TRANSLATE_CHUNK_SIZE' => '20',
         ];
 
@@ -132,7 +142,11 @@ class InstallCommand extends Command
 
             foreach ($envKeys as $key => $value) {
                 if (preg_match('/^' . preg_quote($key, '/') . '=/m', $env)) {
-                    $env = preg_replace('/^' . preg_quote($key, '/') . '=.*/m', "{$key}={$value}", $env);
+                    $env = preg_replace(
+                        '/^' . preg_quote($key, '/') . '=.*/m',
+                        "{$key}={$value}",
+                        $env
+                    );
                 } else {
                     $env .= PHP_EOL . "{$key}={$value}";
                 }
@@ -141,15 +155,23 @@ class InstallCommand extends Command
             File::put($envPath, $env);
             $this->line('  <fg=green>✅ .env updated successfully</>');
 
-            // Save stack detection to RuntimeConfig
+            // FIX: write selected languages to RuntimeConfig so getTargetLanguages()
+            // reads the correct list immediately — without RuntimeConfig the translate
+            // command falls back to the static config default (en,ar,fr,es) regardless
+            // of what the user entered here.
             $runtime = new \YoussefMekkkawy\LaravelAiTranslator\Services\RuntimeConfig();
             $runtime->merge([
-                'stack'             => $detected['stack'],
-                'output_format'     => $detected['output_format'],
-                'scan_paths'        => $detected['scan_paths'],
-                'scan_extensions'   => $detected['scan_extensions'],
-                'detected_stack_at' => now()->toISOString(),
+                'stack'               => $detected['stack'],
+                'output_format'       => $detected['output_format'],
+                'scan_paths'          => $detected['scan_paths'],
+                'scan_extensions'     => $detected['scan_extensions'],
+                'detected_stack_at'   => now()->toISOString(),
+                'supported_languages' => array_filter(
+                    explode(',', $allLangs),
+                    fn ($l) => !empty(trim($l))
+                ),
             ]);
+
         } else {
             $this->line('  <fg=yellow>⚠️  .env file not found — please add these keys manually:</>');
             foreach ($envKeys as $key => $value) {
@@ -183,7 +205,7 @@ class InstallCommand extends Command
                 $this->showOllamaHelp();
             }
         } else {
-            $apiKeyVar = match($driver) {
+            $apiKeyVar = match ($driver) {
                 'deepl'  => 'DEEPL_API_KEY',
                 'claude' => 'ANTHROPIC_API_KEY',
                 'openai' => 'OPENAI_API_KEY',
@@ -201,12 +223,11 @@ class InstallCommand extends Command
         // ── Step 6: Clear config cache ─────────────────────────────────────
         $this->callSilent('config:clear');
 
-        // ── Step 7: Scan views and generate source language files ─────────
+        // ── Step 7: Scan views and generate source language files ──────────
         $this->newLine();
         $this->info('🔍 Step 7: Scanning views and generating source language files...');
 
         try {
-            // Scan all views for translation keys
             $scanPaths = config('ai-translator.scan_paths', [resource_path('views')]);
             $scanner   = new \YoussefMekkkawy\LaravelAiTranslator\Services\Scanner\ViewScanner(
                 array_filter($scanPaths, fn ($p) => is_dir($p))
@@ -216,64 +237,51 @@ class InstallCommand extends Command
             if (empty($keys)) {
                 $this->line('  <fg=yellow>⚠️  No translation keys found in views. Add __() calls first.</>');
             } else {
-                // Separate PHP keys (dot-notation) from JSON keys (full strings)
                 $phpKeys  = [];
                 $jsonKeys = [];
 
                 foreach ($keys as $key) {
                     if (!str_contains($key, ' ') && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)+$/', $key)) {
-                        // PHP key like auth.login
-                        $parts = explode('.', $key, 2);
-                        $phpKeys[$parts[0]][$parts[1]] = $parts[1]; // key as value
+                        $parts                        = explode('.', $key, 2);
+                        $phpKeys[$parts[0]][$parts[1]] = $parts[1];
                     } else {
-                        // JSON key like "Login" or "Forgot your password?"
-                        $jsonKeys[$key] = $key; // key as value
+                        $jsonKeys[$key] = $key;
                     }
                 }
 
                 $sourceLangDir = lang_path($sourceLang);
 
-                // Write PHP source files
                 if (!empty($phpKeys)) {
-                    if (!\Illuminate\Support\Facades\File::exists($sourceLangDir)) {
-                        \Illuminate\Support\Facades\File::makeDirectory($sourceLangDir, 0755, true);
+                    if (!File::exists($sourceLangDir)) {
+                        File::makeDirectory($sourceLangDir, 0755, true);
                     }
 
                     foreach ($phpKeys as $group => $groupKeys) {
                         $filePath = $sourceLangDir . DIRECTORY_SEPARATOR . $group . '.php';
-
-                        // Merge with existing if file already exists
                         $existing = [];
-                        if (\Illuminate\Support\Facades\File::exists($filePath)) {
+                        if (File::exists($filePath)) {
                             $existing = @include $filePath;
                             if (!is_array($existing)) $existing = [];
                         }
-
-                        // Only add keys that don't exist yet
                         $merged = array_merge($groupKeys, $existing);
                         ksort($merged);
-
-                        \Illuminate\Support\Facades\File::put(
+                        File::put(
                             $filePath,
-                            "<?php
-
-return " . $this->arrayToPhp($merged) . ";
-"
+                            "<?php\n\nreturn " . $this->arrayToPhp($merged) . ";\n"
                         );
                     }
                     $this->line("  <fg=green>✅ Source PHP files created in lang/{$sourceLang}/</>");
                 }
 
-                // Write JSON source file
                 if (!empty($jsonKeys)) {
                     $jsonPath = lang_path($sourceLang . '.json');
                     $existing = [];
-                    if (\Illuminate\Support\Facades\File::exists($jsonPath)) {
-                        $existing = @json_decode(\Illuminate\Support\Facades\File::get($jsonPath), true) ?? [];
+                    if (File::exists($jsonPath)) {
+                        $existing = @json_decode(File::get($jsonPath), true) ?? [];
                     }
                     $merged = array_merge($jsonKeys, $existing);
                     ksort($merged);
-                    \Illuminate\Support\Facades\File::put(
+                    File::put(
                         $jsonPath,
                         json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . PHP_EOL
                     );

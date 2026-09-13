@@ -7,6 +7,12 @@
   $_trans = file_exists($_langFile) ? include $_langFile : (file_exists($_enFile) ? include $_enFile : []);
   $_rtlLangs = ['ar', 'he', 'fa', 'ur'];
   $_isRtl = in_array($_dashLang, $_rtlLangs);
+  $cfgSource = config('ai-translator.default_language', 'en');
+  $cfgDriver = config('ai-translator.driver', 'ollama');
+  $cfgLangsJs = array_values(array_map(
+    fn($l) => ['code' => $l, 'label' => strtoupper($l)],
+    array_filter($cfgLangs, fn($l) => $l !== $cfgSource)
+  ));
   $_allLangs = [
     'en' => ['English', 'English'],
     'ar' => ['Arabic', 'العربية'],
@@ -27,13 +33,7 @@
     'vi' => ['Vietnamese', 'Tiếng Việt'],
     'id' => ['Indonesian', 'Bahasa Indonesia'],
   ];
-  $cfgLangs = config('ai-translator.languages', []);
-  $cfgSource = config('ai-translator.default_language', 'en');
-  $cfgDriver = config('ai-translator.driver', 'ollama');
-  $cfgLangsJs = array_values(array_map(
-    fn($l) => ['code' => $l, 'label' => strtoupper($l)],
-    array_filter($cfgLangs, fn($l) => $l !== $cfgSource)
-  ));
+
 @endphp
 
 <!DOCTYPE html>
@@ -853,121 +853,125 @@
         },
 
         async pickLanguage(opt) {
-            this.addOpen    = false;
-            this.addingLang = opt.code;
+          this.addOpen = false;
+          this.addingLang = opt.code;
 
-            try {
-                const r = await this.api('languages/add', { locale: opt.code });
+          try {
+            // Step 1: Add the language to RuntimeConfig
+            const r = await this.api('languages/add', { locale: opt.code });
 
-                if (!r.success) {
-                    this.toast(r.message || 'Failed to add language', '', 'err');
-                    this.addingLang = '';
-                    return;
-                }
-
-                // Fire translation in background — do NOT await
-                fetch('{{ url("") }}/ai-translator/api/translate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                    },
-                    body: JSON.stringify({ lang: opt.code, force: true }),
-                }).then(res => res.json()).then(t => {
-                    localStorage.setItem('ai_translator_done', JSON.stringify({
-                        lang: opt.code,
-                        name: opt.name,
-                        success: t.success,
-                        message: t.message || '',
-                    }));
-                }).catch(() => {
-                    localStorage.setItem('ai_translator_done', JSON.stringify({
-                        lang: opt.code,
-                        name: opt.name,
-                        success: false,
-                        message: 'Network error during translation.',
-                    }));
-                });
-
-                localStorage.setItem('ai_translator_pending', JSON.stringify({
-                    lang: opt.code,
-                    name: opt.name,
-                    started: Date.now(),
-                }));
-
-                this.toast(
-                    this.ar ? 'جاري الترجمة في الخلفية' : opt.name + ' is being translated in the background',
-                    this.ar ? 'يمكنك التنقل بحرية' : 'You can navigate freely'
-                );
-
-                setTimeout(() => {
-                    window.location.href = '{{ route("ai-translator.languages") }}';
-                }, 800);
-
-            } catch (e) {
-                this.toast('Error: ' + e.message, '', 'err');
+            if (!r.success) {
+              this.toast(r.message || 'Failed to add language', '', 'err');
+              this.addingLang = '';
+              return;
             }
 
-            this.addingLang = '';
+            // Step 2: Snapshot current last_completed_at so the poller
+            // can detect when OUR specific job finishes
+            let prevCompletedAt = null;
+            try {
+              const pre = await fetch(window.location.origin + '/ai-translator/api/translate/status').then(r => r.json());
+              prevCompletedAt = pre.data?.last_completed_at ?? null;
+            } catch { }
+
+            // Step 3: Queue the translation job — server returns IMMEDIATELY
+            fetch(window.location.origin + '/ai-translator/api/translate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+              },
+              body: JSON.stringify({ lang: opt.code, force: true }),
+            }).catch(() => { });
+
+            // Step 4: Store pending state — poller uses server status, not localStorage done
+            localStorage.setItem('ai_translator_pending', JSON.stringify({
+              lang: opt.code,
+              name: opt.name,
+              started: Date.now(),
+              prevCompletedAt: prevCompletedAt,
+            }));
+
+            this.toast(
+              this.ar ? 'جاري الترجمة في الخلفية' : opt.name + ' is being translated in the background',
+              this.ar ? 'يمكنك التنقل بحرية' : 'You can navigate freely'
+            );
+
+            setTimeout(() => {
+              window.location.href = '{{ route("ai-translator.languages") }}';
+            }, 800);
+
+          } catch (e) {
+            this.toast('Error: ' + e.message, '', 'err');
+          }
+
+          this.addingLang = '';
         },
 
         // ── Background translation poller ──────────────────────────────
+        // Polls the server status endpoint instead of localStorage.
+        // Works even when the user navigates away — the background process
+        // keeps running and the status file is updated server-side.
         startBackgroundPoller() {
-          // Check if a translation just finished (written by the fetch .then() above)
-          const done = localStorage.getItem('ai_translator_done');
-          if (done) {
-            localStorage.removeItem('ai_translator_done');
-            localStorage.removeItem('ai_translator_pending');
-            try {
-              const d = JSON.parse(done);
-              if (d.success) {
-                this.toast(
-                  this.ar ? 'اكتملت الترجمة' : d.name + ' translation complete',
-                  this.ar ? 'تم تحديث الإحصائيات' : 'Stats updated'
-                );
-              } else {
-                this.toast(
-                  this.ar ? 'فشلت الترجمة' : d.name + ' translation failed',
-                  d.message || '',
-                  'err'
-                );
-              }
-              // Refresh overview stats on whatever page we're on
-              if (typeof this.refreshStats === 'function') {
-                this.refreshStats();
-              }
-            } catch { }
-            return;
-          }
-
-          // Check if a translation is still pending (started on another page)
           const pending = localStorage.getItem('ai_translator_pending');
           if (!pending) return;
 
           try {
             const p = JSON.parse(pending);
             const name = p.name || p.lang;
+            const prevCompletedAt = p.prevCompletedAt ?? null;
 
-            // Show a subtle "translating in background" indicator
             this.toast(
               this.ar ? 'جاري الترجمة في الخلفية' : 'Translating ' + name + ' in background...',
               this.ar ? 'سيتم الإشعار عند الانتهاء' : 'You will be notified when done'
             );
 
-            // Poll every 4 seconds — when done() fires it writes to localStorage
-            // and the next poll cycle on any page picks it up
-            const poll = setInterval(() => {
-              const d = localStorage.getItem('ai_translator_done');
-              if (d) {
-                clearInterval(poll);
-                this.startBackgroundPoller(); // re-run to process the done state
-              }
-              // Safety: stop polling after 10 minutes
-              if (Date.now() - p.started > 600000) {
-                clearInterval(poll);
-                localStorage.removeItem('ai_translator_pending');
-              }
-            }, 4000);
+            const startTime = p.started;
+            const self = this;
+
+            const poll = setInterval(async () => {
+              try {
+                const s = await fetch(window.location.origin + '/ai-translator/api/translate/status').then(r => r.json());
+
+                if (!s.success) return;
+
+                const data = s.data;
+                const done = !data.running
+                  && data.last_completed_at !== null
+                  && data.last_completed_at !== prevCompletedAt;
+
+                if (done) {
+                  clearInterval(poll);
+                  localStorage.removeItem('ai_translator_pending');
+
+                  const success = data.last_result?.success ?? true;
+
+                  if (success) {
+                    self.toast(
+                      self.ar ? 'اكتملت الترجمة' : name + ' translation complete',
+                      self.ar ? 'تم تحديث الإحصائيات' : 'Stats updated'
+                    );
+                  } else {
+                    self.toast(
+                      self.ar ? 'فشلت الترجمة' : name + ' translation failed',
+                      '',
+                      'err'
+                    );
+                  }
+
+                  if (typeof self.refreshStats === 'function') {
+                    self.refreshStats();
+                  }
+                }
+
+                // Safety: stop after 15 minutes
+                if (Date.now() - startTime > 900000) {
+                  clearInterval(poll);
+                  localStorage.removeItem('ai_translator_pending');
+                }
+
+              } catch { }
+            }, 3000);
 
           } catch {
             localStorage.removeItem('ai_translator_pending');

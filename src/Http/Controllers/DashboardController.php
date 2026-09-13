@@ -51,8 +51,6 @@ abstract class DashboardController extends Controller
             $trans = include $enFile;
         }
 
-        // FIX: read active provider from RuntimeConfig so the sidebar reflects
-        // what the user saved via the dashboard, not the stale static config.
         $runtime = new RuntimeConfig();
 
         return [
@@ -63,6 +61,7 @@ abstract class DashboardController extends Controller
             '_trans'         => $trans,
             '_dashLang'      => $dashLang,
             '_isRtl'         => in_array($dashLang, ['ar', 'he', 'fa', 'ur']),
+            'cfgLangs'       => $runtime->getSupportedLanguages(), // ← added
         ];
     }
 
