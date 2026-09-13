@@ -9,9 +9,6 @@ use Illuminate\Support\Str;
 
 class KeyExtractor
 {
-    /**
-     * @return bool
-     */
     protected function isPhpTranslationKey(string $key): bool
     {
         return preg_match(
