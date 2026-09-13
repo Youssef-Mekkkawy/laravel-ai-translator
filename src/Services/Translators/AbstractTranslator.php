@@ -148,13 +148,30 @@ abstract class AbstractTranslator implements TranslatorInterface
      */
     protected function prepareText(string $text): array
     {
-        // First preserve placeholders
+        $tags = [];
+
+        // Preserve markdown links [label](url) before any other processing
+        $text = preg_replace_callback(
+            '/\[([^\]]*)\]\((https?:\/\/[^\)]+)\)/',
+            static function (array $m) use (&$tags): string {
+                $n = count($tags);
+                $token = "___TAG_{$n}___";
+                $tags[$token] = $m[0];
+
+                return $token;
+            },
+            $text
+        ) ?? $text;
+
+        // Preserve :placeholders and {variables}
         [$text, $placeholders] = $this->preservePlaceholders($text);
 
-        // Then preserve HTML tags
-        [$text, $tags] = $this->preserveHtmlTags($text);
+        // Preserve HTML tags
+        [$text, $htmlTags] = $this->preserveHtmlTags($text);
 
-        return [$text, $placeholders, $tags];
+        $allTags = array_merge($tags, $htmlTags);
+
+        return [$text, $placeholders, $allTags];
     }
 
     /**

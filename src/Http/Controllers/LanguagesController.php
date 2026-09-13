@@ -14,12 +14,17 @@ class LanguagesController extends DashboardController
         $runtime = new RuntimeConfig;
         $allLangs = $runtime->getSupportedLanguages();
 
-        $scanPaths = $config['scan_paths'] ?? [resource_path('views')];
-        $scanner = new ViewScanner(array_filter($scanPaths, fn ($p) => is_dir($p)));
+        $runtimePaths = $runtime->get('scan_paths', $config['scan_paths'] ?? [resource_path('views')]);
+        $runtimeExts  = $runtime->get('scan_extensions', ['blade.php']);
+        $scanner = new ViewScanner(
+            array_filter($runtimePaths, fn($p) => is_dir($p)),
+            null,
+            $runtimeExts
+        );
         $allKeys = $scanner->scanAll();
 
         // FIX: include JSON source keys in total (same as LanguageApiController::stats)
-        $sourceLangJson = lang_path($sourceLang.'.json');
+        $sourceLangJson = lang_path($sourceLang . '.json');
         if (file_exists($sourceLangJson)) {
             $jsonData = @json_decode(file_get_contents($sourceLangJson), true);
             if (is_array($jsonData)) {
@@ -62,7 +67,7 @@ class LanguagesController extends DashboardController
     private function loadLangKeys(string $langPath): array
     {
         $keys = [];
-        $files = glob($langPath.DIRECTORY_SEPARATOR.'*.php') ?: [];
+        $files = glob($langPath . DIRECTORY_SEPARATOR . '*.php') ?: [];
 
         foreach ($files as $file) {
             $group = pathinfo($file, PATHINFO_FILENAME);
@@ -76,7 +81,7 @@ class LanguagesController extends DashboardController
 
         // FIX: also read JSON file (e.g. lang/ar.json)
         $locale = basename($langPath);
-        $jsonPath = lang_path($locale.'.json');
+        $jsonPath = lang_path($locale . '.json');
         if (file_exists($jsonPath)) {
             $json = @json_decode(file_get_contents($jsonPath), true);
             if (is_array($json)) {
@@ -107,11 +112,21 @@ class LanguagesController extends DashboardController
     private function languageName(string $code): string
     {
         $names = [
-            'ar' => 'Arabic',    'fr' => 'French',     'es' => 'Spanish',
-            'de' => 'German',    'it' => 'Italian',    'pt' => 'Portuguese',
-            'ru' => 'Russian',   'zh' => 'Chinese',    'ja' => 'Japanese',
-            'ko' => 'Korean',    'tr' => 'Turkish',    'nl' => 'Dutch',
-            'pl' => 'Polish',    'hi' => 'Hindi',      'sv' => 'Swedish',
+            'ar' => 'Arabic',
+            'fr' => 'French',
+            'es' => 'Spanish',
+            'de' => 'German',
+            'it' => 'Italian',
+            'pt' => 'Portuguese',
+            'ru' => 'Russian',
+            'zh' => 'Chinese',
+            'ja' => 'Japanese',
+            'ko' => 'Korean',
+            'tr' => 'Turkish',
+            'nl' => 'Dutch',
+            'pl' => 'Polish',
+            'hi' => 'Hindi',
+            'sv' => 'Swedish',
             'da' => 'Danish',
         ];
 
@@ -121,11 +136,21 @@ class LanguagesController extends DashboardController
     private function nativeName(string $code): string
     {
         $names = [
-            'ar' => 'العربية',  'fr' => 'Français',  'es' => 'Español',
-            'de' => 'Deutsch',  'it' => 'Italiano',  'pt' => 'Português',
-            'ru' => 'Русский',  'zh' => '中文',       'ja' => '日本語',
-            'ko' => '한국어',   'tr' => 'Türkçe',    'nl' => 'Nederlands',
-            'pl' => 'Polski',   'hi' => 'हिन्दी',    'sv' => 'Svenska',
+            'ar' => 'العربية',
+            'fr' => 'Français',
+            'es' => 'Español',
+            'de' => 'Deutsch',
+            'it' => 'Italiano',
+            'pt' => 'Português',
+            'ru' => 'Русский',
+            'zh' => '中文',
+            'ja' => '日本語',
+            'ko' => '한국어',
+            'tr' => 'Türkçe',
+            'nl' => 'Nederlands',
+            'pl' => 'Polski',
+            'hi' => 'हिन्दी',
+            'sv' => 'Svenska',
             'da' => 'Dansk',
         ];
 

@@ -25,8 +25,13 @@ class OverviewController extends DashboardController
         );
 
         // Scan views for keys
-        $scanPaths = $config['scan_paths'] ?? [resource_path('views')];
-        $scanner = new ViewScanner(array_filter($scanPaths, fn ($p) => is_dir($p)));
+        $runtimePaths = $runtime->get('scan_paths', $config['scan_paths'] ?? [resource_path('views')]);
+        $runtimeExts = $runtime->get('scan_extensions', ['blade.php']);
+        $scanner = new ViewScanner(
+            array_filter($runtimePaths, fn ($p) => is_dir($p)),
+            null,
+            $runtimeExts
+        );
         $allKeys = $scanner->scanAll();
 
         // FIX 2: include JSON source keys (lang/en.json) in total.
