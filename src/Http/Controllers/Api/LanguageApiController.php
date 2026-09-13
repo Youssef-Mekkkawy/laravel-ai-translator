@@ -3,6 +3,7 @@
 namespace YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use YoussefMekkkawy\LaravelAiTranslator\Http\Controllers\DashboardController;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockManager;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Lock\LockStorage;
@@ -77,10 +78,22 @@ class LanguageApiController extends DashboardController
 
         $this->runtime->removeLanguage($locale);
 
+        // Delete PHP translation folder (lang/ar/)
+        $langDir = lang_path($locale);
+        if (File::exists($langDir)) {
+            File::deleteDirectory($langDir);
+        }
+
+        // Delete JSON translation file (lang/ar.json)
+        $jsonFile = lang_path($locale.'.json');
+        if (File::exists($jsonFile)) {
+            File::delete($jsonFile);
+        }
+
         return $this->success([
             'locale' => $locale,
             'languages' => $this->runtime->getSupportedLanguages(),
-        ], "Language '{$locale}' removed.");
+        ], "Language '{$locale}' and all its translation files removed.");
     }
 
     public function stats()

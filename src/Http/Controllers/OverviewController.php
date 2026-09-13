@@ -87,10 +87,7 @@ class OverviewController extends DashboardController
         // FIX 4: only sum missing from languages that have started translation.
         // Previously summed all languages — a brand-new untranslated language
         // with 149 missing was inflating the total to 720+.
-        $missingCount = array_sum(array_column(
-            array_filter($coverage, fn ($c) => $c['translated'] > 0),
-            'missing'
-        ));
+        $missingCount = array_sum(array_column($coverage, 'missing'));
 
         // Last sync info from metadata
         $metaFile = $config['storage']['metadata_file'] ?? base_path('lang/.translations-meta.json');

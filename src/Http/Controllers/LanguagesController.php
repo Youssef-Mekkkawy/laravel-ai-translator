@@ -15,16 +15,16 @@ class LanguagesController extends DashboardController
         $allLangs = $runtime->getSupportedLanguages();
 
         $runtimePaths = $runtime->get('scan_paths', $config['scan_paths'] ?? [resource_path('views')]);
-        $runtimeExts  = $runtime->get('scan_extensions', ['blade.php']);
+        $runtimeExts = $runtime->get('scan_extensions', ['blade.php']);
         $scanner = new ViewScanner(
-            array_filter($runtimePaths, fn($p) => is_dir($p)),
+            array_filter($runtimePaths, fn ($p) => is_dir($p)),
             null,
             $runtimeExts
         );
         $allKeys = $scanner->scanAll();
 
         // FIX: include JSON source keys in total (same as LanguageApiController::stats)
-        $sourceLangJson = lang_path($sourceLang . '.json');
+        $sourceLangJson = lang_path($sourceLang.'.json');
         if (file_exists($sourceLangJson)) {
             $jsonData = @json_decode(file_get_contents($sourceLangJson), true);
             if (is_array($jsonData)) {
@@ -67,7 +67,7 @@ class LanguagesController extends DashboardController
     private function loadLangKeys(string $langPath): array
     {
         $keys = [];
-        $files = glob($langPath . DIRECTORY_SEPARATOR . '*.php') ?: [];
+        $files = glob($langPath.DIRECTORY_SEPARATOR.'*.php') ?: [];
 
         foreach ($files as $file) {
             $group = pathinfo($file, PATHINFO_FILENAME);
@@ -81,7 +81,7 @@ class LanguagesController extends DashboardController
 
         // FIX: also read JSON file (e.g. lang/ar.json)
         $locale = basename($langPath);
-        $jsonPath = lang_path($locale . '.json');
+        $jsonPath = lang_path($locale.'.json');
         if (file_exists($jsonPath)) {
             $json = @json_decode(file_get_contents($jsonPath), true);
             if (is_array($json)) {

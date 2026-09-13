@@ -322,36 +322,11 @@ PROMPT;
 
     private function languageName(string $code): string
     {
-        $map = [
-            'ar' => 'Arabic',
-            'fr' => 'French',
-            'es' => 'Spanish',
-            'de' => 'German',
-            'it' => 'Italian',
-            'pt' => 'Portuguese',
-            'ru' => 'Russian',
-            'zh' => 'Chinese (Simplified)',
-            'ja' => 'Japanese',
-            'ko' => 'Korean',
-            'tr' => 'Turkish',
-            'nl' => 'Dutch',
-            'pl' => 'Polish',
-            'hi' => 'Hindi',
-            'sv' => 'Swedish',
-            'da' => 'Danish',
-            'fi' => 'Finnish',
-            'no' => 'Norwegian',
-            'cs' => 'Czech',
-            'el' => 'Greek',
-            'he' => 'Hebrew',
-            'ro' => 'Romanian',
-            'hu' => 'Hungarian',
-            'uk' => 'Ukrainian',
-            'vi' => 'Vietnamese',
-            'th' => 'Thai',
-            'id' => 'Indonesian',
-            'ms' => 'Malay',
-        ];
+        static $map = null;
+        if ($map === null) {
+            $list = include __DIR__.'/../../../resources/data/languages.php';
+            $map = array_column($list, 'name', 'code');
+        }
 
         return $map[$code] ?? strtoupper($code);
     }
