@@ -1,54 +1,71 @@
 # Quick Start
 
-Get your Laravel app translated in 3 steps.
+Get your Laravel app translated in under 5 minutes.
 
-## Step 1 — Scan Your Views
-
-Find all translation keys used in your app:
+## 1. Install the package
 
 ```bash
-php artisan lang:scan
+composer require youssef-mekkkawy/laravel-ai-translator
 ```
 
-This scans your Blade views, Livewire components, and Vue/React files (depending on your stack) and reports how many keys were found.
+## 2. Run the install wizard
 
-## Step 2 — Translate
+```bash
+php artisan ai-translator:install
+```
 
-Translate all missing keys to your configured languages:
+The wizard will ask you:
+- Which **AI provider** to use (start with Ollama — free and local)
+- Which **languages** to translate into (e.g. `ar,fr,es`)
+
+It then updates your `.env`, detects your stack, and scans your views automatically.
+
+## 3. Translate
 
 ```bash
 php artisan lang:translate
 ```
 
-The command will:
-- Show estimated cost (free with Ollama)
-- Ask for confirmation
-- Translate all keys
-- Show a summary of what was translated
+Translation runs in the **background** — your site stays live while it works. With Ollama this takes a few minutes. With DeepL it takes seconds.
 
-## Step 3 — Open the Dashboard
+## 4. Open the dashboard
 
 ```
 http://your-app.test/ai-translator
 ```
 
-You'll see your translation coverage, recent history, and quick actions.
+You'll see your coverage stats, history, and all language files.
 
-## Using the Dashboard
+---
 
-Instead of the CLI, you can do everything from the dashboard:
+## That's it
 
-1. Click **Scan** to find new keys
-2. Click **Translate** to start translation
-3. Watch the real-time progress bar
-4. See coverage by language in the chart below
+Your app is now multilingual. Next time you add new strings, just run:
 
-## Add More Languages
+```bash
+php artisan lang:translate
+```
 
-From the Languages page, click **+ Add language** and pick from 180+ languages. The package will start translating into the new language on the next run.
+Only the **changed** strings get re-translated — no wasted API calls.
 
-## Next Steps
+---
 
-- [All available commands →](/commands)
-- [Dashboard overview →](/dashboard)
-- [Configure providers →](/providers)
+## What gets generated
+
+```
+lang/
+├── en/auth.php          ← your original
+├── ar/auth.php          ← auto-generated ✅
+├── ar.json              ← auto-generated ✅ (for JSON keys)
+├── fr/auth.php          ← auto-generated ✅
+└── fr.json              ← auto-generated ✅
+```
+
+---
+
+## Next steps
+
+- [Commands reference](/commands) — all available artisan commands
+- [Dashboard](/dashboard) — manage translations visually
+- [Providers](/providers) — compare AI providers
+- [Configuration](/configuration) — full config reference
