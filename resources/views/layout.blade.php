@@ -348,7 +348,7 @@
             style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8B93A5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
             x-text="providerLabel"></span>
         </div>
-        <a href="https://buymeacoffee.com/youssef.mekkawy" target="_blank"
+        <a href="https://github.com/sponsors/Youssef-Mekkkawy" target="_blank"
           style="display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;font-size:12px;color:#5C6678;text-decoration:none;transition:color .15s"
           onmouseover="this.style.color='#FFDD00'" onmouseout="this.style.color='#5C6678'">
           <span style="font-size:14px">☕</span>

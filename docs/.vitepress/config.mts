@@ -22,6 +22,7 @@ export default defineConfig({
       { text: 'Commands', link: '/commands' },
       { text: 'Dashboard', link: '/dashboard' },
       { text: 'Config', link: '/configuration' },
+      { text: '💙 Sponsor', link: 'https://github.com/sponsors/Youssef-Mekkkawy' },
       {
         text: 'v1.0.12',
         items: [
@@ -56,6 +57,12 @@ export default defineConfig({
           { text: 'FAQ', link: '/faq' },
         ],
       },
+      {
+        text: 'Community',
+        items: [
+          { text: '💙 Support This Project', link: '/support' },
+        ],
+      },
     ],
 
     socialLinks: [
@@ -63,7 +70,7 @@ export default defineConfig({
     ],
 
     footer: {
-      message: 'Released under the MIT License.',
+      message: 'Released under the MIT License. | <a href="https://github.com/sponsors/Youssef-Mekkkawy">💙 Sponsor this project</a>',
       copyright: 'Copyright © 2026 Youssef Mekkkawy',
     },
 
@@ -92,6 +99,7 @@ export default defineConfig({
           { text: 'الدليل', link: '/ar/installation' },
           { text: 'الأوامر', link: '/ar/commands' },
           { text: 'لوحة التحكم', link: '/ar/dashboard' },
+          { text: '💙 ادعم المشروع', link: 'https://github.com/sponsors/Youssef-Mekkkawy' },
         ],
         sidebar: [
           {
@@ -115,6 +123,12 @@ export default defineConfig({
             items: [
               { text: 'الإعدادات', link: '/ar/configuration' },
               { text: 'الأسئلة الشائعة', link: '/ar/faq' },
+            ],
+          },
+          {
+            text: 'المجتمع',
+            items: [
+              { text: '💙 ادعم هذا المشروع', link: '/ar/support' },
             ],
           },
         ],

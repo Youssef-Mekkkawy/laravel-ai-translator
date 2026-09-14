@@ -312,7 +312,7 @@ class InstallCommand extends Command
         $this->line('  <fg=cyan>  3. Open /ai-translator</>           <fg=gray>— dashboard</>');
         $this->newLine();
         $this->line('  <fg=gray>  ⭐ Star the project:</> <fg=blue>https://github.com/Youssef-Mekkkawy/laravel-ai-translator</>');
-        $this->line('  <fg=gray>  ☕ Buy me a coffee:  </> <fg=blue>https://buymeacoffee.com/youssef.mekkawy</>');
+        $this->line('  <fg=gray>  ☕ Buy me a coffee:  </> <fg=blue>https://github.com/sponsors/Youssef-Mekkkawy</>');
         $this->newLine();
 
         return self::SUCCESS;
