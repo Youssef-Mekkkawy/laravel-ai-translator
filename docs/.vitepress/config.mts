@@ -86,7 +86,7 @@ export default defineConfig({
       label: 'العربية',
       lang: 'ar',
       dir: 'rtl',
-      link: '/ar/index',
+      link: '/ar/',
       themeConfig: {
         nav: [
           { text: 'الدليل', link: '/ar/installation' },
