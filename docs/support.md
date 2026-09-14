@@ -22,7 +22,7 @@ Free but means a lot — helps others discover the package.
 
 ## Share it ??
 
-Tell other Laravel developers — that's the biggest support of all.
+Tell other Laravel developers — that is the biggest support of all.
 
 ---
 
