@@ -264,8 +264,15 @@
       {{-- Logo --}}
       <div
         style="display:flex;align-items:center;gap:10px;padding:18px 14px;border-bottom:1px solid #1B2130;min-height:64px;flex-shrink:0">
+        @if(!empty($logoBase64))
+          <img src="{{ $logoBase64 }}" alt="AI Translator" style="width:32px;height:32px;flex:none;object-fit:contain" />
+        @else
+          <div
+            style="width:32px;height:32px;flex:none;border-radius:8px;background:linear-gradient(140deg,#6EE7B7,#38bdf8);display:grid;place-items:center;color:#06231a;font-weight:700;font-size:13px;font-family:'JetBrains Mono',monospace">
+            t</div>
+        @endif
         <div
-          style="width:28px;height:28px;flex:none;border-radius:8px;background:linear-gradient(140deg,#6EE7B7,#38bdf8);display:grid;place-items:center;color:#06231a;font-weight:700;font-size:13px;font-family:'JetBrains Mono',monospace">
+          style="width:32px;height:32px;flex:none;border-radius:8px;background:linear-gradient(140deg,#6EE7B7,#38bdf8);display:none;place-items:center;color:#06231a;font-weight:700;font-size:13px;font-family:'JetBrains Mono',monospace">
           t</div>
         <div x-show="expanded" style="overflow:hidden">
           <div style="font-weight:600;font-size:13.5px;white-space:nowrap">AI Translator</div>

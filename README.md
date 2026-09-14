@@ -1,3 +1,5 @@
+<p align="center"><img src="https://raw.githubusercontent.com/Youssef-Mekkkawy/laravel-ai-translator/main/docs/public/favicon.png" width="500" alt="Laravel AI Translator"></p>
+
 <div align="center">
 
 # 🌍 Laravel AI Translator
@@ -512,3 +514,4 @@ The MIT License (MIT). See [LICENSE](LICENSE) for details.
 ⭐ Star this repo if it saves you time!
 
 </div>
+

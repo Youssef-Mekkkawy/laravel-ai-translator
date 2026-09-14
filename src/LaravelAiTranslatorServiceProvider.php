@@ -20,7 +20,7 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'ai-translator.php',
+            __DIR__ . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'ai-translator.php',
             'ai-translator'
         );
 
@@ -28,22 +28,26 @@ class LaravelAiTranslatorServiceProvider extends ServiceProvider
     }
 
     public function boot(): void
+
     {
         $this->loadTranslationsFrom(
-            __DIR__.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'resources'.DIRECTORY_SEPARATOR.'lang',
+            __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'lang',
             'ai-translator'
         );
 
         $this->publishes([
-            __DIR__.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'ai-translator.php' => config_path('ai-translator.php'),
+            __DIR__ . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'ai-translator.php' => config_path('ai-translator.php'),
         ], 'ai-translator-config');
+        $this->publishes([
+            __DIR__ . '/../resources/images' => public_path('vendor/ai-translator'),
+        ], 'ai-translator-assets');
 
         $this->loadRoutesFrom(
-            __DIR__.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'routes'.DIRECTORY_SEPARATOR.'web.php'
+            __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'routes' . DIRECTORY_SEPARATOR . 'web.php'
         );
 
         $this->loadViewsFrom(
-            __DIR__.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'resources'.DIRECTORY_SEPARATOR.'views',
+            __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'views',
             'ai-translator'
         );
 
