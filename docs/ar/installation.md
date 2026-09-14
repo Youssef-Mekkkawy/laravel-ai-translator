@@ -2,9 +2,9 @@
 
 ## المتطلبات
 
-- PHP **8.2** أو أعلى
-- Laravel **10 أو 11 أو 12 أو 13**
-- [Ollama](https://ollama.com) (للترجمة المجانية المحلية — اختياري مع مزودي السحابة)
+- PHP **8.2** أو أحدث
+- لارافيل **10 أو 11 أو 12 أو 13**
+- [Ollama](https://ollama.com) (للترجمة المحلية المجانية — اختياري إذا كنت تستخدم مزودي الخدمة السحابيين)
 
 ## تثبيت الحزمة
 
@@ -18,25 +18,25 @@ composer require youssef-mekkkawy/laravel-ai-translator
 php artisan ai-translator:install
 ```
 
-سيقوم المعالج بـ:
+سيقوم المعالج بما يلي:
 
-1. **نشر ملف الإعداد** إلى `config/ai-translator.php`
-2. **اكتشاف Stack الخاص بك** (Blade أو Livewire أو Inertia + Vue/React)
-3. **اختيار مزود الذكاء الاصطناعي** الذي تريد استخدامه
-4. **اختيار اللغات** للترجمة إليها
-5. **تحديث `.env`** بالإعدادات الصحيحة
-6. **التحقق من Ollama** (إذا تم اختياره)
-7. **إنشاء ملفات اللغة المصدر** من views الخاصة بك
+1. **نشر ملف الإعدادات** إلى `config/ai-translator.php`
+2. **اكتشاف الحزمة التقنية** المستخدمة (Blade أو Livewire أو Inertia مع Vue/React)
+3. **سؤالك عن مزود الذكاء الاصطناعي** الذي تريد استخدامه
+4. **سؤالك عن اللغات** التي تريد الترجمة إليها
+5. **تحديث ملف `.env`** بالإعدادات الصحيحة
+6. **التحقق من تشغيل Ollama** (إذا تم اختياره)
+7. **توليد ملفات اللغة المصدر** من الـ views الخاصة بك
 
-## إعداد Ollama (مزود مجاني)
+## إعداد Ollama (المزود المجاني)
 
-إذا اخترت Ollama، قم بتثبيته من [ollama.com](https://ollama.com) وسحب نموذج:
+إذا اخترت Ollama، قم بتثبيته من [ollama.com](https://ollama.com) ثم اسحب نموذجًا:
 
 ```bash
 ollama pull llama3.2
 ```
 
-أو لجودة متعددة اللغات أفضل:
+أو للحصول على جودة أفضل في دعم اللغات المتعددة:
 
 ```bash
 ollama pull aya-expanse:8b
@@ -50,4 +50,22 @@ ollama pull aya-expanse:8b
 http://your-app.test/ai-translator
 ```
 
-يجب أن ترى لوحة التحكم مع إحصائيات الترجمة.
+يجب أن تشاهد لوحة التحكم مع إحصاءات ترجمة تطبيقك.
+
+## الإعداد اليدوي
+
+إذا كنت تفضل الإعداد يدويًا، انشر ملف الإعدادات:
+
+```bash
+php artisan vendor:publish --tag=ai-translator-config
+```
+
+ثم أضف إلى ملف `.env`:
+
+```env
+AUTO_TRANSLATE_DRIVER=ollama
+SUPPORTED_LANGUAGES=en,ar,fr,es
+DEFAULT_LANGUAGE=en
+OLLAMA_MODEL=llama3.2
+OLLAMA_API_URL=http://localhost:11434
+```
