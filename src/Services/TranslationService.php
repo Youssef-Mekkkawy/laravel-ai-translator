@@ -48,6 +48,10 @@ class TranslationService
         $this->jsonWriter = new JsonLanguageWriter;
         $this->config = $config;
     }
+    public function getTranslatorManager(): TranslatorManager
+    {
+        return $this->translatorManager;
+    }
 
     public function translateAll(array $targetLanguages, bool $force = false, bool $dryRun = false): array
     {
@@ -62,7 +66,7 @@ class TranslationService
 
         if (! empty($runtimePaths)) {
             $scanner = new ViewScanner(
-                array_filter((array) $runtimePaths, fn ($p) => is_dir($p)),
+                array_filter((array) $runtimePaths, fn($p) => is_dir($p)),
                 null,
                 $runtimeExts
             );
@@ -391,7 +395,7 @@ class TranslationService
 
     protected function loadSourceTranslations(string $sourceLang): array
     {
-        $langPath = base_path('lang').DIRECTORY_SEPARATOR.$sourceLang;
+        $langPath = base_path('lang') . DIRECTORY_SEPARATOR . $sourceLang;
         $translations = [];
 
         if (File::exists($langPath)) {
