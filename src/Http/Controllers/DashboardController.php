@@ -42,8 +42,8 @@ abstract class DashboardController extends Controller
     {
         $dashLang = request()->cookie('dashboard_lang', 'en');
         $pkgPath = app('ai-translator.package_path');
-        $langFile = $pkgPath . '/resources/lang/' . $dashLang . '/dashboard.php';
-        $enFile = $pkgPath . '/resources/lang/en/dashboard.php';
+        $langFile = $pkgPath.'/resources/lang/'.$dashLang.'/dashboard.php';
+        $enFile = $pkgPath.'/resources/lang/en/dashboard.php';
 
         $trans = [];
         if (file_exists($langFile)) {
@@ -69,7 +69,7 @@ abstract class DashboardController extends Controller
 
     protected function getPackageVersion(): string
     {
-        $composerJson = app('ai-translator.package_path') . '/composer.json';
+        $composerJson = app('ai-translator.package_path').'/composer.json';
         if (file_exists($composerJson)) {
             $composer = json_decode(file_get_contents($composerJson), true);
 
@@ -78,12 +78,14 @@ abstract class DashboardController extends Controller
 
         return '1.0.0';
     }
+
     protected function getLogoBase64(): string
     {
-        $path = app('ai-translator.package_path') . '/resources/images/logo-icon.png';
+        $path = app('ai-translator.package_path').'/resources/images/logo-icon.png';
         if (file_exists($path)) {
-            return 'data:image/png;base64,' . base64_encode(file_get_contents($path));
+            return 'data:image/png;base64,'.base64_encode(file_get_contents($path));
         }
+
         return '';
     }
 }

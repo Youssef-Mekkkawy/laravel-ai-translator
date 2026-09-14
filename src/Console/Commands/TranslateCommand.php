@@ -35,7 +35,7 @@ class TranslateCommand extends Command
         try {
             $this->initializeServices();
         } catch (\Throwable $e) {
-            $this->error('Failed to initialise services: ' . $e->getMessage());
+            $this->error('Failed to initialise services: '.$e->getMessage());
 
             return self::FAILURE;
         }
@@ -61,11 +61,11 @@ class TranslateCommand extends Command
         }
 
         $this->line("  Total Characters : <fg=cyan>{$totalChars}</>");
-        $this->line('  Estimated Cost   : <fg=cyan>$' . number_format($estimatedCost, 4) . '</>');
+        $this->line('  Estimated Cost   : <fg=cyan>$'.number_format($estimatedCost, 4).'</>');
         $this->newLine();
 
         if (! empty($targetLanguages)) {
-            $this->line('  Target languages : ' . implode(', ', $targetLanguages));
+            $this->line('  Target languages : '.implode(', ', $targetLanguages));
             $this->newLine();
         }
 
@@ -78,7 +78,7 @@ class TranslateCommand extends Command
         // ── Provider availability check ───────────────────────────────────
         try {
             $translator = $this->translationService->getTranslatorManager()->translator();
-            if (method_exists($translator, 'isAvailable') && !$translator->isAvailable()) {
+            if (method_exists($translator, 'isAvailable') && ! $translator->isAvailable()) {
                 $providerName = ucfirst($translator->getName());
                 $this->newLine();
                 $this->error("❌  {$providerName} is not running or not reachable.");
@@ -95,6 +95,7 @@ class TranslateCommand extends Command
                 }
 
                 $this->newLine();
+
                 return self::FAILURE;
             }
         } catch (\Throwable $e) {
@@ -127,7 +128,7 @@ class TranslateCommand extends Command
                     if (! is_dir($langPath)) {
                         continue;
                     }
-                    foreach (glob($langPath . DIRECTORY_SEPARATOR . '*.php') ?: [] as $file) {
+                    foreach (glob($langPath.DIRECTORY_SEPARATOR.'*.php') ?: [] as $file) {
                         $group = pathinfo($file, PATHINFO_FILENAME);
                         $data = @include $file;
                         if (! is_array($data)) {
@@ -136,7 +137,7 @@ class TranslateCommand extends Command
                         foreach ($data as $key => $value) {
                             $changes[] = [
                                 'lang' => strtoupper($lang),
-                                'key' => $group . '.' . $key,
+                                'key' => $group.'.'.$key,
                                 'value' => is_string($value) ? $value : '',
                                 'tag' => 'new',
                             ];
@@ -149,7 +150,7 @@ class TranslateCommand extends Command
                 $provider = $runtime->get('driver', config('ai-translator.driver', 'ollama'));
                 $model = $runtime->get(
                     'ollama_model',
-                    config('ai-translator.providers.' . $provider . '.model', '')
+                    config('ai-translator.providers.'.$provider.'.model', '')
                 );
 
                 $meta = new MetadataManager($metaFile);
@@ -161,7 +162,7 @@ class TranslateCommand extends Command
                     'skipped' => $results['skipped_unchanged'] ?? 0,
                     'locked' => $results['locked_keys'] ?? 0,
                     'files_written' => array_map(
-                        fn($f) => str_replace(base_path() . DIRECTORY_SEPARATOR, '', $f),
+                        fn ($f) => str_replace(base_path().DIRECTORY_SEPARATOR, '', $f),
                         $results['files_written'] ?? []
                     ),
                     'changes' => $changes,
@@ -176,7 +177,7 @@ class TranslateCommand extends Command
                 // Never let history recording break the translation
             }
         } catch (\Throwable $e) {
-            $this->error('Translation failed: ' . $e->getMessage());
+            $this->error('Translation failed: '.$e->getMessage());
 
             return self::FAILURE;
         }
@@ -186,16 +187,16 @@ class TranslateCommand extends Command
         $this->info('═══════════════════════════════════════');
         $this->newLine();
 
-        $this->line('  Total keys       : ' . ($results['total_keys'] ?? 0));
-        $this->line('  Languages done   : ' . ($results['languages_processed'] ?? 0));
-        $this->line('  Skipped (exist)  : ' . ($results['skipped_unchanged'] ?? 0));
-        $this->line('  Locked (skipped) : ' . ($results['locked_keys'] ?? 0));
+        $this->line('  Total keys       : '.($results['total_keys'] ?? 0));
+        $this->line('  Languages done   : '.($results['languages_processed'] ?? 0));
+        $this->line('  Skipped (exist)  : '.($results['skipped_unchanged'] ?? 0));
+        $this->line('  Locked (skipped) : '.($results['locked_keys'] ?? 0));
 
         if (! empty($results['files_written'])) {
             $this->newLine();
             $this->info('📁 Files written:');
             foreach ($results['files_written'] as $file) {
-                $this->line('  ✔ ' . str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file));
+                $this->line('  ✔ '.str_replace(base_path().DIRECTORY_SEPARATOR, '', $file));
             }
         }
 
@@ -210,7 +211,7 @@ class TranslateCommand extends Command
         $this->newLine();
 
         if (($results['skipped_unchanged'] ?? 0) > 0) {
-            $this->info('💰 Change tracking saved API costs by skipping ' . $results['skipped_unchanged'] . ' unchanged key(s)!');
+            $this->info('💰 Change tracking saved API costs by skipping '.$results['skipped_unchanged'].' unchanged key(s)!');
         }
 
         $this->info("💡 Run 'php artisan lang:scan' to review your translations.");
@@ -227,7 +228,7 @@ class TranslateCommand extends Command
         $runtime = new RuntimeConfig;
         $scanPaths = $runtime->get('scan_paths', $config['scan_paths'] ?? [resource_path('views')]);
         $scanExts = $runtime->get('scan_extensions', ['blade.php']);
-        $scanPaths = array_filter((array) $scanPaths, fn($p) => is_dir($p));
+        $scanPaths = array_filter((array) $scanPaths, fn ($p) => is_dir($p));
 
         $scanner = new ViewScanner(array_values($scanPaths), null, $scanExts);
         $extractor = new KeyExtractor;
@@ -291,6 +292,6 @@ class TranslateCommand extends Command
             return [$specificLang];
         }
 
-        return array_values(array_filter($all, fn($lang) => $lang !== $sourceLang));
+        return array_values(array_filter($all, fn ($lang) => $lang !== $sourceLang));
     }
 }
