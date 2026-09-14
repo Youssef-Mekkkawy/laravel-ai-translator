@@ -1,22 +1,57 @@
-:root[dir="rtl"] .VPSidebar {
-    left: auto !important;
-    right: 0 !important;
+/* ── RTL layout fixes for Arabic locale ─────────────────────────── */
+
+/* Move sidebar to the right */
+[dir="rtl"] .VPSidebar {
+  left: unset !important;
+  right: 0 !important;
 }
 
-:root[dir="rtl"] .VPContent {
-    margin-left: 0 !important;
-    margin-right: var(--vp-sidebar-width) !important;
+/* Shift content away from right sidebar */
+@media (min-width: 960px) {
+  [dir="rtl"] .VPContent.has-sidebar {
+    padding-left: 32px !important;
+    padding-right: calc(var(--vp-sidebar-width) + 32px) !important;
+  }
 }
 
-:root[dir="rtl"] .VPNav {
-    direction: rtl;
+/* Flip nav items */
+[dir="rtl"] .VPNavBar .content-body {
+  flex-direction: row-reverse;
 }
 
-:root[dir="rtl"] .VPSidebarItem .text {
-    text-align: right;
+/* Sidebar text alignment */
+[dir="rtl"] .VPSidebarItem .text {
+  text-align: right;
 }
 
-:root[dir="rtl"] .VPDocAside {
+/* Sidebar group titles */
+[dir="rtl"] .VPSidebarItem.level-0 > .item .text {
+  text-align: right;
+}
+
+/* Sidebar item indent — flip for RTL */
+[dir="rtl"] .VPSidebarItem.level-1 > .item {
+  padding-left: 0;
+  padding-right: 16px;
+}
+
+/* "On this page" aside — move to left for RTL */
+@media (min-width: 1280px) {
+  [dir="rtl"] .VPDocAside {
     left: 0 !important;
-    right: auto !important;
+    right: unset !important;
+  }
+
+  [dir="rtl"] .VPContent.has-sidebar.has-aside {
+    padding-left: calc(var(--vp-aside-width) + 32px) !important;
+  }
+}
+
+/* Doc footer nav — flip arrows */
+[dir="rtl"] .pager-link .desc::before {
+  content: '→';
+}
+
+[dir="rtl"] .pager-link.next .desc::before {
+  content: '←';
 }

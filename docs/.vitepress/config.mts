@@ -23,7 +23,7 @@ export default defineConfig({
       { text: 'Dashboard', link: '/dashboard' },
       { text: 'Config', link: '/configuration' },
       {
-        text: 'v1.0.13',
+        text: 'v1.0.12',
         items: [
           { text: 'Changelog', link: 'https://github.com/Youssef-Mekkkawy/laravel-ai-translator/releases' },
           { text: 'GitHub', link: 'https://github.com/Youssef-Mekkkawy/laravel-ai-translator' },
