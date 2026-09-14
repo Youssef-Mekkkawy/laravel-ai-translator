@@ -77,7 +77,7 @@ class TranslateCommand extends Command
         }
         // ── Provider availability check ───────────────────────────────────
         // Skip in test environment — tests mock translation, Ollama is not running in CI
-        if (!app()->runningUnitTests()) {
+        if (! app()->runningUnitTests()) {
             try {
                 $translator = $this->translationService->getTranslatorManager()->translator();
                 if (method_exists($translator, 'isAvailable') && ! $translator->isAvailable()) {
