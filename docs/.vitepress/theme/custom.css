@@ -1,0 +1,22 @@
+:root[dir="rtl"] .VPSidebar {
+    left: auto !important;
+    right: 0 !important;
+}
+
+:root[dir="rtl"] .VPContent {
+    margin-left: 0 !important;
+    margin-right: var(--vp-sidebar-width) !important;
+}
+
+:root[dir="rtl"] .VPNav {
+    direction: rtl;
+}
+
+:root[dir="rtl"] .VPSidebarItem .text {
+    text-align: right;
+}
+
+:root[dir="rtl"] .VPDocAside {
+    left: 0 !important;
+    right: auto !important;
+}
