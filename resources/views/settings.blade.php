@@ -1,287 +1,117 @@
 @extends('ai-translator::layout')
 @section('title', '{{ $_trans["settings"] ?? "Settings" }}')
-
 @section('content')
-@php
-
-    $d        = $driver;
-    $provs    = config('ai-translator.providers', []);
-    $curModel = $ollamaModel;
-    $tr       = $_trans ?? [];
-@endphp
-
-<div x-data="settingsPage()" style="display:flex;flex-direction:column;gap:16px">
-
-  {{-- AI Provider --}}
-  <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:20px">
-    <div style="font-size:13px;font-weight:600;margin-bottom:6px">{{ $tr['active_provider'] ?? 'AI provider' }}</div>
-    <div style="font-size:12px;color:#5C6678;margin-bottom:16px">{{ $tr['settings_sub'] ?? 'Provider, models and behaviour' }}</div>
-
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
-      @foreach(['ollama'=>['Ollama','local · free', false],'deepl'=>['DeepL','classic MT', true],'claude'=>['Claude','anthropic', true],'openai'=>['ChatGPT','openai', true],'gemini'=>['Gemini','google', true]] as $id=>[$name,$sub,$soon])
-      <button @click="switchProvider('{{ $id }}')"
-        :style="provider==='{{ $id }}' ? 'padding:13px 14px;border-radius:11px;cursor:pointer;border:1px solid #6EE7B7;background:rgba(110,231,183,.07);text-align:start;min-width:110px;position:relative' : 'padding:13px 14px;border-radius:11px;cursor:pointer;border:1px solid #1B2130;background:#0D111A;text-align:start;min-width:110px;position:relative'">
-        <div style="font-weight:600;font-size:13px;color:#E6E9EF">{{ $name }}</div>
-        <div style="font-size:11px;color:#5C6678;margin-top:2px">{{ $sub }}</div>
-        @if($soon)
-        <span style="position:absolute;top:6px;right:6px;padding:2px 6px;border-radius:4px;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);color:#FBBF24;font-size:9px;font-weight:700;letter-spacing:.5px">SOON</span>
-        @endif
-      </button>
-      @endforeach
-    </div>
-
-    {{-- Ollama --}}
-    <div x-show="provider === 'ollama'" style="display:flex;flex-direction:column;gap:14px">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span :style="ollamaUp ? 'display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;color:#6EE7B7;background:rgba(110,231,183,.1);border:1px solid rgba(110,231,183,.25)' : 'display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;color:#F87171;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25)'">
-          <span :style="'width:6px;height:6px;border-radius:50%;background:' + (ollamaTesting ? '#FBBF24' : (ollamaUp ? '#6EE7B7' : '#F87171'))"></span>
-          <span x-text="ollamaTesting ? 'Checking...' : (ollamaUp ? '{{ addslashes($tr['connected'] ?? 'Connected') }}' : 'Not running')"></span>
-        </span>
-        <button @click="testOllama()" style="display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:9px;border:1px solid #2B3446;background:#161C27;color:#8B93A5;font-size:12px;cursor:pointer">
-          {{ $tr['test_connection'] ?? 'Test connection' }}
-        </button>
-        <button x-show="!ollamaUp" @click="startOllama()"
-          :disabled="ollamaStarting"
-          style="display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:9px;border:1px solid #6EE7B7;background:rgba(110,231,183,.1);color:#6EE7B7;font-size:12px;cursor:pointer;font-weight:600">
-          <span x-show="ollamaStarting" style="width:10px;height:10px;border-radius:50%;border:2px solid rgba(110,231,183,.3);border-top-color:#6EE7B7;animation:spin .8s linear infinite;display:inline-block"></span>
-          <span x-text="ollamaStarting ? 'Starting...' : 'Start Ollama'"></span>
-        </button>
-      </div>
-
-      <div x-show="ollamaPulling" style="padding:10px 14px;border-radius:10px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);font-size:12.5px;color:#FBBF24">
-        ⬇ Model is downloading in the background. This may take a few minutes. The page will refresh automatically when ready.
-      </div>
-
-      <div x-show="ollamaMsg" x-text="ollamaMsg" style="font-size:12.5px;color:#6EE7B7"></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+  @php
+    $d = $driver;
+    $tr = $_trans ?? [];
+    $backupKeep = (int) config('ai-translator.backup.keep', 5);
+    $backupAuto = (bool) config('ai-translator.backup.auto', true);
+    $providerMeta = ['ollama' => ['Ollama', 'Local · free'], 'claude' => ['Claude', 'Anthropic'], 'openai' => ['ChatGPT', 'OpenAI'], 'gemini' => ['Gemini', 'Google'], 'deepl' => ['DeepL', 'Translation API']];
+  @endphp
+  <div x-data="settingsPage()" class="page-stack">
+    <section class="page-intro glass--strong">
+      <div class="page-hero-row">
         <div>
-          <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">API URL</label>
-          <input x-model="ollamaUrl" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;direction:ltr">
+          <p class="page-intro-title">{{ $tr['settings'] ?? 'Settings' }}</p>
+          <p class="page-intro-sub">{{ $tr['settings_sub'] ?? 'Provider credentials and translation behaviour.' }}</p>
+        </div><button class="btn btn--primary" @click="save()" :disabled="saving"><svg class="icon" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10l6 6v10a2 2 0 0 1-2 2Z" />
+            <path d="M17 21v-8H7v8" />
+            <path d="M7 3v5h8" />
+          </svg><span
+            x-text="saving?'{{ addslashes($tr['saving'] ?? 'Saving…') }}':'{{ addslashes($tr['save'] ?? 'Save changes') }}'"></span></button>
+      </div>
+      <div x-show="resultMsg" x-text="resultMsg" class="page-message"
+        :class="resultOk?'page-message--ok':'page-message--err'"></div>
+    </section>
+
+    <section class="settings-layout">
+      <div class="settings-section glass">
+        <div class="settings-section-head">
+          <h2 class="settings-section-title">{{ $tr['active_provider'] ?? 'AI provider' }}</h2>
         </div>
-        <div>
-          <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">
-            {{ $tr['model'] ?? 'Model' }}
-            <span x-show="ollamaModelsLoading" style="margin-inline-start:6px;color:#5C6678">({{ $tr['saving'] ?? 'loading...' }})</span>
-          </label>
-          <select x-model="model" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
-            <option x-show="ollamaModels.length === 0" value="" x-text="ollamaModelsLoading ? '{{ addslashes($tr['saving'] ?? 'Loading...') }}' : 'No models found'"></option>
-            <template x-for="m in ollamaModels" :key="m"><option :value="m" x-text="m"></option></template>
-          </select>
+        <div class="provider-grid">
+          @foreach($providerMeta as $id => $meta)
+            <button type="button" class="provider-option" :class="provider==='{{ $id }}'?'is-selected':''"
+              @click="switchProvider('{{ $id }}')">
+              <p class="provider-name">{{ $meta[0] }}</p>
+              <p class="provider-meta">{{ $meta[1] }}</p>
+            </button>
+          @endforeach
         </div>
-      </div>
-    </div>
 
-    {{-- Cloud provider --}}
-    <div x-show="provider !== 'ollama'" style="display:flex;flex-direction:column;gap:14px">
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2)">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round"><path d="M12 8v5"/><path d="M12 17h.01"/><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-        <span style="font-size:12.5px;color:#FBBF24">{{ $tr['coming_soon_provider'] ?? 'This provider is coming soon. You can save your API key now and it will be used when support is added.' }}</span>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
-        <div>
-          <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $tr['api_key'] ?? 'API key' }}</label>
-          <input type="password" x-model="apiKey" placeholder="••••••••••••••••••••"
-            style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
-          <div style="font-size:11px;color:#5C6678;margin-top:6px">{{ $tr['api_key_hint'] ?? 'Stored in your .env — never in the database.' }}</div>
+        <div class="provider-status" x-show="provider==='ollama'"><span class="status-dot"></span><span class="badge"
+            :style="ollamaUp?'background:color-mix(in oklab,var(--mint) 25%,transparent);color:var(--mint-strong)':'background:color-mix(in oklab,var(--coral) 18%,transparent);color:var(--coral-strong)'"
+            x-text="ollamaTesting?'Checking…':(ollamaUp?'{{ addslashes($tr['connected'] ?? 'Connected') }}':'Not running')"></span><button
+            class="table-btn" @click="testOllama()">{{ $tr['test_connection'] ?? 'Test connection' }}</button><button
+            class="table-btn" x-show="!ollamaUp" @click="startOllama()" :disabled="ollamaStarting"
+            x-text="ollamaStarting?'Starting…':'Start Ollama'"></button></div>
+        <div x-show="ollamaPulling" class="page-message page-message--warn">Model is downloading in the background. The
+          page will refresh when ready.</div>
+        <p x-show="ollamaMsg" x-text="ollamaMsg" style="margin-top:.75rem;font-size:.75rem;color:var(--mint-strong)"></p>
+
+        <div class="form-grid two" x-show="provider!=='ollama'">
+          <div class="form-field"><label class="form-label">API key</label><input class="form-input" type="password"
+              x-model="apiKey" placeholder="sk-•••••••••••••" dir="ltr"></div>
+          <div class="form-field"><label class="form-label">Model</label><select class="form-select"
+              x-model="model"><template x-for="m in availableModels" :key="m">
+                <option :value="m" x-text="m"></option>
+              </template></select></div>
         </div>
-        <div>
-          <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $tr['model'] ?? 'Model' }}</label>
-          <select x-model="model" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
-            <template x-for="m in availableModels" :key="m"><option :value="m" x-text="m"></option></template>
-          </select>
+        <div class="form-grid two" x-show="provider==='ollama'">
+          <div class="form-field"><label class="form-label">{{ $tr['api_url'] ?? 'API URL' }}</label><input
+              class="form-input" x-model="ollamaUrl" dir="ltr"></div>
+          <div class="form-field"><label class="form-label">{{ $tr['model'] ?? 'Model' }}</label><select class="form-select"
+              x-model="model">
+              <option value="" x-show="ollamaModels.length===0" x-text="ollamaModelsLoading?'Loading…':'No models found'">
+              </option><template x-for="m in ollamaModels" :key="m">
+                <option :value="m" x-text="m"></option>
+              </template>
+            </select></div>
         </div>
       </div>
-    </div>
+
+      <div class="settings-section glass">
+        <div class="settings-section-head">
+          <h2 class="settings-section-title">{{ $tr['translate'] ?? 'Translation behaviour' }}</h2>
+        </div>
+        <div class="form-grid two">
+          <div class="form-field"><label class="form-label">{{ $tr['source_language'] ?? 'Source language' }}</label><select
+              class="form-select" x-model="sourceLang" dir="ltr">
+              <option value="en">English (en)</option>
+              <option value="ar">Arabic (ar)</option>
+              <option value="fr">French (fr)</option>
+              <option value="es">Spanish (es)</option>
+              <option value="de">German (de)</option>
+            </select></div>
+          <div class="form-field"><label class="form-label">{{ $tr['chunk_size'] ?? 'Chunk size' }}</label><input
+              class="form-input" type="number" x-model.number="chunk" min="1">
+            <p class="form-help">{{ $tr['chunk_help'] ?? 'Keys sent per request.' }}</p>
+          </div>
+          <div class="form-field" style="grid-column:1/-1"><label
+              class="form-label">{{ $tr['context'] ?? 'Context' }}</label><textarea class="form-textarea" x-model="context"
+              rows="5"></textarea>
+            <p class="form-help">{{ $tr['context_hint_short'] ?? 'Extra instructions passed with every request.' }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </div>
-
-  {{-- Translation behaviour --}}
-  <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;padding:20px">
-    <div style="font-size:13px;font-weight:600;margin-bottom:16px">{{ $tr['translate'] ?? 'Translation behaviour' }}</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
-      <div>
-        <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $tr['source_language'] ?? 'Source language' }}</label>
-        <select x-model="sourceLang" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
-          <option value="en">English (en)</option>
-          <option value="ar">Arabic (ar)</option>
-          <option value="fr">French (fr)</option>
-          <option value="es">Spanish (es)</option>
-          <option value="de">German (de)</option>
-        </select>
-      </div>
-      <div>
-        <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px" x-text="'Chunk · ' + chunk + ' {{ addslashes($tr['keys'] ?? 'keys') }}'"></label>
-        <input type="range" x-model="chunk" min="5" max="100" step="5" style="width:100%;accent-color:#6EE7B7">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#5C6678;margin-top:4px"><span>5</span><span>100</span></div>
-      </div>
-    </div>
-    <div style="margin-top:14px">
-      <label style="display:block;font-size:12px;color:#8B93A5;margin-bottom:7px">{{ $tr['context'] ?? 'Context prompt' }} <span style="color:#5C6678">({{ $tr['reason_optional'] ?? 'optional' }})</span></label>
-      <textarea x-model="context" rows="3"
-        placeholder="{{ $tr['context_hint'] ?? 'e.g. This is an e-commerce app. Keep translations formal.' }}"
-        style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
-    </div>
-  </div>
-
-  {{-- Save --}}
-  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <button @click="save()" :disabled="saving"
-      style="padding:10px 20px;border-radius:10px;border:1px solid #6EE7B7;background:#6EE7B7;color:#062A20;font-size:13px;font-weight:600;cursor:pointer">
-      <span x-show="saving" style="display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid rgba(6,42,32,.3);border-top-color:#062A20;animation:spin .8s linear infinite;margin-inline-end:6px"></span>
-      <span x-text="saving ? '{{ addslashes($tr['saving'] ?? 'Saving...') }}' : '{{ addslashes($tr['save'] ?? 'Save changes') }}'"></span>
-    </button>
-    <button style="padding:10px 18px;border-radius:10px;border:1px solid #2B3446;background:transparent;color:#8B93A5;font-size:13px;cursor:pointer">{{ $tr['reset'] ?? 'Reset to defaults' }}</button>
-    <span x-show="resultMsg" x-text="resultMsg" :style="resultOk ? 'font-size:13px;color:#6EE7B7' : 'font-size:13px;color:#F87171'"></span>
-  </div>
-
-</div>
-
-<script>
-function settingsPage() {
-  return {
-    {{-- FIX: initialize from PHP variables passed by SettingsController (RuntimeConfig values) --}}
-    {{-- Previously these called config() directly, always showing stale static config values --}}
-    provider:  '{{ $driver }}',
-    apiKey:    '',
-    model:     '{{ $ollamaModel }}',
-    sourceLang:'{{ $sourceLang }}',
-    chunk:     {{ $chunkSize }},
-    context:   '{{ addslashes($context) }}',
-    ollamaUrl: '{{ $ollamaUrl }}',
-    ollamaUp:  false, ollamaTesting: false, ollamaStarting: false, ollamaPulling: false, ollamaMsg: '',
-    saving: false, resultMsg: '', resultOk: true,
-    ollamaModels: [], ollamaModelsLoading: false,
-
-    get availableModels() {
-      const m = { claude:['claude-sonnet-4-5','claude-3-5-sonnet-20241022','claude-3-haiku-20240307'], openai:['gpt-4o','gpt-4o-mini','gpt-4-turbo'], gemini:['gemini-1.5-pro','gemini-1.5-flash'], deepl:['default'] };
-      return m[this.provider] || [];
-    },
-
-    async init() {
-      if (this.provider === 'ollama') {
-        await this.testOllama();
-
-        @if(config('ai-translator.providers.ollama.auto_start', false))
-        if (!this.ollamaUp) {
-          this.startOllama();
-        }
-        @endif
+  <script>
+    function settingsPage() {
+      return {
+        provider: @json($driver), apiKey: '', model: @json($ollamaModel), sourceLang: @json($sourceLang), chunk: @json($chunkSize), context: @json($context), ollamaUrl: @json($ollamaUrl),
+        backupKeep:{{ $backupKeep }}, backupAuto:{{ $backupAuto ? 'true' : 'false' }}, ollamaUp: false, ollamaTesting: false, ollamaStarting: false, ollamaPulling: false, ollamaMsg: '', saving: false, resultMsg: '', resultOk: true, ollamaModels: [], ollamaModelsLoading: false,
+        get availableModels() { const m = { claude: ['claude-sonnet-4-5', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'], openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'], gemini: ['gemini-1.5-pro', 'gemini-1.5-flash'], deepl: ['default'] }; return m[this.provider] || [] },
+        async init() { if (this.provider === 'ollama') await this.testOllama(); },
+        switchProvider(p) { this.provider = p; if (p === 'ollama') { this.fetchOllamaModels(); this.testOllama() } else if (this.availableModels.length) this.model = this.availableModels[0] },
+        async startOllama() { this.ollamaStarting = true; this.ollamaMsg = ''; try { await fetch('{{ url("ai-translator/api/ollama/start") }}', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }, body: JSON.stringify({}) }).then(r => r.json()); this.ollamaMsg = 'Starting Ollama…'; let attempts = 0; const poll = setInterval(async () => { attempts++; const s = await fetch('{{ url("ai-translator/api/ollama/status") }}').then(r => r.json()); if (s.success && s.data?.running) { clearInterval(poll); this.ollamaUp = true; this.ollamaStarting = false; if (!s.data?.hasModel) { this.ollamaPulling = true; this.ollamaMsg = 'Ollama started. Model is downloading in background.' } else { this.ollamaMsg = 'Ollama started successfully!'; await this.fetchOllamaModels(); setTimeout(() => this.ollamaMsg = '', 4000) } } else if (attempts >= 15) { clearInterval(poll); this.ollamaStarting = false; this.ollamaMsg = 'Could not start Ollama.' } }, 2000) } catch (e) { this.ollamaStarting = false; this.ollamaMsg = 'Error: ' + e.message } },
+        async testOllama() { this.ollamaTesting = true; try { const r = await fetch('{{ url("ai-translator/api/ollama/status") }}').then(r => r.json()); this.ollamaUp = r.success && r.data?.running; if (this.ollamaUp && r.data?.models?.length) { this.ollamaModels = r.data.models; if (!this.ollamaModels.includes(this.model)) this.model = this.ollamaModels[0] } } catch { this.ollamaUp = false } this.ollamaTesting = false },
+        async fetchOllamaModels() { this.ollamaModelsLoading = true; try { const r = await fetch('{{ url("ai-translator/api/ollama/status") }}').then(r => r.json()); if (r.success && r.data?.models?.length) { this.ollamaModels = r.data.models; if (!this.ollamaModels.includes(this.model)) this.model = this.ollamaModels[0]; this.ollamaUp = true } } catch { } this.ollamaModelsLoading = false },
+        async save() { this.saving = true; this.resultMsg = ''; try { const payload = { driver: this.provider, source_lang: this.sourceLang, chunk_size: this.chunk, context: this.context, ollama_url: this.ollamaUrl, ollama_model: this.provider === 'ollama' ? this.model : null, backup_keep: parseInt(this.backupKeep), backup_auto: this.backupAuto }; if (this.provider === 'deepl') payload.deepl_key = this.apiKey; if (this.provider === 'claude') payload.claude_key = this.apiKey; if (this.provider === 'openai') payload.openai_key = this.apiKey; if (this.provider === 'gemini') payload.gemini_key = this.apiKey; const r = await fetch('{{ url("ai-translator/api/settings") }}', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }, body: JSON.stringify(payload) }).then(r => r.json()); this.resultOk = !!r.success; this.resultMsg = r.message || (r.success ? 'Saved.' : 'Error saving.'); setTimeout(() => this.resultMsg = '', 4000) } catch (e) { this.resultOk = false; this.resultMsg = 'Error: ' + e.message } this.saving = false }
       }
-    },
-
-    switchProvider(p) {
-      this.provider = p;
-      if (p === 'ollama') {
-        this.fetchOllamaModels();
-        this.testOllama();
-      } else if (this.availableModels.length) {
-        this.model = this.availableModels[0];
-      }
-    },
-
-    async startOllama() {
-      this.ollamaStarting = true;
-      this.ollamaMsg      = '';
-      try {
-        await fetch('{{ url("ai-translator/api/ollama/start") }}', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-          },
-          body: JSON.stringify({}),
-        }).then(r => r.json());
-
-        this.ollamaMsg = 'Starting Ollama...';
-
-        let attempts = 0;
-        const poll = setInterval(async () => {
-          attempts++;
-          const s = await fetch('{{ url("ai-translator/api/ollama/status") }}').then(r => r.json());
-
-          if (s.success && s.data?.running) {
-            clearInterval(poll);
-            this.ollamaUp       = true;
-            this.ollamaStarting = false;
-
-            if (!s.data?.hasModel) {
-              // FIX: removed fetch to /api/ollama/pull (route didn't exist).
-              // start() already calls pullModelBackground() when it detects a missing model.
-              // We just set the pulling state and keep polling status.
-              this.ollamaPulling = true;
-              this.ollamaMsg     = 'Ollama started! Model is downloading in background. Come back in a few minutes.';
-            } else {
-              this.ollamaMsg = 'Ollama started successfully!';
-              await this.fetchOllamaModels();
-              setTimeout(() => { this.ollamaMsg = ''; }, 4000);
-            }
-          } else if (s.success && s.data?.running && s.data?.hasModel && this.ollamaPulling) {
-            // Model finished downloading
-            clearInterval(poll);
-            this.ollamaPulling  = false;
-            this.ollamaStarting = false;
-            this.ollamaUp       = true;
-            await this.fetchOllamaModels();
-            this.ollamaMsg = 'Model ready!';
-            setTimeout(() => { this.ollamaMsg = ''; }, 3000);
-          } else if (attempts >= 15) {
-            clearInterval(poll);
-            this.ollamaStarting = false;
-            this.ollamaMsg = 'Could not start Ollama. Make sure it is installed at ollama.com';
-          }
-        }, 2000);
-
-      } catch (e) {
-        this.ollamaStarting = false;
-        this.ollamaMsg = 'Error: ' + e.message;
-      }
-    },
-
-    async testOllama() {
-      this.ollamaTesting = true;
-      try {
-        const r = await fetch('{{ url("ai-translator/api/ollama/status") }}').then(r => r.json());
-        this.ollamaUp = r.success && r.data?.running;
-        if (this.ollamaUp && r.data?.models?.length) {
-          this.ollamaModels = r.data.models;
-          if (!this.ollamaModels.includes(this.model)) this.model = this.ollamaModels[0];
-        }
-      } catch { this.ollamaUp = false; }
-      this.ollamaTesting = false;
-    },
-
-    async fetchOllamaModels() {
-      this.ollamaModelsLoading = true;
-      try {
-        const r = await fetch('{{ url("ai-translator/api/ollama/status") }}').then(r => r.json());
-        if (r.success && r.data?.models?.length) {
-          this.ollamaModels = r.data.models;
-          if (!this.ollamaModels.includes(this.model)) this.model = this.ollamaModels[0];
-          this.ollamaUp = true;
-        }
-      } catch {}
-      this.ollamaModelsLoading = false;
-    },
-
-    async save() {
-      this.saving = true; this.resultMsg = '';
-      try {
-        const payload = { driver: this.provider, source_lang: this.sourceLang, chunk_size: this.chunk, context: this.context, ollama_url: this.ollamaUrl, ollama_model: this.provider === 'ollama' ? this.model : null };
-        if (this.provider === 'deepl')  payload.deepl_key  = this.apiKey;
-        if (this.provider === 'claude') payload.claude_key = this.apiKey;
-        if (this.provider === 'openai') payload.openai_key = this.apiKey;
-        if (this.provider === 'gemini') payload.gemini_key = this.apiKey;
-        const r = await fetch('{{ url("ai-translator/api/settings") }}', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-          body: JSON.stringify(payload),
-        }).then(r => r.json());
-        this.resultOk  = r.success;
-        this.resultMsg = r.message || (r.success ? '{{ addslashes($tr['save'] ?? 'Saved.') }}' : 'Error saving.');
-        setTimeout(() => { this.resultMsg = ''; }, 4000);
-      } catch (e) { this.resultOk = false; this.resultMsg = 'Error: ' + e.message; }
-      this.saving = false;
-    },
-  };
-}
-</script>
+    }
+  </script>
 @endsection
