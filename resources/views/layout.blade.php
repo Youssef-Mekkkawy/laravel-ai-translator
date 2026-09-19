@@ -40,6 +40,17 @@
   $_languageCatalogFile = $_pkgPath . '/resources/data/languages.php';
   $_languageCatalog = file_exists($_languageCatalogFile) ? include $_languageCatalogFile : [];
 
+  // Canonical language list for the dashboard interface selector.
+  $_dashboardLangs = array_map(
+    fn($lang) => [
+      'code' => $lang['code'],
+      'name' => $lang['name'],
+      'native' => $lang['native'],
+      'preTranslated' => in_array($lang['code'], $_preTranslated, true),
+    ],
+    $_languageCatalog
+  );
+
   $_providerConfig = config('ai-translator.providers.' . $cfgDriver, []);
   $_providerModel = is_array($_providerConfig)
       ? ($_providerConfig['model'] ?? ($_providerConfig['plan'] ?? ''))
@@ -308,7 +319,7 @@
     .sidebar-backdrop.is-visible { display: block; position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.4); }
 
     .main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1rem; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 1.25rem; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 1.25rem; position: relative; z-index: 10; }
     .topbar-left { display: flex; align-items: center; gap: .75rem; min-width: 0; }
     .menu-btn { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-2xl); background: color-mix(in oklab, var(--panel) 70%, transparent); color: color-mix(in oklab, var(--ink) 70%, transparent); }
     @media (min-width: 1024px) { .menu-btn { display: none; } }
@@ -328,8 +339,10 @@
     .avatar > span:first-child { font-size: .75rem; font-weight: 700; }
     .avatar-status { position: absolute; right: -1px; bottom: -1px; width: .625rem; height: .625rem; border-radius: 999px; background: var(--mint); box-shadow: 0 0 0 2px var(--panel); }
     .language-control { position: relative; }
-    .lang-menu { position: absolute; top: calc(100% + .5rem); right: 0; z-index: 50; min-width: 12rem; max-height: 22rem; overflow-y: auto; padding: .375rem; display: none; flex-direction: column; gap: .125rem; }
+    .lang-menu { position: absolute; top: calc(100% + .5rem); right: 0; z-index: 200; min-width: 12rem; max-height: 22rem; overflow-y: auto; padding: .375rem; display: none; flex-direction: column; gap: .125rem; }
     .lang-menu.is-open { display: flex; }
+ 
+    
     .lang-menu button { width: 100%; text-align: start; padding: .5rem .625rem; border-radius: var(--radius-lg); font-size: .8125rem; font-weight: 500; }
     .lang-menu button:hover { background: color-mix(in oklab, var(--ink) 6%, transparent); }
     .lang-menu button.is-active { color: var(--brand); font-weight: 700; }
@@ -643,21 +656,36 @@
             </div>
 
             <div class="topbar-right" x-data="langSelector()">
-              <div class="language-control">
-                <button type="button" class="pill-btn" @click="open = !open" :aria-expanded="open ? 'true' : 'false'" aria-label="Interface language" title="Interface language">
-                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
-                  <span x-text="currentCode.toUpperCase()"></span>
-                </button>
-                <div class="lang-menu glass" :class="open ? 'is-open' : ''" role="menu" @click.outside="open = false">
-                  <template x-for="lang in allLangs" :key="lang.code">
-                    <button type="button" :class="lang.code === currentCode ? 'is-active' : ''" @click="selectLang(lang)">
-                      <span x-text="lang.native"></span>
-                      <span style="opacity:.5;font-size:.7rem" x-text="' (' + lang.code.toUpperCase() + ')' + (lang.preTranslated ? '' : ' ✦ AI')"></span>
-                    </button>
-                  </template>
-                </div>
-              </div>
+<div class="language-control" x-data="langSelector()" @click.outside="open = false">
+    <button type="button" 
+            class="pill-btn" 
+            @click.stop="toggleLanguage($event)" 
+            :aria-expanded="open ? 'true' : 'false'" 
+            aria-label="Interface language" 
+            title="Interface language">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+            <path d="M2 12h20"></path>
+        </svg>
+        <span x-text="currentCode.toUpperCase()">EN</span>
+    </button>
 
+    <div class="lang-menu glass" 
+         :class="open ? 'is-open' : ''" 
+         :style="menuStyle" 
+         x-cloak 
+         role="menu">
+        <template x-for="lang in allLangs" :key="lang.code">
+            <button type="button" 
+                    :class="lang.code === currentCode ? 'is-active' : ''" 
+                    @click="selectLang(lang)">
+                <span x-text="lang.native"></span>
+                <span style="opacity:.5;font-size:.7rem" x-text="' (' + lang.code.toUpperCase() + ')' + (lang.preTranslated ? '' : ' ✦ AI')"></span>
+            </button>
+        </template>
+    </div>
+</div>
               <button type="button" class="icon-circle-btn" data-theme-toggle aria-label="Switch theme" title="Switch theme">
                 <svg class="icon icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
                 <svg class="icon icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
@@ -1054,14 +1082,7 @@
     }
 
     function langSelector() {
-      const preTranslated = @json($_preTranslated);
-      const allLangsMap = @json($_allLangs);
-      const allLangs = Object.entries(allLangsMap).map(([code, names]) => ({
-        code,
-        name: names[0],
-        native: names[1],
-        preTranslated: preTranslated.includes(code),
-      }));
+      const allLangs = @json($_dashboardLangs);
 
       return {
         open: false,
@@ -1069,6 +1090,35 @@
         generatingCode: '',
         currentCode: @json($_dashLang),
         allLangs,
+        open: false,
+menuStyle: '',
+
+toggleLanguage(event) {
+    this.open = !this.open;
+
+    if (this.open) {
+        this.$nextTick(() => {
+            this.positionMenu(event.currentTarget);
+        });
+    }
+},
+
+positionMenu(button) {
+    const rect = button.getBoundingClientRect();
+
+    const menuWidth = 220;
+    const gap = 8;
+    const margin = 8;
+
+    let left = rect.right - menuWidth;
+
+    // Keep menu inside viewport
+    left = Math.max(margin, left);
+    left = Math.min(left, window.innerWidth - menuWidth - margin);
+
+    this.menuStyle =
+        `top:${rect.bottom + gap}px;left:${left}px;width:${menuWidth}px;`;
+},
 
         get currentLabel() {
           const lang = this.allLangs.find(l => l.code === this.currentCode);
@@ -1112,8 +1162,7 @@
         },
 
         setCookieAndReload(code) {
-          document.cookie = 'dashboard_lang=' + code + ';path=/;max-age=31536000';
-          window.location.reload();
+          window.location.href = @json(url('ai-translator/set-lang')) + '/' + code;
         },
       };
     }
@@ -1136,3 +1185,4 @@
     });
   </script>
 </body>
+</html>

@@ -98,7 +98,7 @@
 
         @media(min-width:1280px) {
             .overview-stats-grid {
-                grid-template-columns: repeat(4, 1fr)
+                grid-template-columns: repeat(5, 1fr)
             }
         }
 
@@ -411,6 +411,17 @@
                     </div>
                 </div>
                 <p class="overview-stat-note">{{ $tr['keys'] ?? 'keys' }}</p>
+            </div>
+
+            <div class="overview-stat-card glass">
+                <p class="overview-stat-label">{{ $tr['total_cost'] ?? 'Total cost' }}</p>
+                <p class="overview-stat-value tabular-nums" style="color:var(--sky)" dir="ltr">
+                    ${{ number_format($totalCost, 4) }}
+                </p>
+                <div class="progress-track">
+                    <div class="progress-fill" style="background:var(--sky);width:{{ $totalCost > 0 ? 100 : 0 }}%"></div>
+                </div>
+                <p class="overview-stat-note">{{ $tr['across_all_runs'] ?? 'across all runs' }}</p>
             </div>
         </section>
 

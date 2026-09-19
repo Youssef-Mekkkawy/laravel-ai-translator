@@ -3,6 +3,28 @@
 @section('content')
 @php $tr=$_trans??[]; @endphp
 <div class="history-list">
+
+  {{-- Page intro with total cost --}}
+  <section class="page-intro glass--strong" style="margin-bottom:.25rem">
+    <div class="page-hero-row">
+      <div>
+        <p class="page-intro-title">{{ $tr['history'] ?? 'History' }}</p>
+        <p class="page-intro-sub">{{ $tr['history_sub'] ?? 'Every sync run, with cost and diff.' }}</p>
+      </div>
+    </div>
+    @if(count($runs) > 0)
+    <div style="margin-top:.75rem;display:flex;flex-wrap:wrap;gap:1rem;align-items:center">
+      <span style="font-size:.6875rem;color:color-mix(in oklab,var(--ink) 50%,transparent)">
+        {{ count($runs) }} {{ $tr['runs'] ?? 'run(s)' }}
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:.375rem;font-size:.6875rem;font-weight:600;padding:.25rem .625rem;border-radius:999px;background:color-mix(in oklab,var(--sky) 15%,transparent);color:var(--sky-strong)" dir="ltr">
+        <svg style="width:.75rem;height:.75rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        {{ $tr['total_cost'] ?? 'Total cost' }}: ${{ number_format($totalCost, 4) }}
+      </span>
+    </div>
+    @endif
+  </section>
+
   @if(count($runs)===0)
     <section class="glass empty-state">
       <div class="empty-state-icon">◷</div>
@@ -28,7 +50,7 @@
           <span class="summary-value">{{ $keys ? number_format($keys).' '.($tr['keys']??'keys') : '—' }}</span>
           <span class="summary-value">{{ $langs ?: '—' }}</span>
           <span class="summary-provider">{{ $provider }}@if($model) · {{ $model }}@endif</span>
-          <span class="summary-cost">${{ number_format($cost,2) }}</span>
+          <span class="summary-cost" dir="ltr">${{ number_format($cost,4) }}</span>
         </button>
         <div class="history-details" hidden>
           @if(!empty($changes))
@@ -68,7 +90,6 @@
         </div>
       </article>
     @endforeach
-    <div style="font-size:.6875rem;color:color-mix(in oklab,var(--ink) 50%,transparent)">{{ count($runs) }} {{ $tr['history']??'run(s)' }}</div>
   @endif
 </div>
 <script>
