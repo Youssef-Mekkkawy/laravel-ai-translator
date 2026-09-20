@@ -70,6 +70,7 @@
       </div>
       <div style="padding:.75rem 1rem;font-size:.6875rem;color:color-mix(in oklab,var(--ink) 50%,transparent)">{{ count($locks) }} {{ $tr['locked_keys'] ?? 'locked key(s)' }}</div>
     @endif
+    
   </section>
 </div>
 <script>
