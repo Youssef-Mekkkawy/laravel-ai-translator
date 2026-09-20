@@ -63,6 +63,12 @@ class LanguageApiController extends DashboardController
         ], "Language '{$locale}' ".($enabled ? 'enabled' : 'disabled').'.');
     }
 
+    /**
+     * Remove a language from RuntimeConfig and delete its physical translation files.
+     *
+     * Only target language files are deleted — the source language (en) is
+     * never touched regardless of what is passed.
+     */
     public function remove(Request $request)
     {
         $locale = preg_replace('/[^a-z\-]/', '', strtolower($request->input('locale', '')));
@@ -76,24 +82,31 @@ class LanguageApiController extends DashboardController
             return $this->error("Cannot remove the source language '{$source}'.");
         }
 
+        // Remove from RuntimeConfig
         $this->runtime->removeLanguage($locale);
 
-        // Delete PHP translation folder (lang/ar/)
+        // Delete physical translation files — target language only
+        $deleted = [];
+
+        // lang/{locale}/ directory (PHP files)
         $langDir = lang_path($locale);
-        if (File::exists($langDir)) {
+        if (File::isDirectory($langDir)) {
             File::deleteDirectory($langDir);
+            $deleted[] = "lang/{$locale}/";
         }
 
-        // Delete JSON translation file (lang/ar.json)
+        // lang/{locale}.json
         $jsonFile = lang_path($locale.'.json');
         if (File::exists($jsonFile)) {
             File::delete($jsonFile);
+            $deleted[] = "lang/{$locale}.json";
         }
 
         return $this->success([
             'locale' => $locale,
             'languages' => $this->runtime->getSupportedLanguages(),
-        ], "Language '{$locale}' and all its translation files removed.");
+            'deleted' => $deleted,
+        ], "Language '{$locale}' removed and files deleted.");
     }
 
     public function stats()
@@ -152,15 +165,11 @@ class LanguageApiController extends DashboardController
                 $coverage[] = compact('lang', 'translated', 'missing', 'pct');
             }
 
-            // Only average languages that have been translated at least once
             $activeCoverage = array_filter($coverage, fn ($c) => $c['translated'] > 0);
             $translatedCount = count($activeCoverage) > 0
                 ? (int) round(array_sum(array_column($activeCoverage, 'translated')) / count($activeCoverage))
                 : 0;
 
-            // FIX: only sum missing from languages that have STARTED translation
-            // Brand-new languages with 0 translated keys are excluded — they show
-            // as "not started" in coverage, not as "missing" in the aggregate
             $missingCount = array_sum(array_column(
                 array_filter($coverage, fn ($c) => $c['translated'] > 0),
                 'missing'

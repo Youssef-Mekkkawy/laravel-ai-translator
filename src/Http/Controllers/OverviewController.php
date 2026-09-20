@@ -15,9 +15,7 @@ class OverviewController extends DashboardController
         $config = config('ai-translator', []);
         $sourceLang = $config['default_language'] ?? 'en';
 
-        // FIX 1: use RuntimeConfig so languages added via dashboard are included.
-        // Previously used config('ai-translator.languages') which only reflects
-        // the static config file — dashboard-added languages were invisible here.
+        // Use RuntimeConfig so dashboard-added languages are included
         $runtime = new RuntimeConfig;
         $languages = array_filter(
             $runtime->getSupportedLanguages(),
@@ -25,18 +23,11 @@ class OverviewController extends DashboardController
         );
 
         // Scan views for keys
-        $runtimePaths = $runtime->get('scan_paths', $config['scan_paths'] ?? [resource_path('views')]);
-        $runtimeExts = $runtime->get('scan_extensions', ['blade.php']);
-        $scanner = new ViewScanner(
-            array_filter($runtimePaths, fn ($p) => is_dir($p)),
-            null,
-            $runtimeExts
-        );
+        $scanPaths = $config['scan_paths'] ?? [resource_path('views')];
+        $scanner = new ViewScanner(array_filter($scanPaths, fn ($p) => is_dir($p)));
         $allKeys = $scanner->scanAll();
 
-        // FIX 2: include JSON source keys (lang/en.json) in total.
-        // Without this, 145 JSON keys always counted as missing because
-        // loadLangKeys() only reads PHP files.
+        // Include JSON source keys (lang/en.json)
         $sourceLangJson = lang_path($sourceLang.'.json');
         if (file_exists($sourceLangJson)) {
             $jsonData = @json_decode(file_get_contents($sourceLangJson), true);
@@ -47,7 +38,7 @@ class OverviewController extends DashboardController
 
         $totalKeys = count($allKeys);
 
-        // Load locked keys
+        // Locked keys
         $storage = new LockStorage;
         $lockManager = new LockManager($storage);
         $lockedCount = 0;
@@ -60,6 +51,7 @@ class OverviewController extends DashboardController
         }
 
         $coverage = [];
+        $langCount = count($languages);
 
         foreach ($languages as $lang) {
             $langPath = lang_path($lang);
@@ -77,25 +69,30 @@ class OverviewController extends DashboardController
             $coverage[] = compact('lang', 'translated', 'missing', 'pct');
         }
 
-        // FIX 3: only average languages that have been translated at least once.
-        // Brand-new languages with 0% were dragging the average down to near 0.
+        // Only average languages that have been translated at least once
         $activeCoverage = array_filter($coverage, fn ($c) => $c['translated'] > 0);
         $translatedCount = count($activeCoverage) > 0
             ? (int) round(array_sum(array_column($activeCoverage, 'translated')) / count($activeCoverage))
             : 0;
 
-        // FIX 4: only sum missing from languages that have started translation.
-        // Previously summed all languages — a brand-new untranslated language
-        // with 149 missing was inflating the total to 720+.
-        $missingCount = array_sum(array_column($coverage, 'missing'));
+        $missingCount = array_sum(array_column(
+            array_filter($coverage, fn ($c) => $c['translated'] > 0),
+            'missing'
+        ));
 
-        // Last sync info from metadata
+        // Metadata — last sync + total cost across all runs
         $metaFile = $config['storage']['metadata_file'] ?? base_path('lang/.translations-meta.json');
         $lastSync = null;
+        $totalCost = 0.0;
 
         if (File::exists($metaFile)) {
             $meta = json_decode(File::get($metaFile), true) ?? [];
             $lastSync = $meta['last_full_sync'] ?? null;
+            $runs = $meta['runs'] ?? [];
+            $totalCost = (float) array_sum(array_map(
+                fn ($r) => (float) ($r['cost'] ?? 0),
+                $runs
+            ));
         }
 
         return $this->view('overview', [
@@ -106,6 +103,7 @@ class OverviewController extends DashboardController
             'coverage' => $coverage,
             'lastSync' => $lastSync,
             'lastDuration' => null,
+            'totalCost' => $totalCost,
         ]);
     }
 
@@ -128,9 +126,7 @@ class OverviewController extends DashboardController
             }
         }
 
-        // FIX: also read JSON file (e.g. lang/ar.json).
-        // Without this, all 145 JSON-translated keys always show as missing
-        // because only PHP files were being read.
+        // Also read JSON translation file (e.g. lang/ar.json)
         $locale = basename($langPath);
         $jsonPath = lang_path($locale.'.json');
         if (file_exists($jsonPath)) {

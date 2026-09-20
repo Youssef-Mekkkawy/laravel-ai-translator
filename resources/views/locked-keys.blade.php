@@ -1,124 +1,96 @@
 @extends('ai-translator::layout')
 @section('title', '{{ $_trans["locked"] ?? "Locked Keys" }}')
-
 @section('content')
 @php $tr = $_trans ?? []; @endphp
-<div x-data="lockedPage()" style="display:flex;flex-direction:column;gap:16px">
-
-  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <input x-model="search" placeholder="{{ $tr['search_language'] ?? 'Search by key, language or value...' }}"
-      style="flex:1;min-width:200px;max-width:380px;padding:9px 13px;border-radius:10px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
-    <select x-model="filterLang" @change="filterByLang()"
-      style="padding:9px 12px;border-radius:10px;border:1px solid #1B2130;background:#0D111A;color:#E6E9EF;font-size:13px;outline:none">
-      <option value="">{{ $tr['all_languages'] ?? 'All languages' }}</option>
-      @foreach(array_filter(config('ai-translator.languages',[]), fn($l) => $l !== config('ai-translator.default_language','en')) as $lang)
-      <option value="{{ $lang }}">{{ strtoupper($lang) }}</option>
-      @endforeach
-    </select>
-    <button @click="$dispatch('open-lock-modal')"
-      style="margin-inline-start:auto;display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;border:1px solid #6EE7B7;background:#6EE7B7;color:#062A20;font-size:13px;font-weight:600;cursor:pointer">
-      🔒 {{ $tr['lock_key_title'] ?? 'Lock a Key' }}
-    </button>
-  </div>
-
-  <div x-show="msg" x-text="msg"
-    :style="msgOk ? 'font-size:13px;color:#6EE7B7;padding:8px 12px;border-radius:9px;background:rgba(110,231,183,.08);border:1px solid rgba(110,231,183,.2)' : 'font-size:13px;color:#F87171;padding:8px 12px;border-radius:9px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2)'"></div>
-
-  @if(count($locks) === 0)
-  <div style="border:1px dashed #232B3B;border-radius:14px;background:#0E1219;padding:64px 24px;text-align:center">
-    <div style="width:52px;height:52px;margin:0 auto 16px;border-radius:14px;background:#141A26;display:grid;place-items:center;color:#3A4761">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+<div x-data="lockedPage()" class="page-stack">
+  <section class="page-intro glass--strong">
+    <div class="page-hero-row">
+      <div>
+        <p class="page-intro-title">{{ $tr['locked'] ?? 'Locked keys' }}</p>
+        <p class="page-intro-sub">{{ $tr['locked_sub'] ?? 'Keys protected from being overwritten by the AI.' }}</p>
+      </div>
+      <button class="btn btn--primary" type="button" @click="$dispatch('open-lock-modal')">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        {{ $tr['lock_key_title'] ?? 'Lock key' }}
+      </button>
     </div>
-    <div style="font-size:15px;font-weight:600;margin-bottom:6px">{{ $tr['no_locked_keys'] ?? 'No locked keys' }}</div>
-    <div style="font-size:13px;color:#5C6678;margin-bottom:20px">{{ $tr['lock_hint'] ?? 'Lock a translation to protect it from being overwritten by AI.' }}</div>
-    <button @click="$dispatch('open-lock-modal')"
-      style="padding:10px 18px;border-radius:10px;border:1px solid #6EE7B7;background:#6EE7B7;color:#062A20;font-size:13px;font-weight:600;cursor:pointer">
-      {{ $tr['lock_first'] ?? 'Lock your first key' }}
-    </button>
-  </div>
-
-  @else
-  <div style="border:1px solid #1B2130;border-radius:14px;background:#101420;overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;min-width:600px">
-      <thead>
-        <tr style="background:#0E1219;border-bottom:1px solid #1B2130">
-          <th style="padding:11px 16px;text-align:start;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#5C6678;font-weight:600">{{ $tr['language'] ?? 'Language' }}</th>
-          <th style="padding:11px 16px;text-align:start;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#5C6678;font-weight:600">{{ $tr['key'] ?? 'Key' }}</th>
-          <th style="padding:11px 16px;text-align:start;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#5C6678;font-weight:600">{{ $tr['value'] ?? 'Value' }}</th>
-          <th style="padding:11px 16px;text-align:start;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#5C6678;font-weight:600">{{ $tr['locked_by'] ?? 'Locked by' }}</th>
-          <th style="padding:11px 16px;text-align:start;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#5C6678;font-weight:600">{{ $tr['reason'] ?? 'Reason' }}</th>
-          <th style="padding:11px 16px"></th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach($locks as $lock)
-        <tr style="border-top:1px solid #161C27"
-          x-show="!search || '{{ strtolower($lock['lang'].' '.$lock['key'].' '.($lock['value']??'')) }}'.includes(search.toLowerCase())">
-          <td style="padding:13px 16px">
-            <span style="width:28px;height:20px;border-radius:4px;background:#161C27;border:1px solid #2B3446;display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#8B93A5;font-weight:600">{{ strtoupper($lock['lang']) }}</span>
-          </td>
-          <td style="padding:13px 16px">
-            <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E6E9EF;background:#0D111A;padding:3px 7px;border-radius:5px;border:1px solid #1B2130">{{ $lock['key'] }}</code>
-          </td>
-          <td style="padding:13px 16px;font-size:13px;color:#8B93A5;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $lock['value'] ?? '—' }}</td>
-          <td style="padding:13px 16px">
-            <div style="display:flex;align-items:center;gap:6px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5C6678" stroke-width="1.8" stroke-linecap="round" style="flex:none"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M7 9l3 2.5L7 14M12.5 14H17M8 21h8"/></svg>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E6E9EF;direction:ltr">{{ $lock['locked_by'] ?? 'system' }}</span>
-            </div>
-            @if($lock['locked_at'])
-            <div style="font-size:11px;color:#5C6678;margin-top:2px;font-family:'JetBrains Mono',monospace">{{ \Carbon\Carbon::parse($lock['locked_at'])->format('Y-m-d H:i') }}</div>
-            @endif
-          </td>
-          <td style="padding:13px 16px">
-            @if($lock['reason'])
-            <span style="display:inline-block;padding:3px 9px;border-radius:6px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);color:#C4B5FD;font-size:11px">{{ $lock['reason'] }}</span>
-            @else
-            <span style="color:#3A4761;font-size:12px">—</span>
-            @endif
-          </td>
-          <td style="padding:13px 16px;text-align:end">
-            <button @click="unlock('{{ $lock['lang'] }}', '{{ $lock['key'] }}')"
-              :disabled="unlocking === '{{ $lock['lang'] }}.{{ $lock['key'] }}'"
-              style="padding:6px 14px;border-radius:8px;border:1px solid #2B3446;background:#161C27;color:#8B93A5;font-size:12px;cursor:pointer">
-              <span x-show="unlocking === '{{ $lock['lang'] }}.{{ $lock['key'] }}'">...</span>
-              <span x-show="unlocking !== '{{ $lock['lang'] }}.{{ $lock['key'] }}'">{{ $tr['unlock'] ?? 'Unlock' }}</span>
-            </button>
-          </td>
-        </tr>
+    <div class="locked-toolbar">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        <input class="text-input" x-model="search" type="search" placeholder="{{ $tr['search_language'] ?? 'Search key or value…' }}">
+      </div>
+      <select class="select-input" x-model="filterLang" @change="filterByLang()">
+        <option value="">{{ $tr['all_languages'] ?? 'All languages' }}</option>
+        @foreach(array_filter(config('ai-translator.languages',[]), fn($l) => $l !== config('ai-translator.default_language','en')) as $lang)
+          <option value="{{ $lang }}">{{ strtoupper($lang) }}</option>
         @endforeach
-      </tbody>
-    </table>
-  </div>
-  <div style="font-size:12px;color:#5C6678">{{ count($locks) }} {{ $tr['locked_keys'] ?? 'locked key(s)' }}</div>
-  @endif
+      </select>
+    </div>
+    <div x-show="msg" x-text="msg" class="page-message" :class="msgOk ? 'page-message--ok' : 'page-message--err'"></div>
+  </section>
 
+  <section class="locked-table-panel glass">
+    @if(count($locks) === 0)
+      <div class="empty-state">
+        <div class="empty-state-icon">🔒</div>
+        <p class="empty-state-title">{{ $tr['no_locked_keys'] ?? 'No locked keys' }}</p>
+        <p class="empty-state-text">{{ $tr['lock_hint'] ?? 'Lock a translation to protect it from being overwritten by AI.' }}</p>
+        <button class="btn btn--primary" @click="$dispatch('open-lock-modal')">{{ $tr['lock_first'] ?? 'Lock your first key' }}</button>
+      </div>
+    @else
+      <div class="locked-table-scroll">
+        <table class="locked-table">
+          <thead><tr>
+            <th style="width:2.5rem"><button class="table-check" :class="allSelected ? 'is-checked' : ''" type="button" aria-label="Select all" @click="toggleAll()"></button></th>
+            <th>{{ $tr['language'] ?? 'Language' }}</th>
+            <th>{{ $tr['key'] ?? 'Key' }}</th>
+            <th>{{ $tr['value'] ?? 'Value' }}</th>
+            <th>{{ $tr['locked_by'] ?? 'Locked by' }}</th>
+            <th>{{ $tr['reason'] ?? 'Reason' }}</th>
+            <th></th>
+          </tr></thead>
+          <tbody>
+          @foreach($locks as $i => $lock)
+            @php
+              $searchText = strtolower(($lock['lang'] ?? '').' '.($lock['key'] ?? '').' '.($lock['value'] ?? ''));
+              $rowId = 'lock-'.md5(($lock['lang'] ?? '').'|'.($lock['key'] ?? '').'|'.$i);
+            @endphp
+            <tr id="{{ $rowId }}" data-lock-row data-lock-key="{{ addslashes($lock['lang'].'|'.$lock['key']) }}" data-search="{{ $searchText }}" style="display:table-row" x-show="matches('{{ addslashes($searchText) }}')">
+              <td><button type="button" class="table-check" :class="selected.includes('{{ addslashes($lock['lang'].'|'.$lock['key']) }}') ? 'is-checked' : ''" aria-label="Select key" @click="toggle('{{ addslashes($lock['lang'].'|'.$lock['key']) }}')"></button></td>
+              <td><span class="locked-badge badge">{{ strtoupper($lock['lang'] ?? '') }}</span></td>
+              <td><span class="key-cell" dir="ltr">{{ $lock['key'] }}</span></td>
+              <td><div class="value-cell">{{ $lock['value'] ?? '—' }}</div></td>
+              <td><div class="locked-by"><span>⌁</span><span dir="ltr">{{ $lock['locked_by'] ?? 'system' }}</span></div>@if($lock['locked_at'])<div class="locked-by-date">{{ \Carbon\Carbon::parse($lock['locked_at'])->format('Y-m-d H:i') }}</div>@endif</td>
+              <td class="reason-cell">{{ $lock['reason'] ?? '—' }}</td>
+              <td class="locked-action-cell"><button class="table-btn" type="button" @click="unlock('{{ $lock['lang'] }}','{{ addslashes($lock['key']) }}')" :disabled="unlocking === '{{ $lock['lang'].'.'.$lock['key'] }}'"><span x-text="unlocking === '{{ $lock['lang'].'.'.$lock['key'] }}' ? '…' : '{{ addslashes($tr['unlock'] ?? 'Unlock') }}'"></span></button></td>
+            </tr>
+          @endforeach
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:.75rem 1rem;font-size:.6875rem;color:color-mix(in oklab,var(--ink) 50%,transparent)">{{ count($locks) }} {{ $tr['locked_keys'] ?? 'locked key(s)' }}</div>
+    @endif
+    
+  </section>
 </div>
-
 <script>
-function lockedPage() {
+function lockedPage(){
   return {
-    search: '', filterLang: '', unlocking: '', msg: '', msgOk: true,
-    filterByLang() {
-      const lang = this.filterLang;
-      window.location.href = '{{ route("ai-translator.locked") }}' + (lang ? '?lang=' + lang : '');
-    },
-    async unlock(lang, key) {
-      this.unlocking = lang + '.' + key;
-      this.msg = '';
-      try {
-        const r = await fetch('{{ url("ai-translator/api/unlock") }}', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-          body: JSON.stringify({ lang, key }),
-        }).then(r => r.json());
-        this.msgOk = r.success;
-        this.msg   = r.message || (r.success ? '{{ addslashes($tr["unlock"] ?? "Unlocked") }}.' : 'Failed.');
-        if (r.success) setTimeout(() => window.location.reload(), 800);
-      } catch (e) { this.msgOk = false; this.msg = 'Error: ' + e.message; }
-      this.unlocking = '';
-    },
-  };
+    search:'', filterLang:'{{ request('lang','') }}', unlocking:'', msg:'', msgOk:true, selected:[],
+    get visibleKeys(){ return [...document.querySelectorAll('[data-lock-row]')].filter(r=>getComputedStyle(r).display!=='none').map(r=>r.dataset.lockKey); },
+    get allSelected(){ const keys=this.visibleKeys; return keys.length>0 && keys.every(k=>this.selected.includes(k)); },
+    matches(text){ return !this.search || text.toLowerCase().includes(this.search.toLowerCase()); },
+    toggle(key){ this.selected=this.selected.includes(key)?this.selected.filter(x=>x!==key):[...this.selected,key]; },
+    toggleAll(){ const keys=this.visibleKeys; this.selected=this.allSelected?this.selected.filter(k=>!keys.includes(k)):[...new Set([...this.selected,...keys])]; },
+    filterByLang(){ const base='{{ route("ai-translator.locked") }}'; window.location.href=base+(this.filterLang?'?lang='+encodeURIComponent(this.filterLang):''); },
+    async unlock(lang,key){
+      this.unlocking=lang+'.'+key; this.msg='';
+      try{
+        const r=await fetch('{{ url("ai-translator/api/unlock") }}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content},body:JSON.stringify({lang,key})}).then(r=>r.json());
+        this.msgOk=!!r.success; this.msg=r.message||(r.success?'Unlocked.':'Failed.'); if(r.success)setTimeout(()=>location.reload(),700);
+      }catch(e){this.msgOk=false;this.msg='Error: '+e.message;} this.unlocking='';
+    }
+  }
 }
 </script>
 @endsection

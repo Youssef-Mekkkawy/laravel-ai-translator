@@ -61,4 +61,15 @@ Route::prefix(config('ai-translator.dashboard.path', 'ai-translator'))
         Route::post('/api/ollama/start', [OllamaStartController::class, 'start']);
         Route::get('/api/ollama/status', [OllamaStartController::class, 'status']);
         Route::get('/api/ollama-models', [OllamaController::class,      'models']);
+
+        // ── Assets ─────────────────────────────────────────────────────
+        // These routes serve the CSS files for the dashboard and overview pages. They use the `response()->file()` method to return the CSS files with the appropriate content type.
+        Route::get('/assets/dashboard.css', fn () => response()->file(
+            realpath(__DIR__.'/../resources/css/dashboard.css'),
+            ['Content-Type' => 'text/css; charset=UTF-8']
+        ));
+        Route::get('/assets/overview.css', fn () => response()->file(
+            realpath(__DIR__.'/../resources/css/overview.css'),
+            ['Content-Type' => 'text/css; charset=UTF-8']
+        ));
     });

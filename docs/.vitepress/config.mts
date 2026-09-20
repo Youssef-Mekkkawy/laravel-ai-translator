@@ -4,6 +4,9 @@ export default defineConfig({
   title: 'Laravel AI Translator',
   description: 'Automatic AI-powered translation for Laravel applications',
   base: '/laravel-ai-translator/',
+  rewrites: {
+    'en/:rest*': ':rest*',
+  },
 
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/laravel-ai-translator/logo.svg' }],
@@ -85,10 +88,7 @@ export default defineConfig({
   },
 
   locales: {
-    root: {
-      label: 'English',
-      lang: 'en',
-    },
+    root: { label: 'English', lang: 'en', dir: 'ltr' },
     ar: {
       label: 'العربية',
       lang: 'ar',

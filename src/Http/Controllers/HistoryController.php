@@ -21,6 +21,12 @@ class HistoryController extends DashboardController
             usort($runs, fn ($a, $b) => strcmp($b['started_at'], $a['started_at']));
         }
 
-        return $this->view('history', compact('runs'));
+        // Sum cost across all runs for the History page header
+        $totalCost = array_sum(array_map(
+            fn ($r) => (float) ($r['cost'] ?? 0),
+            $runs
+        ));
+
+        return $this->view('history', compact('runs', 'totalCost'));
     }
 }
