@@ -1,6 +1,6 @@
 # Support This Project ??
 
-Laravel AI Translator is completely free and open source — no paid tiers, no hidden features, forever.
+Laravel AI Translator is completely free and open source ï¿½ no paid tiers, no hidden features, forever.
 
 If this package saved you time, please consider supporting its development.
 
@@ -10,19 +10,16 @@ If this package saved you time, please consider supporting its development.
 
 [?? github.com/sponsors/Youssef-Mekkkawy](https://github.com/sponsors/Youssef-Mekkkawy)
 
-## Buy Me a Coffee
-
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/youssef.mekkawy)
 
 ## Star the repo ?
 
-Free but means a lot — helps others discover the package.
+Free but means a lot ï¿½ helps others discover the package.
 
 [![Stars](https://img.shields.io/github/stars/Youssef-Mekkkawy/laravel-ai-translator?style=for-the-badge&logo=github)](https://github.com/Youssef-Mekkkawy/laravel-ai-translator)
 
 ## Share it ??
 
-Tell other Laravel developers — that is the biggest support of all.
+Tell other Laravel developers ï¿½ that is the biggest support of all.
 
 ---
 

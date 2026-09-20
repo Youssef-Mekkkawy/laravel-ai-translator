@@ -227,7 +227,7 @@
     .sidebar-backdrop.is-visible { display: block; position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.4); }
 
     .main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1rem; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 1.25rem; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 1.25rem; position: relative; z-index: 100; }
     .topbar-left { display: flex; align-items: center; gap: .75rem; min-width: 0; }
     .menu-btn { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-2xl); background: color-mix(in oklab, var(--panel) 70%, transparent); color: color-mix(in oklab, var(--ink) 70%, transparent); }
     @media (min-width: 1024px) { .menu-btn { display: none; } }

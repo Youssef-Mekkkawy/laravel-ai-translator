@@ -1,6 +1,6 @@
 <?php
 
-namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
+namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands\Translation;
 
 use Illuminate\Console\Command;
 use YoussefMekkkawy\LaravelAiTranslator\Services\Backup\BackupService;

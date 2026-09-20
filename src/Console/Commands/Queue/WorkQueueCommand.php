@@ -1,6 +1,6 @@
 <?php
 
-namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
+namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands\Queue;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;

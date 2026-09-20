@@ -1,6 +1,6 @@
 <?php
 
-namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
+namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands\Backup;
 
 use Carbon\Carbon;
 use Illuminate\Console\Command;

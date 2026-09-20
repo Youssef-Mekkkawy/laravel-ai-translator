@@ -1,6 +1,6 @@
 <?php
 
-namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands;
+namespace YoussefMekkkawy\LaravelAiTranslator\Console\Commands\Analysis;
 
 use Illuminate\Console\Command;
 
