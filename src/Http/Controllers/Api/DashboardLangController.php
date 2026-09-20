@@ -13,7 +13,6 @@ class DashboardLangController extends DashboardController
      * For pre-translated languages: instant.
      * For new languages: generates via Ollama first.
      */
-
     public function setLang(string $locale)
     {
         // Sanitize locale
@@ -23,8 +22,8 @@ class DashboardLangController extends DashboardController
         }
 
         $pkgPath = app('ai-translator.package_path');
-        $langFile = $pkgPath . '/resources/lang/' . $locale . '/dashboard.php';
-        $enFile = $pkgPath . '/resources/lang/en/dashboard.php';
+        $langFile = $pkgPath.'/resources/lang/'.$locale.'/dashboard.php';
+        $enFile = $pkgPath.'/resources/lang/en/dashboard.php';
 
         // Generate if not pre-translated
         if (! file_exists($langFile) && file_exists($enFile)) {
@@ -42,8 +41,8 @@ class DashboardLangController extends DashboardController
     {
         $locale = preg_replace('/[^a-z\-]/', '', strtolower($request->input('locale', '')));
         $pkgPath = app('ai-translator.package_path');
-        $langFile = $pkgPath . '/resources/lang/' . $locale . '/dashboard.php';
-        $enFile = $pkgPath . '/resources/lang/en/dashboard.php';
+        $langFile = $pkgPath.'/resources/lang/'.$locale.'/dashboard.php';
+        $enFile = $pkgPath.'/resources/lang/en/dashboard.php';
 
         if (! $locale) {
             return $this->error('Invalid locale.');
@@ -77,10 +76,10 @@ class DashboardLangController extends DashboardController
 
         try {
             $prompt = "Translate the following JSON array of strings from English to the language with ISO code '{$locale}'.\n"
-                . "Return ONLY a valid JSON array of translated strings in the same order. No explanations, no markdown.\n\n"
-                . json_encode(array_values($enStrings), JSON_UNESCAPED_UNICODE);
+                ."Return ONLY a valid JSON array of translated strings in the same order. No explanations, no markdown.\n\n"
+                .json_encode(array_values($enStrings), JSON_UNESCAPED_UNICODE);
 
-            $response = Http::timeout(120)->post($ollamaUrl . '/v1/chat/completions', [
+            $response = Http::timeout(120)->post($ollamaUrl.'/v1/chat/completions', [
                 'model' => $model,
                 'messages' => [
                     ['role' => 'system', 'content' => 'You are a professional translator. Return only a JSON array.'],
@@ -109,7 +108,7 @@ class DashboardLangController extends DashboardController
                 mkdir($dir, 0755, true);
             }
 
-            file_put_contents($langFile, "<?php\n\nreturn " . var_export($translations, true) . ";\n");
+            file_put_contents($langFile, "<?php\n\nreturn ".var_export($translations, true).";\n");
 
             return true;
         } catch (\Throwable $e) {

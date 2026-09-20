@@ -75,11 +75,11 @@ abstract class DashboardController extends Controller
         $pkgPath = app('ai-translator.package_path');
 
         $langFile = $pkgPath
-            . '/resources/lang/'
-            . $dashLang
-            . '/dashboard.php';
+            .'/resources/lang/'
+            .$dashLang
+            .'/dashboard.php';
 
-        $enFile = $pkgPath . '/resources/lang/en/dashboard.php';
+        $enFile = $pkgPath.'/resources/lang/en/dashboard.php';
 
         // Dashboard translations.
         $trans = file_exists($langFile)
@@ -113,13 +113,13 @@ abstract class DashboardController extends Controller
 
         $cfgLangsJs = array_values(
             array_map(
-                fn($l) => [
+                fn ($l) => [
                     'code' => $l,
                     'label' => strtoupper($l),
                 ],
                 array_filter(
                     $cfgLangs ?? [],
-                    fn($l) => $l !== $cfgSource
+                    fn ($l) => $l !== $cfgSource
                 )
             )
         );
@@ -156,14 +156,14 @@ abstract class DashboardController extends Controller
          * and dashboard language selector.
          */
         $languageCatalogFile =
-            $pkgPath . '/resources/data/languages.php';
+            $pkgPath.'/resources/data/languages.php';
 
         $languageCatalog = file_exists($languageCatalogFile)
             ? include $languageCatalogFile
             : [];
 
         $dashboardLangs = array_map(
-            fn($lang) => [
+            fn ($lang) => [
                 'code' => $lang['code'],
                 'name' => $lang['name'],
                 'native' => $lang['native'],
@@ -180,7 +180,7 @@ abstract class DashboardController extends Controller
          * Active provider information.
          */
         $providerConfig = config(
-            'ai-translator.providers.' . $cfgDriver,
+            'ai-translator.providers.'.$cfgDriver,
             []
         );
 
@@ -204,7 +204,7 @@ abstract class DashboardController extends Controller
             ?? ucfirst($cfgDriver);
 
         $providerDisplay = $providerModel
-            ? $providerName . ' · ' . $providerModel
+            ? $providerName.' · '.$providerModel
             : $providerName;
 
         return [
@@ -256,7 +256,7 @@ abstract class DashboardController extends Controller
     {
         $composerJson =
             app('ai-translator.package_path')
-            . '/composer.json';
+            .'/composer.json';
 
         if (file_exists($composerJson)) {
             $composer = json_decode(
@@ -274,11 +274,11 @@ abstract class DashboardController extends Controller
     {
         $path =
             app('ai-translator.package_path')
-            . '/resources/images/logo-icon.png';
+            .'/resources/images/logo-icon.png';
 
         if (file_exists($path)) {
             return 'data:image/png;base64,'
-                . base64_encode(file_get_contents($path));
+                .base64_encode(file_get_contents($path));
         }
 
         return '';
